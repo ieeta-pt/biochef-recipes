@@ -19,7 +19,7 @@ source:
   tag: v1.6.3
   commit: null
 
-status: experimental
+status: verified
 deterministic: true
 
 build:
@@ -325,17 +325,6 @@ suite:
         outputs:
           - { name: out, types: [DNA, RNA, AminoAcids], mode: stdout }
       parameters: []
-
-    - opId: gto.fastq.clust.reads
-      bin: gto_fastq_clust_reads
-      description: Agroups reads and creates an index file. It cluster reads in therms of Seq k-mer Lexicographical order.
-      io:
-        inputs:
-          - { name: in, types: [FASTQ], mode: stdin }
-        outputs:
-          - { name: out, types: [FASTQ], mode: stdout }
-      parameters:
-        - { name: ctx, type: integer }
 
     - opId: gto.fastq.complement
       bin: gto_fastq_complement
@@ -810,52 +799,3 @@ suite:
           - { name: out, types: [TEXT], mode: stdout }
       parameters:
         - { name: word, type: string, flag: -w }
-
-    - opId: seqtk.seq
-      bin: seqtk_seq
-      description: Common transformation of FASTA/Q
-      io:
-        inputs:
-          - { name: in, types: [FASTA, FASTQ], mode: file }
-        outputs:
-          - { name: out, types: [FASTA, FASTQ], mode: stdout }
-      parameters:
-        - { name: command, type: string }
-        - { name: quality_min, type: integer, flag: -q }
-        - { name: quality_max, type: integer, flag: -X }
-        - { name: mask_char, type: string, flag: -n }
-        - { name: line_length, type: integer, flag: -l }
-        - { name: qual_shift, type: integer, flag: -Q }
-        - { name: seed, type: integer, flag: -s }
-        - { name: sample_fraction, type: float, flag: -f }
-        - { name: mask_file, type: string, flag: -M }
-        - { name: min_length, type: integer, flag: -L }
-        - { name: fake_qual, type: string, flag: -F }
-        - { name: mask_complement, type: flag, flag: -c }
-        - { name: reverse_complement, type: flag, flag: -r }
-        - { name: both_strands, type: flag, flag: -R }
-        - { name: force_fasta, type: flag, flag: -A }
-        - { name: drop_comments, type: flag, flag: -C }
-        - { name: drop_ambiguous, type: flag, flag: -N }
-        - { name: odd_reads_only, type: flag, flag: "-1" }
-        - { name: even_reads_only, type: flag, flag: "-2" }
-        - { name: shift_quality, type: flag, flag: -V }
-        - { name: uppercase_bases, type: flag, flag: -U }
-        - { name: convert_lowercase, type: flag, flag: -x }
-        - { name: strip_whitespace, type: flag, flag: -S }
-
-    - opId: seqtk.trimfq
-      bin: seqtk_trimfq
-      description: Trim FASTQ using the Phred algorithm.
-      io:
-        inputs:
-          - { name: in, types: [FASTQ], mode: file }
-        outputs:
-          - { name: out, types: [FASTQ], mode: stdout }
-      parameters:
-        - { name: command, type: string }
-        - { name: error_rate_threshold, type: float, flag: -q }
-        - { name: max_trim_length, type: integer, flag: -l }
-        - { name: trim_left, type: integer, flag: -b }
-        - { name: trim_right, type: integer, flag: -e }
-        - { name: max_retain_5prime, type: integer, flag: -L }
