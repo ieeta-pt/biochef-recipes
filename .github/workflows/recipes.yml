@@ -26,10 +26,10 @@ jobs:
           echo "$FILES"
 
           echo "biochef_files=$FILES" >> $GITHUB_OUTPUT 
-          
+
   build_recipes:
     needs: detect_and_build
-    uses: ./.github/workflows/build-recipes.yml
+    uses: ieeta-pt/biochef-hub/.github/workflows/build-recipes.yml@dev
     with:
       registry_url: ghcr.io/WildBunnie
       recipes: ${{ needs.detect_and_build.outputs.biochef_files }}
