@@ -1,0 +1,37 @@
+name: Recipes CI
+on:
+  pull_request:
+    paths:
+      - "recipes/**"
+
+jobs:
+  detect_and_build:
+    runs-on: ubuntu-latest
+    outputs:
+      biochef_files: ${{ steps.detect_files.outputs.biochef_files }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed biochef.yaml files
+        id: detect_files
+        run: |
+          echo "Listing changed files..."
+          CHANGED=$(git diff --name-only ${{ github.event.pull_request.base.ref }} HEAD)
+
+          FILES=$(echo "$CHANGED" | grep "biochef.yaml" | paste -sd "," - || true)
+          echo "Changed biochef.yaml files:"
+          echo "$FILES"
+
+          echo "biochef_files=$FILES" >> $GITHUB_OUTPUT 
+          
+  build_recipes:
+    needs: detect_and_build
+    uses: ./.github/workflows/build-recipes.yml
+    with:
+      registry_url: ghcr.io/WildBunnie
+      recipes: ${{ needs.detect_and_build.outputs.biochef_files }}
+    secrets:
+      REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
