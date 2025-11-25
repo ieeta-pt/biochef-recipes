@@ -18,16 +18,19 @@ jobs:
       - name: Detect changed biochef.yaml files
         id: detect_files
         run: |
+          echo "Listing changed files..."
+
           git fetch origin ${{ github.event.pull_request.base.ref }}
 
-          echo "Listing changed files..."
-          CHANGED=$(git diff --name-only ${{ github.event.pull_request.base.ref }} HEAD)
+          CHANGED=$(git diff --name-only FETCH_HEAD HEAD)
 
           FILES=$(echo "$CHANGED" | grep "biochef.yaml" | paste -sd "," - || true)
+
           echo "Changed biochef.yaml files:"
           echo "$FILES"
 
-          echo "biochef_files=$FILES" >> $GITHUB_OUTPUT 
+          echo "biochef_files=$FILES" >> $GITHUB_OUTPUT
+
 
   build_recipes:
     needs: detect_and_build
