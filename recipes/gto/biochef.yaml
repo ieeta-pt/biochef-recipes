@@ -127,8 +127,8 @@ suite:
         outputs:
           - { name: out, types: [TEXT], mode: stdout }
       parameters:
-        - { name: alphabet, type: string, flag: -a }
-        - { name: size, type: integer, flag: -s }
+        - { name: alphabet, type: string, flag: -a, required: true }
+        - { name: size, type: integer, flag: -s, required: true }
 
     - opId: gto.char.to.line
       bin: gto_char_to_line
@@ -206,7 +206,7 @@ suite:
         outputs:
           - { name: out, types: [TEXT], mode: stdout }
       parameters:
-        - { name: pattern, type: string, flag: -p }
+        - { name: pattern, type: string, flag: -p, required: true }
 
     - opId: gto.fasta.extract.read.by.pattern
       bin: gto_fasta_extract_read_by_pattern
@@ -218,7 +218,7 @@ suite:
         outputs:
           - { name: out, types: [Multi-FASTA], mode: stdout }
       parameters:
-        - { name: pattern, type: string, flag: -p }
+        - { name: pattern, type: string, flag: -p, required: true }
 
     - opId: gto.fasta.find.n.pos
       bin: gto_fasta_find_n_pos
@@ -370,8 +370,8 @@ suite:
         outputs:
           - { name: out, types: [FASTQ], mode: stdout }
       parameters:
-        - { name: initial, type: integer, flag: -i }
-        - { name: end, type: integer, flag: -e }
+        - { name: initial, type: integer, flag: -i, required: true }
+        - { name: end, type: integer, flag: -e, required: true }
 
     - opId: gto.fastq.exclude.n
       bin: gto_fastq_exclude_n
@@ -383,7 +383,7 @@ suite:
         outputs:
           - { name: out, types: [FASTQ], mode: stdout }
       parameters:
-        - { name: max, type: integer, flag: -m }
+        - { name: max, type: integer, flag: -m, required: true }
 
     - opId: gto.fastq.extract.quality.scores
       bin: gto_fastq_extract_quality_scores
@@ -430,7 +430,7 @@ suite:
         outputs:
           - { name: out, types: [FASTQ], mode: stdout }
       parameters:
-        - { name: size, type: integer, flag: -s }
+        - { name: size, type: integer, flag: -s, required: true }
 
     - opId: gto.fastq.minimum.local.quality.score.forward
       bin: gto_fastq_minimum_local_quality_score_forward
@@ -470,7 +470,7 @@ suite:
         outputs:
           - { name: out, types: [FASTQ], mode: stdout }
       parameters:
-        - { name: min, type: integer, flag: -m }
+        - { name: min, type: integer, flag: -m, required: true }
 
     - opId: gto.fastq.minimum.read.size
       bin: gto_fastq_minimum_read_size
@@ -482,7 +482,7 @@ suite:
         outputs:
           - { name: out, types: [FASTQ], mode: stdout }
       parameters:
-        - { name: size, type: integer, flag: -s }
+        - { name: size, type: integer, flag: -s, required: true }
 
     - opId: gto.fastq.mutate
       bin: gto_fastq_mutate
@@ -749,7 +749,7 @@ suite:
         outputs:
           - { name: out, types: [NUM], mode: stdout }
       parameters:
-        - { name: lowerbound, type: integer, flag: -l }
+        - { name: lowerbound, type: integer, flag: -l, required: true }
 
     - opId: gto.max
       bin: gto_max
@@ -761,8 +761,8 @@ suite:
         outputs:
           - { name: out, types: [NUM], mode: stdout }
       parameters:
-        - { name: first_file, type: file, flag: -f }
-        - { name: second_file, type: file, flag: -s }
+        - { name: first_file, type: file, flag: -f, required: true }
+        - { name: second_file, type: file, flag: -s, required: true }
 
     - opId: gto.min
       bin: gto_min
@@ -774,8 +774,8 @@ suite:
         outputs:
           - { name: out, types: [NUM], mode: stdout }
       parameters:
-        - { name: first_file, type: file, flag: -f }
-        - { name: second_file, type: file, flag: -s }
+        - { name: first_file, type: file, flag: -f, required: true }
+        - { name: second_file, type: file, flag: -s, required: true }
 
     - opId: gto.new.line.on.new.x
       bin: gto_new_line_on_new_x
@@ -798,8 +798,8 @@ suite:
         outputs:
           - { name: out, types: [FASTA, Multi-FASTA], mode: stdout }
       parameters:
-        - { name: numbases, type: integer, flag: -b }
-        - { name: seed, type: integer, flag: -s }
+        - { name: numbases, type: integer, flag: -b, required: true }
+        - { name: seed, type: integer, flag: -s, required: true }
 
     - opId: gto.real.to.binary.with.threshold
       bin: gto_real_to_binary_with_threshold
@@ -811,7 +811,7 @@ suite:
         outputs:
           - { name: out, types: [BIN], mode: stdout }
       parameters:
-        - { name: threshold, type: float, flag: -t }
+        - { name: threshold, type: float, flag: -t, required: true }
 
     - opId: gto.segment
       bin: gto_segment
@@ -823,7 +823,7 @@ suite:
         outputs:
           - { name: out, types: [text, NUM], mode: stdout }
       parameters:
-        - { name: threshold, type: float, flag: -t }
+        - { name: threshold, type: float, flag: -t, required: true }
 
     - opId: gto.sum
       bin: gto_sum
@@ -846,7 +846,7 @@ suite:
         outputs:
           - { name: out, types: [NUM], mode: stdout }
       parameters:
-        - { name: upperbound, type: integer, flag: -u }
+        - { name: upperbound, type: integer, flag: -u, required: true }
 
     - opId: gto.word.search
       bin: gto_word_search
@@ -861,6 +861,6 @@ suite:
               mode: stdin,
             }
         outputs:
-          - { name: out, types: [TEXT], mode: stdout }
+          - { name: out, types: [TEXT], mode: stdout, required: true }
       parameters:
         - { name: word, type: string, flag: -w }
