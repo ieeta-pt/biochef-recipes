@@ -24,7 +24,7 @@ jobs:
 
           CHANGED=$(git diff --name-only FETCH_HEAD HEAD)
 
-          FILES=$(echo "$CHANGED" | grep "biochef.yaml" | paste -sd "," - || true)
+          FILES=$(echo "$CHANGED" | grep "biochef.yaml" | paste -sd " " - || true)
 
           echo "Changed biochef.yaml files:"
           echo "$FILES"
