@@ -1,11 +1,14 @@
-name: Recipes CI
+name: Validate Pull Request
 on:
   pull_request:
     paths:
-      - "recipes/**"
+      - "recipes/**/biochef.yaml"
+    types:
+      - opened
+      - synchronize
 
 jobs:
-  detect_and_build:
+  detect_changes:
     runs-on: ubuntu-latest
     outputs:
       biochef_files: ${{ steps.detect_files.outputs.biochef_files }}
@@ -31,12 +34,8 @@ jobs:
 
           echo "biochef_files=$FILES" >> $GITHUB_OUTPUT
 
-
-  build_recipes:
-    needs: detect_and_build
-    uses: ieeta-pt/biochef-hub/.github/workflows/build-recipes.yml@dev
+  validate_recipes:
+    needs: detect_changes
+    uses: ieeta-pt/biochef-hub/.github/workflows/validate-recipes.yml@dev
     with:
-      registry_url: ghcr.io/WildBunnie
-      recipes: ${{ needs.detect_and_build.outputs.biochef_files }}
-    secrets:
-      REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+      recipes: ${{ needs.detect_changes.outputs.biochef_files }}
