@@ -12,11 +12,11 @@ license:
   files: [LICENSE]
 maintainers:
   - opID: IEETA BioChef
-    email: biochef@ieeta.pt
 
 source:
   repo: https://github.com/lh3/seqtk
-  tag: v1.6.3
+  branch: v1.4
+  version: 1.4
   commit: null
 
 status: experimental

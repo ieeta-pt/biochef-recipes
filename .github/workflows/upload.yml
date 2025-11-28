@@ -1,61 +1,44 @@
-# name: Upload to Registry
-# on:
-#   pull_request:
-#     types:
-#       - dequeued
-#       - assigned
-#       - unassigned
-#       - labeled
-#       - unlabeled
-#       - opened
-#       - edited
-#       - closed
-#       - reopened
-#       - synchronize
-#       - converted_to_draft
-#       - ready_for_review
-#       - locked
-#       - unlocked
-#       - milestoned
-#       - demilestoned
-#       - review_requested
-#       - review_request_removed
-#       - auto_merge_enabled
-#       - auto_merge_disabled
-#       - enqueued
+name: Upload to Registry
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'recipes/**/biochef.yaml'
 
-# jobs:
-#   detect_changes:
-#     runs-on: ubuntu-latest
-#     outputs:
-#       biochef_files: ${{ steps.detect_files.outputs.biochef_files }}
-#     steps:
-#       - name: Checkout code
-#         uses: actions/checkout@v4
-#         with:
-#           fetch-depth: 0
+jobs:
+  detect_changes:
+    runs-on: ubuntu-latest
+    outputs:
+      biochef_files: ${{ steps.detect_files.outputs.biochef_files }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-#       - name: Detect changed biochef.yaml files
-#         id: detect_files
-#         run: |
-#           echo "Listing changed files..."
+      - name: Detect changed biochef.yaml files
+        id: detect_files
+        run: |
+          echo "Listing changed files..."
 
-#           git fetch origin ${{ github.event.pull_request.base.ref }}
+          BEFORE="${{ github.event.before }}"
+          AFTER="${{ github.event.head }}"
 
-#           CHANGED=$(git diff --name-only FETCH_HEAD HEAD)
+          CHANGED=$(git diff --name-only "$BEFORE" "$AFTER")
 
-#           FILES=$(echo "$CHANGED" | grep "biochef.yaml" | paste -sd " " - || true)
+          FILES=$(echo "$CHANGED" | grep "biochef.yaml" | paste -sd " " - || true)
 
-#           echo "Changed biochef.yaml files:"
-#           echo "$FILES"
+          echo "Changed biochef.yaml files:"
+          echo "$FILES"
 
-#           echo "biochef_files=$FILES" >> $GITHUB_OUTPUT
+          echo "biochef_files=$FILES" >> $GITHUB_OUTPUT
 
-#   publish_recipes:
-#     needs: detect_changes
-#     uses: ieeta-pt/biochef-hub/.github/workflows/publish-recipes.yml@dev
-#     with:
-#       registry_url: ${{ vars.REGISTRY_URL }}
-#       recipes: ${{ needs.detect_changes.outputs.biochef_files }}
-#     secrets:
-#       REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+  publish_recipes:
+    needs: detect_changes
+    uses: ieeta-pt/biochef-hub/.github/workflows/publish-recipes.yml@dev
+    with:
+      registry_url: ${{ vars.REGISTRY_URL }}
+      recipes: ${{ needs.detect_changes.outputs.biochef_files }}
+    secrets:
+      REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}

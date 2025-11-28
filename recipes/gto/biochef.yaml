@@ -16,7 +16,8 @@ maintainers:
 
 source:
   repo: https://github.com/cobilab/gto
-  tag: v1.6.3
+  branch: v1.6.3
+  version: 1.6.3
   commit: null
 
 status: verified
