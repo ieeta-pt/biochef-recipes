@@ -1,0 +1,44 @@
+name: Upload to Registry
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'recipes/**/biochef.yaml'
+
+jobs:
+  detect_changes:
+    runs-on: ubuntu-latest
+    outputs:
+      biochef_files: ${{ steps.detect_files.outputs.biochef_files }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed biochef.yaml files
+        id: detect_files
+        run: |
+          echo "Listing changed files..."
+
+          BEFORE="${{ github.event.before }}"
+          AFTER="${{ github.event.head }}"
+
+          CHANGED=$(git diff --name-only "$BEFORE" "$AFTER")
+
+          FILES=$(echo "$CHANGED" | grep "biochef.yaml" | paste -sd " " - || true)
+
+          echo "Changed biochef.yaml files:"
+          echo "$FILES"
+
+          echo "biochef_files=$FILES" >> $GITHUB_OUTPUT
+
+  publish_recipes:
+    needs: detect_changes
+    uses: ieeta-pt/biochef-hub/.github/workflows/publish-recipes.yml
+    with:
+      registry_url: ${{ vars.REGISTRY_URL }}
+      recipes: ${{ needs.detect_changes.outputs.biochef_files }}
+    secrets:
+      REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}

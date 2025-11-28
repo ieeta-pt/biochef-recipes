@@ -1,0 +1,41 @@
+name: Validate Pull Request
+on:
+  pull_request:
+    paths:
+      - "recipes/**/biochef.yaml"
+    types:
+      - opened
+      - synchronize
+
+jobs:
+  detect_changes:
+    runs-on: ubuntu-latest
+    outputs:
+      biochef_files: ${{ steps.detect_files.outputs.biochef_files }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed biochef.yaml files
+        id: detect_files
+        run: |
+          echo "Listing changed files..."
+
+          git fetch origin ${{ github.event.pull_request.base.ref }}
+
+          CHANGED=$(git diff --name-only FETCH_HEAD HEAD)
+
+          FILES=$(echo "$CHANGED" | grep "biochef.yaml" | paste -sd " " - || true)
+
+          echo "Changed biochef.yaml files:"
+          echo "$FILES"
+
+          echo "biochef_files=$FILES" >> $GITHUB_OUTPUT
+
+  validate_recipes:
+    needs: detect_changes
+    uses: ieeta-pt/biochef-hub/.github/workflows/validate-recipes.yml
+    with:
+      recipes: ${{ needs.detect_changes.outputs.biochef_files }}
