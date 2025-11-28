@@ -36,7 +36,7 @@ jobs:
 
   publish_recipes:
     needs: detect_changes
-    uses: ieeta-pt/biochef-hub/.github/workflows/publish-recipes.yml@dev
+    uses: ieeta-pt/biochef-hub/.github/workflows/publish-recipes.yml
     with:
       registry_url: ${{ vars.REGISTRY_URL }}
       recipes: ${{ needs.detect_changes.outputs.biochef_files }}
