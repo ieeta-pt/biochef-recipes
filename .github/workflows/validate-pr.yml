@@ -28,6 +28,11 @@ jobs:
           CHANGED=$(git diff --name-only FETCH_HEAD HEAD)
 
           FILES=$(echo "$CHANGED" | grep "biochef.yaml" | paste -sd " " - || true)
+          
+          if [ -z "$FILES" ]; then
+            echo "No recipe changes detected"
+            exit 1
+          fi
 
           echo "Changed biochef.yaml files:"
           echo "$FILES"
