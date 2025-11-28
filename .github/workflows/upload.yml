@@ -2,7 +2,7 @@ name: Upload to Registry
 on:
   push:
     branches:
-      - main
+      - master
     paths:
       - 'recipes/**/biochef.yaml'
 
@@ -28,6 +28,11 @@ jobs:
           CHANGED=$(git diff --name-only "$BEFORE" "$AFTER")
 
           FILES=$(echo "$CHANGED" | grep "biochef.yaml" | paste -sd " " - || true)
+
+          if [ -z "$FILES" ]; then
+            echo "No recipe changes detected"
+            exit 1
+          fi
 
           echo "Changed biochef.yaml files:"
           echo "$FILES"
