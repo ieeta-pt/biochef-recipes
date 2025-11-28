@@ -733,7 +733,7 @@ suite:
           - {
               name: in,
               types:
-                [text, Multi-FASTA, FASTA, FASTQ, NUM, DNA, RNA, AminoAcids],
+                [TEXT, Multi-FASTA, FASTA, FASTQ, NUM, DNA, RNA, AminoAcids],
               mode: stdin,
             }
         outputs:
@@ -822,7 +822,7 @@ suite:
         inputs:
           - { name: in, types: [NUM], mode: stdin }
         outputs:
-          - { name: out, types: [text, NUM], mode: stdout }
+          - { name: out, types: [TEXT, NUM], mode: stdout }
       parameters:
         - { name: threshold, type: float, flag: -t, required: true }
 
