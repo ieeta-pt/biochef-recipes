@@ -36,6 +36,6 @@ jobs:
 
   validate_recipes:
     needs: detect_changes
-    uses: ieeta-pt/biochef-hub/.github/workflows/validate-recipes.yml@main
+    uses: ieeta-pt/biochef-hub/.github/workflows/validate-recipes.yml@master
     with:
       recipes: ${{ needs.detect_changes.outputs.biochef_files }}
