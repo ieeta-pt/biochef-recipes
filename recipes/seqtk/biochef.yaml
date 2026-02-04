@@ -11,16 +11,14 @@ license:
   spdx: MIT
   files: [LICENSE]
 maintainers:
-  - opID: IEETA BioChef
+  - name: Biochef
 
 source:
   repo: https://github.com/lh3/seqtk
-  branch: v1.4
-  version: 1.4
-  commit: null
+  tag: v1.4
+  version: "1.4"
 
 status: experimental
-deterministic: true
 
 build:
   wasm:
@@ -28,18 +26,13 @@ build:
     biowasm:
       package: seqtk
 
-publish:
-  explode: true # 1 suite → N plugins finos
-  baseLayer: seqtk-runtime-base # camada partilhada (dedupe/CDN-friendly)
-  channels: [stable] # stable|staging|nightly
-
 runtime:
-  modes: [wasm, local, remote]
+  modes: [wasm]
 
 suite:
-  sharedModule: seqtk
   operations:
-    - opId: seqtk.seq
+    - id: seqtk.seq
+      name: Seq (SEQTK)
       category: Sequence Manipulation
       bin: seqtk
       description: Common transformation of FASTA/Q
@@ -73,7 +66,8 @@ suite:
         - { name: convert_lowercase, type: flag, flag: -x }
         - { name: strip_whitespace, type: flag, flag: -S }
 
-    - opId: seqtk.trimfq
+    - id: seqtk.trimfq
+      name: Trimfq (SEQTK)
       category: Sequence Manipulation
       bin: seqtk
       description: Trim FASTQ using the Phred algorithm.
@@ -90,7 +84,8 @@ suite:
         - { name: trim_right, type: integer, flag: -e }
         - { name: max_retain_5prime, type: integer, flag: -L }
 
-    - opId: seqtk.comp
+    - id: seqtk.comp
+      name: Comp (SEQTK)
       category: Information and Analysis
       bin: seqtk
       description: Get nucleotide composition of FASTA/Q
@@ -104,7 +99,8 @@ suite:
         - { name: unique, type: flag, flag: -u }
         - { name: bed_regions, type: string, flag: -r }
 
-    - opId: seqtk.randbase
+    - id: seqtk.randbase
+      name: Randbase (SEQTK)
       category: Sequence Manipulation
       bin: seqtk
       description: Randomly choose a base from heterozygous positions
@@ -116,7 +112,8 @@ suite:
       parameters:
         - { name: command, type: string, default: randbase, required: true, hidden: true }
 
-    - opId: seqtk.hety
+    - id: seqtk.hety
+      name: Hety (SEQTK)
       category: Genomic Operations
       bin: seqtk
       description: Compute regional heterozygosity
@@ -131,7 +128,8 @@ suite:
         - { name: positions_per_window, type: integer, flag: -t }
         - { name: treat_lowercase_as_masked, type: flag, flag: -m }
 
-    - opId: seqtk.gap
+    - id: seqtk.gap
+      name: Gap (SEQTK)
       category: Genomic Operations
       bin: seqtk
       description: Get gap locations in FASTA
@@ -144,7 +142,8 @@ suite:
         - { name: command, type: string, default: gap, required: true, hidden: true }
         - { name: min_gap_size, type: integer, flag: -l }
 
-    # - opId: seqtk.subseq
+    # - id: seqtk.subseq
+    #   name: seqtk_subseq
     #   bin: seqtk
     #   description: Extract subsequences from FASTA/Q
     #   io:
@@ -159,7 +158,8 @@ suite:
     #     - { name: strand_aware, type: flag, flag: -s }
     #     - { name: line_length, type: integer, flag: -l }
 
-    # - opId: seqtk.mergefa
+    # - id: seqtk.mergefa
+    #   name: seqtk_mergefa
     #   bin: seqtk
     #   description: Merge two FASTA/Q files base-by-base
     #   io:
@@ -176,7 +176,8 @@ suite:
     #     - { name: random_allele, type: flag, flag: -r }
     #     - { name: suppress_hets, type: flag, flag: -h }
 
-    # - opId: seqtk.famask
+    # - id: seqtk.famask
+    #   name: seqtk_famask
     #   bin: seqtk
     #   description: Apply X-coded mask FASTA to source FASTA
     #   io:
@@ -188,7 +189,8 @@ suite:
     #   parameters:
     #     - { name: command, type: string, default: famask, required: true, hidden: true }
 
-    # - opId: seqtk.mutfa
+    # - id: seqtk.mutfa
+    #   name: seqtk_mutfa
     #   bin: seqtk
     #   description: Point-mutate FASTA using a SNP table
     #   io:
@@ -200,7 +202,8 @@ suite:
     #   parameters:
     #     - { name: command, type: string, default: mutfa, required: true, hidden: true }
 
-    - opId: seqtk.listhet
+    - id: seqtk.listhet
+      name: Listhet (SEQTK)
       category: Genomic Operations
       bin: seqtk
       description: List positions of each heterozygous site
@@ -212,7 +215,8 @@ suite:
       parameters:
         - { name: command, type: string, default: listhet, required: true, hidden: true }
 
-    # - opId: seqtk.split
+    # - id: seqtk.split
+    #   name: seqtk_split
     #   bin: seqtk
     #   description: Split FASTA into multiple smaller FASTA files
     #   io:
@@ -226,7 +230,8 @@ suite:
     #     - { name: num_files, type: integer, flag: -n }
     #     - { name: line_length, type: integer, flag: -l }
 
-    - opId: seqtk.cutN
+    - id: seqtk.cutN
+      name: Cutn (SEQTK)
       category: Sequence Manipulation
       bin: seqtk
       description: Cut sequences at long N-tracts
@@ -241,7 +246,8 @@ suite:
         - { name: nonN_penalty, type: integer, flag: -p }
         - { name: print_gaps_only, type: flag, flag: -g }
 
-    - opId: seqtk.hrun
+    - id: seqtk.hrun
+      name: Hrun (SEQTK)
       category: Genomic Operations
       bin: seqtk
       description: Identify homopolymer runs
@@ -254,7 +260,8 @@ suite:
         - { name: command, type: string, default: hrun, required: true, hidden: true }
         - { name: min_length, type: integer }
 
-    # - opId: seqtk.sample
+    # - id: seqtk.sample
+    #   name: seqtk_sample
     #   bin: seqtk
     #   description: Subsample sequences from FASTA
     #   io:
@@ -268,7 +275,8 @@ suite:
     #     - { name: seed, type: integer, flag: -s }
     #     - { name: two_pass, type: flag, flag: "-2" }
 
-    # - opId: seqtk.gc
+    # - id: seqtk.gc
+    #   name: seqtk_gc
     #   bin: seqtk
     #   description: Identify high-GC or high-AT regions
     #   io:
@@ -283,7 +291,8 @@ suite:
     #     - { name: min_length, type: integer, flag: -l }
     #     - { name: xdropoff, type: float, flag: -x }
 
-    # - opId: seqtk.mergepe
+    # - id: seqtk.mergepe
+    #   name: seqtk_mergepe
     #   bin: seqtk
     #   description: Interleave two paired-end FASTQ/FASTA files
     #   io:
@@ -295,7 +304,8 @@ suite:
     #   parameters:
     #     - { name: command, type: string, default: mergepe, required: true, hidden: true }
 
-    - opId: seqtk.dropse
+    - id: seqtk.dropse
+      name: Dropse (SEQTK)
       category: Sequence Manipulation
       bin: seqtk
       description: Drop unpaired reads from interleaved FASTA/Q
@@ -307,7 +317,8 @@ suite:
       parameters:
         - { name: command, type: string, default: dropse, required: true, hidden: true }
 
-    - opId: seqtk.hpc
+    - id: seqtk.hpc
+      name: Hpc (SEQTK)
       category: Sequence Manipulation
       bin: seqtk
       description: Produce homopolymer-compressed sequence
@@ -319,7 +330,8 @@ suite:
       parameters:
         - { name: command, type: string, default: hpc, required: true, hidden: true }
 
-    # - opId: seqtk.rename
+    # - id: seqtk.rename
+    #   name: seqtk_rename
     #   bin: seqtk
     #   description: Rename sequence entries with a prefix
     #   io:
@@ -331,7 +343,8 @@ suite:
     #   parameters:
     #     - { name: command, type: string, default: rename, required: true, hidden: true }
 
-    # - opId: seqtk.kfreq
+    # - id: seqtk.kfreq
+    #   name: seqtk_kfreq
     #   bin: seqtk
     #   description: Count frequencies of a given k-mer
     #   io:
@@ -343,7 +356,8 @@ suite:
     #   parameters:
     #     - { name: command, type: string, default: kfreq, required: true, hidden: true }
 
-    - opId: seqtk.fqchk
+    - id: seqtk.fqchk
+      name: Fqchk (SEQTK)
       category: Information and Analysis
       bin: seqtk
       description: FASTQ QC (base & quality summary)
@@ -356,7 +370,8 @@ suite:
         - { name: command, type: string, default: fqchk, required: true, hidden: true }
         - { name: quality_threshold, type: integer, flag: -q }
 
-    - opId: seqtk.size
+    - id: seqtk.size
+      name: Size (SEQTK)
       category: Information and Analysis
       bin: seqtk
       description: Count number of sequences and bases
@@ -368,7 +383,8 @@ suite:
       parameters:
         - { name: command, type: string, default: size, required: true, hidden: true }
 
-    - opId: seqtk.telo
+    - id: seqtk.telo
+      name: Telo (SEQTK)
       category: Genomic Operations
       bin: seqtk
       description: Identify telomere repeats in assemblies or long reads
@@ -384,4 +400,3 @@ suite:
         - { name: max_drop, type: integer, flag: -d }
         - { name: min_score, type: integer, flag: -s }
         - { name: print_scoring, type: flag, flag: -P }
-
