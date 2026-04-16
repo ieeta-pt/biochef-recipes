@@ -1,5 +1,4 @@
 apiVersion: v1
-kind: suite
 
 id: org.biochef.seqtk
 name: seqtk
@@ -25,378 +24,379 @@ build:
     strategy: biowasm
     biowasm:
       package: seqtk
-
+  native:
+    buildsystem: make
+    
 runtime:
-  modes: [wasm]
+  modes: [wasm, native]
 
-suite:
-  operations:
-    - id: seqtk.seq
-      name: Seq (SEQTK)
-      category: Sequence Manipulation
-      bin: seqtk
-      description: Common transformation of FASTA/Q
-      io:
-        inputs:
-          - { name: in, types: [FASTA, FASTQ], mode: file }
-        outputs:
-          - { name: out, types: [FASTA, FASTQ], mode: stdout }
-      parameters:
-        - { name: command, type: string, default: seq, required: true, hidden: true }
-        - { name: quality_min, type: integer, flag: -q }
-        - { name: quality_max, type: integer, flag: -X }
-        - { name: mask_char, type: string, flag: -n }
-        - { name: line_length, type: integer, flag: -l }
-        - { name: qual_shift, type: integer, flag: -Q }
-        - { name: seed, type: integer, flag: -s }
-        - { name: sample_fraction, type: float, flag: -f }
-        - { name: mask_file, type: string, flag: -M }
-        - { name: min_length, type: integer, flag: -L }
-        - { name: fake_qual, type: string, flag: -F }
-        - { name: mask_complement, type: flag, flag: -c }
-        - { name: reverse_complement, type: flag, flag: -r }
-        - { name: both_strands, type: flag, flag: -R }
-        - { name: force_fasta, type: flag, flag: -A }
-        - { name: drop_comments, type: flag, flag: -C }
-        - { name: drop_ambiguous, type: flag, flag: -N }
-        - { name: odd_reads_only, type: flag, flag: "-1" }
-        - { name: even_reads_only, type: flag, flag: "-2" }
-        - { name: shift_quality, type: flag, flag: -V }
-        - { name: uppercase_bases, type: flag, flag: -U }
-        - { name: convert_lowercase, type: flag, flag: -x }
-        - { name: strip_whitespace, type: flag, flag: -S }
+operations:
+  - id: seqtk.seq
+    name: Seq (SEQTK)
+    category: Sequence Manipulation
+    bin: seqtk
+    description: Common transformation of FASTA/Q
+    io:
+      inputs:
+        - { name: in, types: [FASTA, FASTQ], mode: file }
+      outputs:
+        - { name: out, types: [FASTA, FASTQ], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: seq, required: true, hidden: true }
+      - { name: quality_min, type: integer, flag: -q }
+      - { name: quality_max, type: integer, flag: -X }
+      - { name: mask_char, type: string, flag: -n }
+      - { name: line_length, type: integer, flag: -l }
+      - { name: qual_shift, type: integer, flag: -Q }
+      - { name: seed, type: integer, flag: -s }
+      - { name: sample_fraction, type: float, flag: -f }
+      - { name: mask_file, type: string, flag: -M }
+      - { name: min_length, type: integer, flag: -L }
+      - { name: fake_qual, type: string, flag: -F }
+      - { name: mask_complement, type: flag, flag: -c }
+      - { name: reverse_complement, type: flag, flag: -r }
+      - { name: both_strands, type: flag, flag: -R }
+      - { name: force_fasta, type: flag, flag: -A }
+      - { name: drop_comments, type: flag, flag: -C }
+      - { name: drop_ambiguous, type: flag, flag: -N }
+      - { name: odd_reads_only, type: flag, flag: "-1" }
+      - { name: even_reads_only, type: flag, flag: "-2" }
+      - { name: shift_quality, type: flag, flag: -V }
+      - { name: uppercase_bases, type: flag, flag: -U }
+      - { name: convert_lowercase, type: flag, flag: -x }
+      - { name: strip_whitespace, type: flag, flag: -S }
 
-    - id: seqtk.trimfq
-      name: Trimfq (SEQTK)
-      category: Sequence Manipulation
-      bin: seqtk
-      description: Trim FASTQ using the Phred algorithm.
-      io:
-        inputs:
-          - { name: in, types: [FASTQ], mode: file }
-        outputs:
-          - { name: out, types: [FASTQ], mode: stdout }
-      parameters:
-        - { name: command, type: string, default: trimfq, required: true, hidden: true }
-        - { name: error_rate_threshold, type: float, flag: -q }
-        - { name: max_trim_length, type: integer, flag: -l }
-        - { name: trim_left, type: integer, flag: -b }
-        - { name: trim_right, type: integer, flag: -e }
-        - { name: max_retain_5prime, type: integer, flag: -L }
+  - id: seqtk.trimfq
+    name: Trimfq (SEQTK)
+    category: Sequence Manipulation
+    bin: seqtk
+    description: Trim FASTQ using the Phred algorithm.
+    io:
+      inputs:
+        - { name: in, types: [FASTQ], mode: file }
+      outputs:
+        - { name: out, types: [FASTQ], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: trimfq, required: true, hidden: true }
+      - { name: error_rate_threshold, type: float, flag: -q }
+      - { name: max_trim_length, type: integer, flag: -l }
+      - { name: trim_left, type: integer, flag: -b }
+      - { name: trim_right, type: integer, flag: -e }
+      - { name: max_retain_5prime, type: integer, flag: -L }
 
-    - id: seqtk.comp
-      name: Comp (SEQTK)
-      category: Information and Analysis
-      bin: seqtk
-      description: Get nucleotide composition of FASTA/Q
-      io:
-        inputs:
-          - { name: in, types: [FASTA], mode: file }
-        outputs:
-          - { name: out, types: [TEXT], mode: stdout }
-      parameters:
-        - { name: command, type: string, default: comp, required: true, hidden: true }
-        - { name: unique, type: flag, flag: -u }
-        - { name: bed_regions, type: string, flag: -r }
+  - id: seqtk.comp
+    name: Comp (SEQTK)
+    category: Information and Analysis
+    bin: seqtk
+    description: Get nucleotide composition of FASTA/Q
+    io:
+      inputs:
+        - { name: in, types: [FASTA], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: comp, required: true, hidden: true }
+      - { name: unique, type: flag, flag: -u }
+      - { name: bed_regions, type: string, flag: -r }
 
-    - id: seqtk.randbase
-      name: Randbase (SEQTK)
-      category: Sequence Manipulation
-      bin: seqtk
-      description: Randomly choose a base from heterozygous positions
-      io:
-        inputs:
-          - { name: in, types: [FASTA], mode: file }
-        outputs:
-          - { name: out, types: [FASTA], mode: stdout }
-      parameters:
-        - { name: command, type: string, default: randbase, required: true, hidden: true }
+  - id: seqtk.randbase
+    name: Randbase (SEQTK)
+    category: Sequence Manipulation
+    bin: seqtk
+    description: Randomly choose a base from heterozygous positions
+    io:
+      inputs:
+        - { name: in, types: [FASTA], mode: file }
+      outputs:
+        - { name: out, types: [FASTA], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: randbase, required: true, hidden: true }
 
-    - id: seqtk.hety
-      name: Hety (SEQTK)
-      category: Genomic Operations
-      bin: seqtk
-      description: Compute regional heterozygosity
-      io:
-        inputs:
-          - { name: in, types: [FASTA], mode: file }
-        outputs:
-          - { name: out, types: [TEXT], mode: stdout }
-      parameters:
-        - { name: command, type: string, default: hety, required: true, hidden: true }
-        - { name: window_size, type: integer, flag: -w }
-        - { name: positions_per_window, type: integer, flag: -t }
-        - { name: treat_lowercase_as_masked, type: flag, flag: -m }
+  - id: seqtk.hety
+    name: Hety (SEQTK)
+    category: Genomic Operations
+    bin: seqtk
+    description: Compute regional heterozygosity
+    io:
+      inputs:
+        - { name: in, types: [FASTA], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: hety, required: true, hidden: true }
+      - { name: window_size, type: integer, flag: -w }
+      - { name: positions_per_window, type: integer, flag: -t }
+      - { name: treat_lowercase_as_masked, type: flag, flag: -m }
 
-    - id: seqtk.gap
-      name: Gap (SEQTK)
-      category: Genomic Operations
-      bin: seqtk
-      description: Get gap locations in FASTA
-      io:
-        inputs:
-          - { name: in, types: [FASTA], mode: file }
-        outputs:
-          - { name: out, types: [TEXT], mode: stdout }
-      parameters:
-        - { name: command, type: string, default: gap, required: true, hidden: true }
-        - { name: min_gap_size, type: integer, flag: -l }
+  - id: seqtk.gap
+    name: Gap (SEQTK)
+    category: Genomic Operations
+    bin: seqtk
+    description: Get gap locations in FASTA
+    io:
+      inputs:
+        - { name: in, types: [FASTA], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: gap, required: true, hidden: true }
+      - { name: min_gap_size, type: integer, flag: -l }
 
-    # - id: seqtk.subseq
-    #   name: seqtk_subseq
-    #   bin: seqtk
-    #   description: Extract subsequences from FASTA/Q
-    #   io:
-    #     inputs:
-    #       - { name: in, types: [FASTA, FASTQ], mode: file }
-    #       - { name: regions, types: [BED, LIST], mode: file }
-    #     outputs:
-    #       - { name: out, types: [FASTA, FASTQ, TEXT], mode: stdout }
-    #   parameters:
-    #     - { name: command, type: string, default: subseq, required: true, hidden: true }
-    #     - { name: tab_output, type: flag, flag: -t }
-    #     - { name: strand_aware, type: flag, flag: -s }
-    #     - { name: line_length, type: integer, flag: -l }
+  # - id: seqtk.subseq
+  #   name: Subseq (SEQTK)
+  #   bin: seqtk
+  #   description: Extract subsequences from FASTA/Q
+  #   io:
+  #     inputs:
+  #       - { name: in, types: [FASTA, FASTQ], mode: file }
+  #       - { name: regions, types: [BED, LIST], mode: file }
+  #     outputs:
+  #       - { name: out, types: [FASTA, FASTQ, TEXT], mode: stdout }
+  #   parameters:
+  #     - { name: command, type: string, default: subseq, required: true, hidden: true }
+  #     - { name: tab_output, type: flag, flag: -t }
+  #     - { name: strand_aware, type: flag, flag: -s }
+  #     - { name: line_length, type: integer, flag: -l }
 
-    # - id: seqtk.mergefa
-    #   name: seqtk_mergefa
-    #   bin: seqtk
-    #   description: Merge two FASTA/Q files base-by-base
-    #   io:
-    #     inputs:
-    #       - { name: in1, types: [FASTA, FASTQ], mode: file }
-    #       - { name: in2, types: [FASTA, FASTQ], mode: file }
-    #     outputs:
-    #       - { name: out, types: [FASTA, FASTQ], mode: stdout }
-    #   parameters:
-    #     - { name: command, type: string, default: mergefa, required: true, hidden: true }
-    #     - { name: quality_threshold, type: integer, flag: -q }
-    #     - { name: intersection, type: flag, flag: -i }
-    #     - { name: lowercase_N, type: flag, flag: -m }
-    #     - { name: random_allele, type: flag, flag: -r }
-    #     - { name: suppress_hets, type: flag, flag: -h }
+  - id: seqtk.mergefa
+    name: Mergefa (SEQTK)
+    bin: seqtk
+    description: Merge two FASTA/Q files base-by-base
+    io:
+      inputs:
+        - { name: in1, types: [FASTA, FASTQ], mode: file }
+        - { name: in2, types: [FASTA, FASTQ], mode: file }
+      outputs:
+        - { name: out, types: [FASTA, FASTQ], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: mergefa, required: true, hidden: true }
+      - { name: quality_threshold, type: integer, flag: -q }
+      - { name: intersection, type: flag, flag: -i }
+      - { name: lowercase_N, type: flag, flag: -m }
+      - { name: random_allele, type: flag, flag: -r }
+      - { name: suppress_hets, type: flag, flag: -h }
 
-    # - id: seqtk.famask
-    #   name: seqtk_famask
-    #   bin: seqtk
-    #   description: Apply X-coded mask FASTA to source FASTA
-    #   io:
-    #     inputs:
-    #       - { name: src, types: [FASTA], mode: file }
-    #       - { name: mask, types: [FASTA], mode: file }
-    #     outputs:
-    #       - { name: out, types: [FASTA], mode: stdout }
-    #   parameters:
-    #     - { name: command, type: string, default: famask, required: true, hidden: true }
+  - id: seqtk.famask
+    name: Famask (SEQTK)
+    bin: seqtk
+    description: Apply X-coded mask FASTA to source FASTA
+    io:
+      inputs:
+        - { name: src, types: [FASTA], mode: file }
+        - { name: mask, types: [FASTA], mode: file }
+      outputs:
+        - { name: out, types: [FASTA], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: famask, required: true, hidden: true }
 
-    # - id: seqtk.mutfa
-    #   name: seqtk_mutfa
-    #   bin: seqtk
-    #   description: Point-mutate FASTA using a SNP table
-    #   io:
-    #     inputs:
-    #       - { name: in, types: [FASTA], mode: file }
-    #       - { name: snp_table, types: [TEXT], mode: file }
-    #     outputs:
-    #       - { name: out, types: [FASTA], mode: stdout }
-    #   parameters:
-    #     - { name: command, type: string, default: mutfa, required: true, hidden: true }
+  - id: seqtk.mutfa
+    name: Mutfa (SEQTK)
+    bin: seqtk
+    description: Point-mutate FASTA using a SNP table
+    io:
+      inputs:
+        - { name: in, types: [FASTA], mode: file }
+        - { name: snp_table, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [FASTA], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: mutfa, required: true, hidden: true }
 
-    - id: seqtk.listhet
-      name: Listhet (SEQTK)
-      category: Genomic Operations
-      bin: seqtk
-      description: List positions of each heterozygous site
-      io:
-        inputs:
-          - { name: in, types: [FASTA], mode: file }
-        outputs:
-          - { name: out, types: [TEXT], mode: stdout }
-      parameters:
-        - { name: command, type: string, default: listhet, required: true, hidden: true }
+  - id: seqtk.listhet
+    name: Listhet (SEQTK)
+    category: Genomic Operations
+    bin: seqtk
+    description: List positions of each heterozygous site
+    io:
+      inputs:
+        - { name: in, types: [FASTA], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: listhet, required: true, hidden: true }
 
-    # - id: seqtk.split
-    #   name: seqtk_split
-    #   bin: seqtk
-    #   description: Split FASTA into multiple smaller FASTA files
-    #   io:
-    #     inputs:
-    #       - { name: prefix, types: [TEXT], mode: arg }
-    #       - { name: in, types: [FASTA], mode: file }
-    #     outputs:
-    #       - { name: out, types: [FASTA], mode: files }
-    #   parameters:
-    #     - { name: command, type: string, default: split, required: true, hidden: true }
-    #     - { name: num_files, type: integer, flag: -n }
-    #     - { name: line_length, type: integer, flag: -l }
+  # - id: seqtk.split
+  #   name: seqtk_split
+  #   bin: seqtk
+  #   description: Split FASTA into multiple smaller FASTA files
+  #   io:
+  #     inputs:
+  #       - { name: prefix, types: [TEXT], mode: arg }
+  #       - { name: in, types: [FASTA], mode: file }
+  #     outputs:
+  #       - { name: out, types: [FASTA], mode: files }
+  #   parameters:
+  #     - { name: command, type: string, default: split, required: true, hidden: true }
+  #     - { name: num_files, type: integer, flag: -n }
+  #     - { name: line_length, type: integer, flag: -l }
 
-    - id: seqtk.cutN
-      name: Cutn (SEQTK)
-      category: Sequence Manipulation
-      bin: seqtk
-      description: Cut sequences at long N-tracts
-      io:
-        inputs:
-          - { name: in, types: [FASTA], mode: file }
-        outputs:
-          - { name: out, types: [FASTA, TEXT], mode: stdout }
-      parameters:
-        - { name: command, type: string, default: cutN, required: true, hidden: true }
-        - { name: min_N_tract, type: integer, flag: -n }
-        - { name: nonN_penalty, type: integer, flag: -p }
-        - { name: print_gaps_only, type: flag, flag: -g }
+  - id: seqtk.cutN
+    name: Cutn (SEQTK)
+    category: Sequence Manipulation
+    bin: seqtk
+    description: Cut sequences at long N-tracts
+    io:
+      inputs:
+        - { name: in, types: [FASTA], mode: file }
+      outputs:
+        - { name: out, types: [FASTA, TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: cutN, required: true, hidden: true }
+      - { name: min_N_tract, type: integer, flag: -n }
+      - { name: nonN_penalty, type: integer, flag: -p }
+      - { name: print_gaps_only, type: flag, flag: -g }
 
-    - id: seqtk.hrun
-      name: Hrun (SEQTK)
-      category: Genomic Operations
-      bin: seqtk
-      description: Identify homopolymer runs
-      io:
-        inputs:
-          - { name: in, types: [FASTA], mode: file }
-        outputs:
-          - { name: out, types: [TEXT], mode: stdout }
-      parameters:
-        - { name: command, type: string, default: hrun, required: true, hidden: true }
-        - { name: min_length, type: integer }
+  - id: seqtk.hrun
+    name: Hrun (SEQTK)
+    category: Genomic Operations
+    bin: seqtk
+    description: Identify homopolymer runs
+    io:
+      inputs:
+        - { name: in, types: [FASTA], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: hrun, required: true, hidden: true }
+      - { name: min_length, type: integer }
 
-    # - id: seqtk.sample
-    #   name: seqtk_sample
-    #   bin: seqtk
-    #   description: Subsample sequences from FASTA
-    #   io:
-    #     inputs:
-    #       - { name: in, types: [FASTA], mode: file }
-    #       - { name: fraction_or_number, types: [TEXT], mode: arg }
-    #     outputs:
-    #       - { name: out, types: [FASTA], mode: stdout }
-    #   parameters:
-    #     - { name: command, type: string, default: sample, required: true, hidden: true }
-    #     - { name: seed, type: integer, flag: -s }
-    #     - { name: two_pass, type: flag, flag: "-2" }
+  # - id: seqtk.sample
+  #   name: seqtk_sample
+  #   bin: seqtk
+  #   description: Subsample sequences from FASTA
+  #   io:
+  #     inputs:
+  #       - { name: in, types: [FASTA], mode: file }
+  #       - { name: fraction_or_number, types: [TEXT], mode: arg }
+  #     outputs:
+  #       - { name: out, types: [FASTA], mode: stdout }
+  #   parameters:
+  #     - { name: command, type: string, default: sample, required: true, hidden: true }
+  #     - { name: seed, type: integer, flag: -s }
+  #     - { name: two_pass, type: flag, flag: "-2" }
 
-    # - id: seqtk.gc
-    #   name: seqtk_gc
-    #   bin: seqtk
-    #   description: Identify high-GC or high-AT regions
-    #   io:
-    #     inputs:
-    #       - { name: in, types: [FASTA], mode: file }
-    #     outputs:
-    #       - { name: out, types: [TEXT], mode: stdout }
-    #   parameters:
-    #     - { name: command, type: string, default: gc, required: true, hidden: true }
-    #     - { name: high_AT, type: flag, flag: -w }
-    #     - { name: min_fraction, type: float, flag: -f }
-    #     - { name: min_length, type: integer, flag: -l }
-    #     - { name: xdropoff, type: float, flag: -x }
+  - id: seqtk.gc
+    name: Gc (SEQTK)
+    bin: seqtk
+    description: Identify high-GC or high-AT regions
+    io:
+      inputs:
+        - { name: in, types: [FASTA], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: gc, required: true, hidden: true }
+      - { name: high_AT, type: flag, flag: -w }
+      - { name: min_fraction, type: float, flag: -f }
+      - { name: min_length, type: integer, flag: -l }
+      - { name: xdropoff, type: float, flag: -x }
 
-    # - id: seqtk.mergepe
-    #   name: seqtk_mergepe
-    #   bin: seqtk
-    #   description: Interleave two paired-end FASTQ/FASTA files
-    #   io:
-    #     inputs:
-    #       - { name: in1, types: [FASTQ, FASTA], mode: file }
-    #       - { name: in2, types: [FASTQ, FASTA], mode: file }
-    #     outputs:
-    #       - { name: out, types: [FASTQ, FASTA], mode: stdout }
-    #   parameters:
-    #     - { name: command, type: string, default: mergepe, required: true, hidden: true }
+  - id: seqtk.mergepe
+    name: Mergepe (SEQTK)
+    bin: seqtk
+    description: Interleave two paired-end FASTQ/FASTA files
+    io:
+      inputs:
+        - { name: in1, types: [FASTQ, FASTA], mode: file }
+        - { name: in2, types: [FASTQ, FASTA], mode: file }
+      outputs:
+        - { name: out, types: [FASTQ, FASTA], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: mergepe, required: true, hidden: true }
 
-    - id: seqtk.dropse
-      name: Dropse (SEQTK)
-      category: Sequence Manipulation
-      bin: seqtk
-      description: Drop unpaired reads from interleaved FASTA/Q
-      io:
-        inputs:
-          - { name: in, types: [FASTA, FASTQ], mode: file }
-        outputs:
-          - { name: out, types: [FASTA, FASTQ], mode: stdout }
-      parameters:
-        - { name: command, type: string, default: dropse, required: true, hidden: true }
+  - id: seqtk.dropse
+    name: Dropse (SEQTK)
+    category: Sequence Manipulation
+    bin: seqtk
+    description: Drop unpaired reads from interleaved FASTA/Q
+    io:
+      inputs:
+        - { name: in, types: [FASTA, FASTQ], mode: file }
+      outputs:
+        - { name: out, types: [FASTA, FASTQ], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: dropse, required: true, hidden: true }
 
-    - id: seqtk.hpc
-      name: Hpc (SEQTK)
-      category: Sequence Manipulation
-      bin: seqtk
-      description: Produce homopolymer-compressed sequence
-      io:
-        inputs:
-          - { name: in, types: [FASTA, FASTQ], mode: file }
-        outputs:
-          - { name: out, types: [FASTA, FASTQ], mode: stdout }
-      parameters:
-        - { name: command, type: string, default: hpc, required: true, hidden: true }
+  - id: seqtk.hpc
+    name: Hpc (SEQTK)
+    category: Sequence Manipulation
+    bin: seqtk
+    description: Produce homopolymer-compressed sequence
+    io:
+      inputs:
+        - { name: in, types: [FASTA, FASTQ], mode: file }
+      outputs:
+        - { name: out, types: [FASTA, FASTQ], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: hpc, required: true, hidden: true }
 
-    # - id: seqtk.rename
-    #   name: seqtk_rename
-    #   bin: seqtk
-    #   description: Rename sequence entries with a prefix
-    #   io:
-    #     inputs:
-    #       - { name: in, types: [FASTA, FASTQ], mode: file }
-    #       - { name: prefix, types: [TEXT], mode: arg, optional: true }
-    #     outputs:
-    #       - { name: out, types: [FASTA, FASTQ], mode: stdout }
-    #   parameters:
-    #     - { name: command, type: string, default: rename, required: true, hidden: true }
+  # - id: seqtk.rename
+  #   name: seqtk_rename
+  #   bin: seqtk
+  #   description: Rename sequence entries with a prefix
+  #   io:
+  #     inputs:
+  #       - { name: in, types: [FASTA, FASTQ], mode: file }
+  #       - { name: prefix, types: [TEXT], mode: arg, optional: true }
+  #     outputs:
+  #       - { name: out, types: [FASTA, FASTQ], mode: stdout }
+  #   parameters:
+  #     - { name: command, type: string, default: rename, required: true, hidden: true }
 
-    # - id: seqtk.kfreq
-    #   name: seqtk_kfreq
-    #   bin: seqtk
-    #   description: Count frequencies of a given k-mer
-    #   io:
-    #     inputs:
-    #       - { name: kmer, types: [TEXT], mode: arg }
-    #       - { name: in, types: [FASTA], mode: file }
-    #     outputs:
-    #       - { name: out, types: [TEXT], mode: stdout }
-    #   parameters:
-    #     - { name: command, type: string, default: kfreq, required: true, hidden: true }
+  # - id: seqtk.kfreq
+  #   name: seqtk_kfreq
+  #   bin: seqtk
+  #   description: Count frequencies of a given k-mer
+  #   io:
+  #     inputs:
+  #       - { name: kmer, types: [TEXT], mode: arg }
+  #       - { name: in, types: [FASTA], mode: file }
+  #     outputs:
+  #       - { name: out, types: [TEXT], mode: stdout }
+  #   parameters:
+  #     - { name: command, type: string, default: kfreq, required: true, hidden: true }
 
-    - id: seqtk.fqchk
-      name: Fqchk (SEQTK)
-      category: Information and Analysis
-      bin: seqtk
-      description: FASTQ QC (base & quality summary)
-      io:
-        inputs:
-          - { name: in, types: [FASTQ], mode: file }
-        outputs:
-          - { name: out, types: [TEXT], mode: stdout }
-      parameters:
-        - { name: command, type: string, default: fqchk, required: true, hidden: true }
-        - { name: quality_threshold, type: integer, flag: -q }
+  - id: seqtk.fqchk
+    name: Fqchk (SEQTK)
+    category: Information and Analysis
+    bin: seqtk
+    description: FASTQ QC (base & quality summary)
+    io:
+      inputs:
+        - { name: in, types: [FASTQ], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: fqchk, required: true, hidden: true }
+      - { name: quality_threshold, type: integer, flag: -q }
 
-    - id: seqtk.size
-      name: Size (SEQTK)
-      category: Information and Analysis
-      bin: seqtk
-      description: Count number of sequences and bases
-      io:
-        inputs:
-          - { name: in, types: [FASTQ], mode: file }
-        outputs:
-          - { name: out, types: [TEXT], mode: stdout }
-      parameters:
-        - { name: command, type: string, default: size, required: true, hidden: true }
+  - id: seqtk.size
+    name: Size (SEQTK)
+    category: Information and Analysis
+    bin: seqtk
+    description: Count number of sequences and bases
+    io:
+      inputs:
+        - { name: in, types: [FASTQ], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: size, required: true, hidden: true }
 
-    - id: seqtk.telo
-      name: Telo (SEQTK)
-      category: Genomic Operations
-      bin: seqtk
-      description: Identify telomere repeats in assemblies or long reads
-      io:
-        inputs:
-          - { name: in, types: [FASTQ], mode: file }
-        outputs:
-          - { name: out, types: [TEXT], mode: stdout }
-      parameters:
-        - { name: command, type: string, default: telo, required: true, hidden: true }
-        - { name: motif, type: string, flag: -m }
-        - { name: penalty, type: integer, flag: -p }
-        - { name: max_drop, type: integer, flag: -d }
-        - { name: min_score, type: integer, flag: -s }
-        - { name: print_scoring, type: flag, flag: -P }
+  - id: seqtk.telo
+    name: Telo (SEQTK)
+    category: Genomic Operations
+    bin: seqtk
+    description: Identify telomere repeats in assemblies or long reads
+    io:
+      inputs:
+        - { name: in, types: [FASTQ], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: telo, required: true, hidden: true }
+      - { name: motif, type: string, flag: -m }
+      - { name: penalty, type: integer, flag: -p }
+      - { name: max_drop, type: integer, flag: -d }
+      - { name: min_score, type: integer, flag: -s }
+      - { name: print_scoring, type: flag, flag: -P }

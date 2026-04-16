@@ -1,0 +1,117 @@
+apiVersion: v1
+
+id: org.biochef.fastp
+name: Fastp
+description: A tool designed to provide ultrafast all-in-one preprocessing and quality control for FastQ data.
+
+version: 0.20.1-bc.1
+homepage: https://github.com/opengene/fastp
+license:
+  spdx: MIT
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/opengene/fastp
+  tag: v0.20.1
+  version: "0.20.1"
+
+status: verified
+
+build:
+  wasm:
+    strategy: auto
+    biowasm:
+      package: fastp
+  native:
+    buildsystem: make
+    workDir: .
+    outputDir: .
+
+runtime:
+  modes: [wasm, native]
+
+operations:
+  - id: fastp.se.qc
+    name: Single-End QC (FASTP)
+    category: Uncategorized
+    bin: fastp
+    description: Quality control, trimming, and filtering for single-end FASTQ data
+    io:
+      inputs:
+        - { name: in1, types: [FASTQ], mode: file, flag: -i }
+      outputs:
+        - { name: out1, types: [FASTQ], mode: file, flag: -o }
+    parameters:
+      - { name: qualified_quality_phred, type: integer, flag: -q, default: 15 }
+      - { name: length_required, type: integer, flag: -l, default: 15 }
+      - { name: n_base_limit, type: integer, flag: -n, default: 5 }
+      - { name: unqualified_percent_limit, type: integer, flag: -u, default: 40 }
+      - { name: trim_front1, type: integer, flag: -f, default: 0 }
+      - { name: trim_tail1, type: integer, flag: -t, default: 0 }
+      - { name: disable_adapter_trimming, type: flag, flag: -A }
+      - { name: adapter_sequence, type: string, flag: -a }
+      - { name: cut_front, type: flag, flag: "-5" }
+      - { name: cut_tail, type: flag, flag: "-3" }
+      - { name: cut_window_size, type: integer, flag: -W, default: 4 }
+      - { name: cut_mean_quality, type: integer, flag: -M, default: 20 }
+      - { name: thread, type: integer, flag: -w, default: 2 }
+      - { name: json, type: string, flag: -j, default: fastp.json }
+      - { name: html, type: string, flag: -h, default: fastp.html }
+
+  - id: fastp.pe.qc
+    name: Pair-End QC (FASTP) 
+    category: Uncategorized
+    bin: fastp
+    description: Quality control, trimming, and filtering for paired-end FASTQ data
+    io:
+      inputs:
+        - { name: in1, types: [FASTQ], mode: file, flag: -i }
+        - { name: in2, types: [FASTQ], mode: file, flag: -I }
+      outputs:
+        - { name: out1, types: [FASTQ], mode: file, flag: -o }
+        - { name: out2, types: [FASTQ], mode: file, flag: -O }
+    parameters:
+      - { name: qualified_quality_phred, type: integer, flag: -q, default: 15 }
+      - { name: length_required, type: integer, flag: -l, default: 15 }
+      - { name: n_base_limit, type: integer, flag: -n, default: 5 }
+      - { name: unqualified_percent_limit, type: integer, flag: -u, default: 40 }
+      - { name: trim_front1, type: integer, flag: -f, default: 0 }
+      - { name: trim_tail1, type: integer, flag: -t, default: 0 }
+      - { name: trim_front2, type: integer, flag: -F, default: 0 }
+      - { name: trim_tail2, type: integer, flag: -T, default: 0 }
+      - { name: disable_adapter_trimming, type: flag, flag: -A }
+      - { name: adapter_sequence, type: string, flag: -a }
+      - { name: adapter_sequence_r2, type: string, flag: --adapter_sequence_r2 }
+      - { name: detect_adapter_for_pe, type: flag, flag: --detect_adapter_for_pe }
+      - { name: cut_front, type: flag, flag: "-5" }
+      - { name: cut_tail, type: flag, flag: "-3" }
+      - { name: cut_right, type: flag, flag: -r }
+      - { name: cut_window_size, type: integer, flag: -W, default: 4 }
+      - { name: cut_mean_quality, type: integer, flag: -M, default: 20 }
+      - { name: correction, type: flag, flag: -c }
+      - { name: thread, type: integer, flag: -w, default: 2 }
+      - { name: json, type: string, flag: -j, default: fastp.json }
+      - { name: html, type: string, flag: -h, default: fastp.html }
+
+  - id: fastp.merge
+    name: Merge Reads (FASTP)
+    category: Uncategorized
+    bin: fastp
+    description: Merge overlapping paired-end reads into single reads
+    io:
+      inputs:
+        - { name: in1, types: [FASTQ], mode: file, flag: -i }
+        - { name: in2, types: [FASTQ], mode: file, flag: -I }
+      outputs:
+        - { name: merged_out, types: [FASTQ], mode: file, flag: --merged_out }
+        - { name: out1, types: [FASTQ], mode: file, flag: -o }
+        - { name: out2, types: [FASTQ], mode: file, flag: -O }
+    parameters:
+      - { name: merge, type: flag, flag: -m, required: true, hidden: true }
+      - { name: include_unmerged, type: flag, flag: --include_unmerged }
+      - { name: overlap_len_require, type: integer, flag: --overlap_len_require, default: 30 }
+      - { name: overlap_diff_limit, type: integer, flag: --overlap_diff_limit, default: 5 }
+      - { name: overlap_diff_percent_limit, type: integer, flag: --overlap_diff_percent_limit, default: 20 }
+      - { name: thread, type: integer, flag: -w, default: 2 }
