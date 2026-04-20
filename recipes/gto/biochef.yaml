@@ -1,6 +1,6 @@
 apiVersion: v1
 
-id: org.biochef.gto
+id: app.biochef.gto
 name: GTO Toolkit
 description: Conjunto de utilitários GTO para manipulação de FASTA/SEQ e operações afins.
 
