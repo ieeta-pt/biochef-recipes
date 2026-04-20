@@ -42,5 +42,7 @@ jobs:
     with:
       registry_url: ${{ vars.REGISTRY_URL }}
       recipes: ${{ needs.detect_changes.outputs.biochef_files }}
+      oras_auth: ${{ vars.ORAS_AUTH_METHOD }}
     secrets:
       REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+      REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
