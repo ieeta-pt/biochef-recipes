@@ -1,6 +1,6 @@
 apiVersion: v1
 
-id: org.biochef.fastp
+id: app.biochef.fastp
 name: Fastp
 description: A tool designed to provide ultrafast all-in-one preprocessing and quality control for FastQ data.
 
