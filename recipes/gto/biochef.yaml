@@ -1,5 +1,4 @@
 apiVersion: v1
-kind: suite
 
 id: org.biochef.gto
 name: GTO Toolkit
@@ -11,17 +10,14 @@ license:
   spdx: MIT
   files: [LICENSE]
 maintainers:
-  - opID: IEETA BioChef
-    email: biochef@ieeta.pt
+  - name: Biochef
 
 source:
-  repo: https://github.com/cobilab/gto
-  branch: v1.6.3
-  version: 1.6.3
-  commit: null
+  repo: https://github.com/WildBunnie/gto
+  version: "1.6.3"
+  tag: v1.6.3
 
 status: verified
-deterministic: true
 
 build:
   wasm:
@@ -37,831 +33,902 @@ build:
         - sed -Ei 's/\$\(\s*BIN\s*\)\/([a-zA-Z0-9._-]+)/$(BIN)\/\1.js/g' Makefile
       env: 
         - CC="emcc -msimd128 $EM_FLAGS"
-
-publish:
-  explode: true # 1 suite → N plugins finos
-  baseLayer: gto-runtime-base # camada partilhada (dedupe/CDN-friendly)
-  channels: [stable] # stable|staging|nightly
+  native:
+    buildsystem: make
+    workDir: src
+    outputDir: bin
 
 runtime:
-  modes: [wasm, local, remote]
-
-  local:
-    commandPrefix: "gto_"
-    container:
-      image: ghcr.io/cobilab/gto:1.6.3
-      digest: null
-
-  remote:
-    wes:
-      url: https://wes.example/run
-      descriptor: wdl
-      resources: { cpu: 2, memGB: 4 }
-
-suite:
-  operations:
-    - opId: gto.amino.acid.from.fasta
-      bin: gto_amino_acid_from_fasta
-      category: Format Conversion
-      description: Converts DNA sequences in FASTA or Multi-FASTA file format to an amino acid sequence.
-      io:
-        inputs:
-          - { name: in, types: [FASTA, Multi-FASTA], mode: stdin }
-        outputs:
-          - { name: out, types: [AminoAcids], mode: stdout }
-      parameters:
-        - { name: frame, type: integer, flag: -f }
-
-    - opId: gto.amino.acid.from.fastq
-      bin: gto_amino_acid_from_fastq
-      category: Format Conversion
-      description: Converts DNA sequences in the FASTQ file format to an amino acid sequence.
-      io:
-        inputs:
-          - { name: in, types: [FASTQ], mode: stdin }
-        outputs:
-          - { name: out, types: [AminoAcids], mode: stdout }
-      parameters:
-        - { name: frame, type: integer, flag: -f }
-
-    - opId: gto.amino.acid.from.seq
-      bin: gto_amino_acid_from_seq
-      category: Format Conversion
-      description: Converts DNA sequence to an amino acid sequence.
-      io:
-        inputs:
-          - { name: in, types: [DNA], mode: stdin }
-        outputs:
-          - { name: out, types: [AminoAcids], mode: stdout }
-      parameters:
-        - { name: frame, type: integer, flag: -f }
-
-    - opId: gto.amino.acid.to.group
-      bin: gto_amino_acid_to_group
-      category: Amino Acid Operations
-      description: Converts an amino acid sequence to a group sequence.
-      io:
-        inputs:
-          - { name: in, types: [AminoAcids], mode: stdin }
-        outputs:
-          - { name: out, types: [Group], mode: stdout }
-      parameters: []
-
-    - opId: gto.amino.acid.to.pseudo.dna
-      bin: gto_amino_acid_to_pseudo_dna
-      category: Amino Acid Operations
-      description: Converts an amino acid (protein) sequence to a pseudo DNA sequence.
-      io:
-        inputs:
-          - { name: in, types: [AminoAcids], mode: stdin }
-        outputs:
-          - { name: out, types: [DNA], mode: stdout }
-      parameters: []
-
-    - opId: gto.brute.force.string
-      bin: gto_brute_force_string
-      category: Text Processing
-      description: Generates all combinations, line by line, for an inputted alphabet and specific size.
-      io:
-        inputs:
-          - { name: in, types: [""], mode: "" }
-        outputs:
-          - { name: out, types: [TEXT], mode: stdout }
-      parameters:
-        - { name: alphabet, type: string, flag: -a, required: true }
-        - { name: size, type: integer, flag: -s, required: true }
-
-    - opId: gto.char.to.line
-      bin: gto_char_to_line
-      category: Text Processing
-      description: Splits a sequence into lines, creating an output sequence which has a char for each line.
-      io:
-        inputs:
-          - { name: in, types: [DNA, RNA, AminoAcids], mode: stdin }
-        outputs:
-          - { name: out, types: [DNA, RNA, AminoAcids], mode: stdout }
-      parameters: []
-
-    - opId: gto.comparative.map
-      bin: gto_comparative_map
-      category: Information and Analysis
-      description: Creates a visualization for comparative maps.
-      io:
-        inputs:
-          - { name: in, types: [POS], mode: stdin }
-        outputs:
-          - { name: out, types: [SVG], mode: stdout }
-      parameters:
-        - { name: link, type: integer, flag: -l }
-        - { name: width, type: integer, flag: -w }
-        - { name: space, type: integer, flag: -s }
-        - { name: mult, type: integer, flag: -m }
-        - { name: begin, type: integer, flag: -b }
-        - { name: minimum, type: integer, flag: -c }
-        - { name: FILE, type: string, flag: -o }
-
-    - opId: gto.fasta.complement
-      bin: gto_fasta_complement
-      category: Sequence Manipulation
-      description: Replaces the ACGT bases with their complements in FASTA or Multi-FASTA file format.
-      io:
-        inputs:
-          - { name: in, types: [FASTA, Multi-FASTA], mode: stdin }
-        outputs:
-          - { name: out, types: [FASTA, Multi-FASTA], mode: stdout }
-      parameters: []
-
-    - opId: gto.fasta.extract
-      bin: gto_fasta_extract
-      category: Sequence Manipulation
-      description: Extracts sequences from a FASTA file, which the range is defined by the user in the parameters.
-      io:
-        inputs:
-          - { name: in, types: [FASTA], mode: stdin }
-        outputs:
-          - { name: out, types: [DNA, RNA, AminoAcids], mode: stdout }
-      parameters:
-        - { name: init, type: integer, flag: -i }
-        - { name: end, type: integer, flag: -e }
-
-    - opId: gto.fasta.extract.by.read
-      bin: gto_fasta_extract_by_read
-      category: Sequence Manipulation
-      description: Extracts sequences from each read in a Multi-FASTA file (splited by \n), which the range is defined by the user in the parameters.
-      io:
-        inputs:
-          - { name: in, types: [FASTA, Multi-FASTA], mode: stdin }
-        outputs:
-          - { name: out, types: [FASTA, Multi-FASTA], mode: stdout }
-      parameters:
-        - { name: init, type: integer, flag: -i }
-        - { name: end, type: integer, flag: -e }
-
-    - opId: gto.fasta.extract.pattern.coords
-      bin: gto_fasta_extract_pattern_coords
-      category: Sequence Manipulation
-      description: Extracts the header and coordinates from a Multi-FASTA file format given a pattern/motif in the sequence.
-      io:
-        inputs:
-          - { name: in, types: [Multi-FASTA], mode: stdin }
-        outputs:
-          - { name: out, types: [TEXT], mode: stdout }
-      parameters:
-        - { name: pattern, type: string, flag: -p, required: true }
-
-    - opId: gto.fasta.extract.read.by.pattern
-      bin: gto_fasta_extract_read_by_pattern
-      category: Sequence Manipulation
-      description: Extracts reads from a Multi-FASTA file format given a pattern in the header. Also, this pattern is case insensitive.
-      io:
-        inputs:
-          - { name: in, types: [Multi-FASTA], mode: stdin }
-        outputs:
-          - { name: out, types: [Multi-FASTA], mode: stdout }
-      parameters:
-        - { name: pattern, type: string, flag: -p, required: true }
-
-    - opId: gto.fasta.find.n.pos
-      bin: gto_fasta_find_n_pos
-      category: Information and Analysis
-      description: Reports the 'N' regions in a sequence or FASTA (seq) file.
-      io:
-        inputs:
-          - { name: in, types: [FASTA], mode: stdin }
-        outputs:
-          - { name: out, types: [TEXT], mode: stdout }
-      parameters: []
-
-    - opId: gto.fasta.from.seq
-      bin: gto_fasta_from_seq
-      category: Format Conversion
-      description: Converts a genomic sequence to pseudo FASTA file format.
-      io:
-        inputs:
-          - { name: in, types: [DNA, RNA, AminoAcids], mode: stdin }
-        outputs:
-          - { name: out, types: [FASTA], mode: stdout }
-      parameters:
-        - { name: name, type: string, flag: -n }
-        - { name: lineSize, type: integer, flag: -l }
-
-    - opId: gto.fasta.info
-      bin: gto_fasta_info
-      category: Information and Analysis
-      description: Shows the readed information of a FASTA or Multi-FASTA file format.
-      io:
-        inputs:
-          - { name: in, types: [FASTA], mode: stdin }
-        outputs:
-          - { name: out, types: [TEXT], mode: stdout }
-      parameters: []
-
-    - opId: gto.fasta.merge.streams
-      bin: gto_fasta_merge_streams
-      category: Sequence Manipulation
-      description: It merges the three channels of information (headers, extra and DNA) and writes it into a FASTA file.
-      io:
-        inputs:
-          - { name: in, types: [TEXT, DNA, AminoAcids, RNA], mode: file }
-        outputs:
-          - { name: out, types: [FASTA, Multi-FASTA], mode: stdout }
-      parameters:
-        - { name: headers, type: "" }
-        - { name: extra, type: "" }
-        - { name: dna, type: "" }
-
-    - opId: gto.fasta.mutate
-      bin: gto_fasta_mutate
-      category: Sequence Manipulation
-      description: Creates a synthetic mutation of a FASTA file given specific rates of editions, deletions and additions.
-      io:
-        inputs:
-          - { name: in, types: [FASTA, Multi-FASTA], mode: stdin }
-        outputs:
-          - { name: out, types: [FASTA, Multi-FASTA], mode: stdout }
-      parameters:
-        - { name: seed, type: integer, flag: -s }
-        - { name: edit-rate, type: float, flag: -e }
-        - { name: deletion-rate, type: float, flag: -d }
-        - { name: insertion-rate, type: float, flag: -i }
-
-    - opId: gto.fasta.rand.extra.chars
-      bin: gto_fasta_rand_extra_chars
-      category: Sequence Manipulation
-      description: Substitutes in the DNA sequence the outside ACGT chars by random ACGT symbols. It works both in FASTA and Multi-FASTA file formats.
-      io:
-        inputs:
-          - { name: in, types: [FASTA, Multi-FASTA], mode: stdin }
-        outputs:
-          - { name: out, types: [FASTA, Multi-FASTA], mode: stdout }
-      parameters: []
-
-    - opId: gto.fasta.rename.human.headers
-      bin: gto_fasta_rename_human_headers
-      description: Changes the headers of FASTA or Multi-FASTA file to simple chrX by order, where X is the number.
-      io:
-        inputs:
-          - { name: in, types: [FASTA], mode: stdin }
-        outputs:
-          - { name: out, types: [FASTA], mode: stdout }
-      parameters: []
-
-    - opId: gto.fasta.reverse
-      bin: gto_fasta_reverse
-      category: Sequence Manipulation
-      description: Reverses the order of a FASTA or Multi-FASTA file format.
-      io:
-        inputs:
-          - { name: in, types: [FASTA, Multi-FASTA], mode: stdin }
-        outputs:
-          - { name: out, types: [FASTA, Multi-FASTA], mode: stdout }
-      parameters: []
-
-    - opId: gto.fasta.split.reads
-      bin: gto_fasta_split_reads
-      category: Sequence Manipulation
-      description: Splits a Multi-FASTA file to multiple FASTA files.
-      io:
-        inputs:
-          - { name: in, types: [Multi-FASTA], mode: stdin, is_multi_output: true }
-        outputs:
-          - { name: out, types: [FASTA], mode: file }
-      parameters: []
-
-    - opId: gto.fasta.split.streams
-      bin: gto_fasta_split_streams
-      category: Sequence Manipulation
-      description: "Splits and writes a FASTA file into three channels of information: headers, extra and DNA."
-      io:
-        inputs:
-          - { name: in, types: [FASTA, Multi-FASTA], mode: stdin }
-        outputs:
-          - { name: out, types: [TEXT, DNA, AminoAcids, RNA], mode: file, is_multi_output: true, is_multi_type_output: true }
-      parameters: []
-
-    - opId: gto.fasta.to.seq
-      bin: gto_fasta_to_seq
-      category: Format Conversion
-      description: Converts a FASTA or Multi-FASTA file format to a seq.
-      io:
-        inputs:
-          - { name: in, types: [FASTA, Multi-FASTA], mode: stdin }
-        outputs:
-          - { name: out, types: [DNA, RNA, AminoAcids], mode: stdout }
-      parameters: []
-
-    - opId: gto.fastq.complement
-      bin: gto_fastq_complement
-      category: Sequence Manipulation
-      description: Replaces the ACGT bases with their complements in a FASTQ file format.
-      io:
-        inputs:
-          - { name: in, types: [FASTQ], mode: stdin }
-        outputs:
-          - { name: out, types: [FASTQ], mode: stdout }
-      parameters: []
-
-    - opId: gto.fastq.cut
-      bin: gto_fastq_cut
-      category: Sequence Manipulation
-      description: Cuts read sequences in a FASTQ file. It requires that the initial and end positions for the cut.
-      io:
-        inputs:
-          - { name: in, types: [FASTQ], mode: stdin }
-        outputs:
-          - { name: out, types: [FASTQ], mode: stdout }
-      parameters:
-        - { name: initial, type: integer, flag: -i, required: true }
-        - { name: end, type: integer, flag: -e, required: true }
-
-    - opId: gto.fastq.exclude.n
-      bin: gto_fastq_exclude_n
-      category: Sequence Manipulation
-      description: Discards the FASTQ reads with the minimum number of 'N' symbols. If present, it will erase the second header (after +).
-      io:
-        inputs:
-          - { name: in, types: [FASTQ], mode: stdin }
-        outputs:
-          - { name: out, types: [FASTQ], mode: stdout }
-      parameters:
-        - { name: max, type: integer, flag: -m, required: true }
-
-    - opId: gto.fastq.extract.quality.scores
-      bin: gto_fastq_extract_quality_scores
-      category: Sequence Manipulation
-      description: Extracts all the quality-scores from FASTQ reads.
-      io:
-        inputs:
-          - { name: in, types: [FASTQ], mode: stdin }
-        outputs:
-          - { name: out, types: [TEXT], mode: stdout }
-      parameters: []
-
-    - opId: gto.fastq.from.seq
-      bin: gto_fastq_from_seq
-      category: Format Conversion
-      description: Converts a genomic sequence to pseudo FASTQ file format.
-      io:
-        inputs:
-          - { name: in, types: [DNA, RNA, AminoAcids], mode: stdin }
-        outputs:
-          - { name: out, types: [FASTQ], mode: stdout }
-      parameters:
-        - { name: name, type: string, flag: -n }
-        - { name: lineSize, type: integer, flag: -l }
-
-    - opId: gto.fastq.info
-      bin: gto_fastq_info
-      category: Information and Analysis
-      description: Analyses the basic information of FASTQ file format.
-      io:
-        inputs:
-          - { name: in, types: [FASTQ], mode: stdin }
-        outputs:
-          - { name: out, types: [TEXT], mode: stdout }
-      parameters: []
-
-    - opId: gto.fastq.maximum.read.size
-      bin: gto_fastq_maximum_read_size
-      category: Sequence Manipulation
-      description: Filters the FASTQ reads with the length higher than the value defined. If present, it will erase the second header (after +).
-      io:
-        inputs:
-          - { name: in, types: [FASTQ], mode: stdin }
-        outputs:
-          - { name: out, types: [FASTQ], mode: stdout }
-      parameters:
-        - { name: size, type: integer, flag: -s, required: true }
-
-    - opId: gto.fastq.minimum.local.quality.score.forward
-      bin: gto_fastq_minimum_local_quality_score_forward
-      category: Sequence Manipulation
-      description: Filters the reads considering the quality score average of a defined window size of bases.
-      io:
-        inputs:
-          - { name: in, types: [FASTQ], mode: stdin }
-        outputs:
-          - { name: out, types: [FASTQ], mode: stdout }
-      parameters:
-        - { name: windowsize, type: integer, flag: -k }
-        - { name: minavg, type: integer, flag: -w }
-        - { name: minqs, type: integer, flag: -m }
-
-    - opId: gto.fastq.minimum.local.quality.score.reverse
-      bin: gto_fastq_minimum_local_quality_score_reverse
-      category: Sequence Manipulation
-      description: Filters the reverse reads, considering the quality score average of a defined window size of bases.
-      io:
-        inputs:
-          - { name: in, types: [FASTQ], mode: stdin }
-        outputs:
-          - { name: out, types: [FASTQ], mode: stdout }
-      parameters:
-        - { name: windowsize, type: integer, flag: -k }
-        - { name: minavg, type: integer, flag: -w }
-        - { name: minqs, type: integer, flag: -m }
-
-    - opId: gto.fastq.minimum.quality.score
-      bin: gto_fastq_minimum_quality_score
-      category: Sequence Manipulation
-      description: Discards reads with average quality-score below of the defined.
-      io:
-        inputs:
-          - { name: in, types: [FASTQ], mode: stdin }
-        outputs:
-          - { name: out, types: [FASTQ], mode: stdout }
-      parameters:
-        - { name: min, type: integer, flag: -m, required: true }
-
-    - opId: gto.fastq.minimum.read.size
-      bin: gto_fastq_minimum_read_size
-      category: Sequence Manipulation
-      description: Filters the FASTQ reads with the length smaller than the value defined. If present, it will erase the second header (after +).
-      io:
-        inputs:
-          - { name: in, types: [FASTQ], mode: stdin }
-        outputs:
-          - { name: out, types: [FASTQ], mode: stdout }
-      parameters:
-        - { name: size, type: integer, flag: -s, required: true }
-
-    - opId: gto.fastq.mutate
-      bin: gto_fastq_mutate
-      category: Sequence Manipulation
-      description: Creates a synthetic mutation of a FASTQ file given specific rates of mutations, deletions and additions.
-      io:
-        inputs:
-          - { name: in, types: [FASTQ], mode: stdin }
-        outputs:
-          - { name: out, types: [FASTQ], mode: stdout }
-      parameters:
-        - { name: seed, type: integer, flag: -s }
-        - { name: mutation-rate, type: float, flag: -m }
-        - { name: deletion-rate, type: float, flag: -d }
-        - { name: insertion-rate, type: float, flag: -i }
-
-    - opId: gto.fastq.pack
-      bin: gto_fastq_pack
-      category: Sequence Manipulation
-      description: Packages each FASTQ read in a single line. It can show the read score first or the dna sequence, depending on the execution mode.
-      io:
-        inputs:
-          - { name: in, types: [FASTQ], mode: stdin }
-        outputs:
-          - { name: out, types: [PackagedFASTQ], mode: stdout }
-      parameters: []
-
-    - opId: gto.fastq.quality.score.info
-      bin: gto_fastq_quality_score_info
-      category: Sequence Manipulation
-      description: Analyses the quality-scores of a FASTQ file.
-      io:
-        inputs:
-          - { name: in, types: [FASTQ], mode: stdin }
-        outputs:
-          - { name: out, types: [TEXT], mode: stdout }
-      parameters:
-        - { name: max, type: integer, flag: -m }
-
-    - opId: gto.fastq.quality.score.max
-      bin: gto_fastq_quality_score_max
-      category: Sequence Manipulation
-      description: Analyses the maximal quality-scores of a FASTQ file.
-      io:
-        inputs:
-          - { name: in, types: [FASTQ], mode: stdin }
-        outputs:
-          - { name: out, types: [TEXT], mode: stdout }
-      parameters:
-        - { name: max, type: integer, flag: -m }
-
-    - opId: gto.fastq.quality.score.min
-      bin: gto_fastq_quality_score_min
-      category: Sequence Manipulation
-      description: Analyses the minimal quality-scores of a FASTQ file.
-      io:
-        inputs:
-          - { name: in, types: [FASTQ], mode: stdin }
-        outputs:
-          - { name: out, types: [TEXT], mode: stdout }
-      parameters:
-        - { name: max, type: integer, flag: -m }
-
-    - opId: gto.fastq.rand.extra.chars
-      bin: gto_fastq_rand_extra_chars
-      category: Sequence Manipulation
-      description: Substitutes in the FASTQ files, the DNA sequence the outside ACGT chars by random ACGT symbols.
-      io:
-        inputs:
-          - { name: in, types: [FASTQ], mode: stdin }
-        outputs:
-          - { name: out, types: [FASTQ], mode: stdout }
-      parameters: []
-
-    - opId: gto.fastq.reverse
-      bin: gto_fastq_reverse
-      category: Sequence Manipulation
-      description: Reverses the ACGT bases order for each read in a FASTQ file format.
-      io:
-        inputs:
-          - { name: in, types: [FASTQ], mode: stdin }
-        outputs:
-          - { name: out, types: [FASTQ], mode: stdout }
-      parameters: []
-
-    - opId: gto.fastq.split
-      bin: gto_fastq_split
-      category: Sequence Manipulation
-      description: Splits Paired End files according to the direction of the strand ('/1' or '/2'). It writes by default singleton reads as forward stands.
-      io:
-        inputs:
-          - { name: in, types: [FASTQ], mode: stdin }
-        outputs:
-          - { name: out, types: [FASTQ], mode: file, is_multi_output: true }
-      parameters: []
-
-    - opId: gto.fastq.to.fasta
-      bin: gto_fastq_to_fasta
-      category: Format Conversion
-      description: Converts a FASTQ file format to a pseudo FASTA file. It does NOT align the sequence. It extracts the sequence and adds a pseudo header.
-      io:
-        inputs:
-          - { name: in, types: [FASTQ], mode: stdin }
-        outputs:
-          - { name: out, types: [FASTA], mode: stdout }
-      parameters: []
-
-    - opId: gto.fastq.to.mfasta
-      bin: gto_fastq_to_mfasta
-      category: Format Conversion
-      description: Converts a FASTQ file format to a pseudo Multi-FASTA file. It does NOT align the sequence. It extracts the sequence and adds each header in a Multi-FASTA format.
-      io:
-        inputs:
-          - { name: in, types: [FASTQ], mode: stdin }
-        outputs:
-          - { name: out, types: [Multi-FASTA], mode: stdout }
-      parameters: []
-
-    - opId: gto.fastq.unpack
-      bin: gto_fastq_unpack
-      category: Sequence Manipulation
-      description: Unpacks the FASTQ reads packaged using the gto_fastq_pack tool.
-      io:
-        inputs:
-          - { name: in, types: [PackagedFASTQ], mode: stdin }
-        outputs:
-          - { name: out, types: [FASTQ], mode: stdout }
-      parameters: []
-
-    - opId: gto.filter
-      bin: gto_filter
-      category: Text Processing
-      description: Filters numerical sequences using a low-pass filter.
-      io:
-        inputs:
-          - { name: in, types: [NUM], mode: stdin }
-        outputs:
-          - { name: out, types: [NUM], mode: stdout }
-      parameters:
-        - { name: windowsize, type: integer, flag: -w }
-        - { name: drop, type: float, flag: -d }
-        - { name: windowtype, type: integer, flag: -t }
-
-    - opId: gto.genomic.complement
-      bin: gto_genomic_complement
-      category: Genomic Operations
-      description: Replaces the ACGT bases with their complements in a DNA sequence. It works in sequence file formats.
-      io:
-        inputs:
-          - { name: in, types: [DNA], mode: stdin }
-        outputs:
-          - { name: out, types: [DNA], mode: stdout }
-      parameters: []
-
-    - opId: gto.genomic.count.bases
-      bin: gto_genomic_count_bases
-      category: Genomic Operations
-      description: Counts the number of bases in sequence, FASTA or FASTQ files.
-      io:
-        inputs:
-          - { name: in, types: [DNA, FASTA, FASTQ], mode: stdin }
-        outputs:
-          - { name: out, types: [TEXT], mode: stdout }
-      parameters: []
-
-    - opId: gto.genomic.dna.mutate
-      bin: gto_genomic_dna_mutate
-      category: Genomic Operations
-      description: Creates a synthetic mutation of a sequence file given specific rates of mutations, deletions and additions.
-      io:
-        inputs:
-          - { name: in, types: [DNA], mode: stdin }
-        outputs:
-          - { name: out, types: [DNA], mode: stdout }
-      parameters:
-        - { name: seed, type: integer, flag: -s }
-        - { name: mutation-rate, type: float, flag: -m }
-        - { name: deletion-rate, type: float, flag: -d }
-        - { name: insertion-rate, type: float, flag: -i }
-
-    - opId: gto.genomic.extract
-      bin: gto_genomic_extract
-      category: Genomic Operations
-      description: Extracts sequences from a sequence file, which the range is defined by the user in the parameters.
-      io:
-        inputs:
-          - { name: in, types: [DNA], mode: stdin }
-        outputs:
-          - { name: out, types: [DNA], mode: stdout }
-      parameters:
-        - { name: init, type: integer, flag: -i }
-        - { name: end, type: integer, flag: -e }
-
-    - opId: gto.genomic.gen.random.dna
-      bin: gto_genomic_gen_random_dna
-      category: Genomic Operations
-      description: Generates a synthetic DNA.
-      io:
-        inputs:
-          - { name: in, types: [""], mode: "" }
-        outputs:
-          - { name: out, types: [DNA], mode: stdout }
-      parameters:
-        - { name: seed, type: integer, flag: -s }
-        - { name: nSymbols, type: integer, flag: -n }
-        - { name: frequency, type: string, flag: -f }
-
-    - opId: gto.genomic.period
-      bin: gto_genomic_period
-      category: Genomic Operations
-      description: Calculates the best order depth of a sequence, using FCMs. It only works "ACGT", while the rest will be discarded.
-      io:
-        inputs:
-          - { name: in, types: [DNA], mode: stdin }
-        outputs:
-          - { name: out, types: [NUM], mode: stdout }
-      parameters: []
-
-    - opId: gto.genomic.rand.seq.extra.chars
-      bin: gto_genomic_rand_seq_extra_chars
-      category: Genomic Operations
-      description: Substitutes in the DNA sequence the outside ACGT chars by random ACGT symbols. It works in sequence file formats.
-      io:
-        inputs:
-          - { name: in, types: [DNA], mode: stdin }
-        outputs:
-          - { name: out, types: [DNA], mode: stdout }
-      parameters: []
-
-    - opId: gto.genomic.reverse
-      bin: gto_genomic_reverse
-      category: Genomic Operations
-      description: Reverses the ACGT bases order for each read in a sequence file.
-      io:
-        inputs:
-          - { name: in, types: [DNA], mode: stdin }
-        outputs:
-          - { name: out, types: [DNA], mode: stdout }
-      parameters: []
-
-    - opId: gto.info
-      bin: gto_info
-      category: Information and Analysis
-      description: Gives the basic properties of the file, namely size, cardinality, distribution percentage of the symbols, among others.
-      io:
-        inputs:
-          - {
-              name: in,
-              types:
-                [TEXT, Multi-FASTA, FASTA, FASTQ, NUM, DNA, RNA, AminoAcids],
-              mode: stdin,
-            }
-        outputs:
-          - { name: out, types: [TEXT], mode: stdout }
-      parameters: []
-
-    - opId: gto.lower.bound
-      bin: gto_lower_bound
-      category: Mathematical Operations
-      description: Sets an lower bound in a file with a value per line.
-      io:
-        inputs:
-          - { name: in, types: [NUM], mode: stdin }
-        outputs:
-          - { name: out, types: [NUM], mode: stdout }
-      parameters:
-        - { name: lowerbound, type: integer, flag: -l, required: true }
-
-    - opId: gto.max
-      bin: gto_max
-      category: Mathematical Operations
-      description: Computes the maximum value in each row between two files.
-      io:
-        inputs:
-          - { name: in, types: [""], mode: "" }
-        outputs:
-          - { name: out, types: [NUM], mode: stdout }
-      parameters:
-        - { name: first_file, type: file, flag: -f, required: true }
-        - { name: second_file, type: file, flag: -s, required: true }
-
-    - opId: gto.min
-      bin: gto_min
-      category: Mathematical Operations
-      description: Computes the minium value in each row between two files.
-      io:
-        inputs:
-          - { name: in, types: [""], mode: file }
-        outputs:
-          - { name: out, types: [NUM], mode: stdout }
-      parameters:
-        - { name: first_file, type: file, flag: -f, required: true }
-        - { name: second_file, type: file, flag: -s, required: true }
-
-    - opId: gto.new.line.on.new.x
-      bin: gto_new_line_on_new_x
-      category: Text Processing
-      description: Splits different rows with a new empty row.
-      io:
-        inputs:
-          - { name: in, types: [NUM], mode: stdin }
-        outputs:
-          - { name: out, types: [NUM], mode: stdout }
-      parameters: []
-
-    - opId: gto.permute.by.blocks
-      bin: gto_permute_by_blocks
-      category: Mathematical Operations
-      description: Permutates by block sequence, FASTA and Multi-FASTA files.
-      io:
-        inputs:
-          - { name: in, types: [FASTA, Multi-FASTA], mode: stdin }
-        outputs:
-          - { name: out, types: [FASTA, Multi-FASTA], mode: stdout }
-      parameters:
-        - { name: numbases, type: integer, flag: -b, required: true }
-        - { name: seed, type: integer, flag: -s, required: true }
-
-    - opId: gto.real.to.binary.with.threshold
-      bin: gto_real_to_binary_with_threshold
-      category: Mathematical Operations
-      description: Converts a sequence of real numbers into a binary sequence, given a threshold. The numbers below to the threshold will be 0.
-      io:
-        inputs:
-          - { name: in, types: [NUM], mode: stdin }
-        outputs:
-          - { name: out, types: [BIN], mode: stdout }
-      parameters:
-        - { name: threshold, type: float, flag: -t, required: true }
-
-    - opId: gto.segment
-      bin: gto_segment
-      category: Text Processing
-      description: Segments a filtered sequence based on a threshold.
-      io:
-        inputs:
-          - { name: in, types: [NUM], mode: stdin }
-        outputs:
-          - { name: out, types: [TEXT, NUM], mode: stdout }
-      parameters:
-        - { name: threshold, type: float, flag: -t, required: true }
-
-    - opId: gto.sum
-      bin: gto_sum
-      category: Mathematical Operations
-      description: Adds decimal values in file, line by line, splitted by spaces or tabs.
-      io:
-        inputs:
-          - { name: in, types: [NUM], mode: stdin }
-        outputs:
-          - { name: out, types: [NUM], mode: stdout }
-      parameters: []
-
-    - opId: gto.upper.bound
-      bin: gto_upper_bound
-      category: Mathematical Operations
-      description: Sets an upper bound in a file with a value per line.
-      io:
-        inputs:
-          - { name: in, types: [NUM], mode: stdin }
-        outputs:
-          - { name: out, types: [NUM], mode: stdout }
-      parameters:
-        - { name: upperbound, type: integer, flag: -u, required: true }
-
-    - opId: gto.word.search
-      bin: gto_word_search
-      category: Text Processing
-      description: Search for a word in a file. It is case sensitive.
-      io:
-        inputs:
-          - {
-              name: in,
-              types:
-                [TEXT, Multi-FASTA, FASTA, FASTQ, NUM, DNA, RNA, AminoAcids],
-              mode: stdin,
-            }
-        outputs:
-          - { name: out, types: [TEXT], mode: stdout, required: true }
-      parameters:
-        - { name: word, type: string, flag: -w }
+  modes: [wasm, native]
+
+operations:
+  - id: gto.amino.acid.from.fasta
+    name: Amino Acid From Fasta (GTO)
+    bin: gto_amino_acid_from_fasta
+    category: Format Conversion
+    description: Converts DNA sequences in FASTA or Multi-FASTA file format to an amino acid sequence.
+    io:
+      inputs:
+        - { name: in, types: [FASTA, Multi-FASTA], mode: stdin }
+      outputs:
+        - { name: out, types: [AminoAcids], mode: stdout }
+    parameters:
+      - { name: frame, type: integer, flag: -f }
+
+  - id: gto.amino.acid.from.fastq
+    name: Amino Acid From Fastq (GTO)
+    bin: gto_amino_acid_from_fastq
+    category: Format Conversion
+    description: Converts DNA sequences in the FASTQ file format to an amino acid sequence.
+    io:
+      inputs:
+        - { name: in, types: [FASTQ], mode: stdin }
+      outputs:
+        - { name: out, types: [AminoAcids], mode: stdout }
+    parameters:
+      - { name: frame, type: integer, flag: -f }
+
+  - id: gto.amino.acid.from.seq
+    name: Amino Acid From Seq (GTO)
+    bin: gto_amino_acid_from_seq
+    category: Format Conversion
+    description: Converts DNA sequence to an amino acid sequence.
+    io:
+      inputs:
+        - { name: in, types: [DNA], mode: stdin }
+      outputs:
+        - { name: out, types: [AminoAcids], mode: stdout }
+    parameters:
+      - { name: frame, type: integer, flag: -f }
+
+  - id: gto.amino.acid.to.group
+    name: Amino Acid To Group (GTO)
+    bin: gto_amino_acid_to_group
+    category: Amino Acid Operations
+    description: Converts an amino acid sequence to a group sequence.
+    io:
+      inputs:
+        - { name: in, types: [AminoAcids], mode: stdin }
+      outputs:
+        # NOTE(andrade):
+        # I'm marking this as AminoAcids cause
+        # I don't even know what a group is
+        # and the tests detect it as AminoAcids
+        - { name: out, types: [AminoAcids], mode: stdout }
+    parameters: []
+
+  - id: gto.amino.acid.to.pseudo.dna
+    name: Amino Acid To Pseudo Dna (GTO)
+    bin: gto_amino_acid_to_pseudo_dna
+    category: Amino Acid Operations
+    description: Converts an amino acid (protein) sequence to a pseudo DNA sequence.
+    io:
+      inputs:
+        - { name: in, types: [AminoAcids], mode: stdin }
+      outputs:
+        - { name: out, types: [DNA], mode: stdout }
+    parameters: []
+
+  - id: gto.brute.force.string
+    name: Brute Force String (GTO)
+    bin: gto_brute_force_string
+    category: Text Processing
+    description: Generates all combinations, line by line, for an inputted alphabet and specific size.
+    io:
+      inputs: []
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: alphabet, type: string, flag: -a, required: true }
+      - { name: size, type: integer, flag: -s, required: true }
+
+  - id: gto.char.to.line
+    name: Char To Line (GTO)
+    bin: gto_char_to_line
+    category: Text Processing
+    description: Splits a sequence into lines, creating an output sequence which has a char for each line.
+    io:
+      inputs:
+        - { name: in, types: [DNA, RNA, AminoAcids], mode: stdin }
+      outputs:
+        # NOTE(andrade):
+        # Maybe the DNA, RNA and AminoAcids 
+        # should support this one per line thing?
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters: []
+
+  # - id: gto.comparative.map
+  #   name: Comparative Map (GTO)
+  #   bin: gto_comparative_map
+  #   category: Information and Analysis
+  #   description: Creates a visualization for comparative maps.
+  #   io:
+  #     inputs:
+  #       - { name: in, types: [POS], mode: stdin }
+  #     outputs:
+  #       - { name: out, types: [SVG], mode: stdout }
+  #   parameters:
+  #     - { name: link, type: integer, flag: -l }
+  #     - { name: width, type: integer, flag: -w }
+  #     - { name: space, type: integer, flag: -s }
+  #     - { name: mult, type: integer, flag: -m }
+  #     - { name: begin, type: integer, flag: -b }
+  #     - { name: minimum, type: integer, flag: -c }
+  #     - { name: FILE, type: string, flag: -o }
+
+  - id: gto.fasta.complement
+    name: Fasta Complement (GTO)
+    bin: gto_fasta_complement
+    category: Sequence Manipulation
+    description: Replaces the ACGT bases with their complements in FASTA or Multi-FASTA file format.
+    io:
+      inputs:
+        - { name: in, types: [FASTA, Multi-FASTA], mode: stdin }
+      outputs:
+        - { name: out, types: [FASTA, Multi-FASTA], mode: stdout }
+    parameters: []
+
+  - id: gto.fasta.extract
+    name: Fasta Extract (GTO)
+    bin: gto_fasta_extract
+    category: Sequence Manipulation
+    description: Extracts sequences from a FASTA file, which the range is defined by the user in the parameters.
+    io:
+      inputs:
+        - { name: in, types: [FASTA], mode: stdin }
+      outputs:
+        - { name: out, types: [DNA, RNA, AminoAcids], mode: stdout }
+    parameters:
+      - { name: init, type: integer, flag: -i }
+      - { name: end, type: integer, flag: -e }
+
+  - id: gto.fasta.extract.by.read
+    name: Fasta Extract By Read (GTO)
+    bin: gto_fasta_extract_by_read
+    category: Sequence Manipulation
+    description: Extracts sequences from each read in a Multi-FASTA file (splited by \n), which the range is defined by the user in the parameters.
+    io:
+      inputs:
+        - { name: in, types: [FASTA, Multi-FASTA], mode: stdin }
+      outputs:
+        - { name: out, types: [FASTA, Multi-FASTA], mode: stdout }
+    parameters:
+      - { name: init, type: integer, flag: -i }
+      - { name: end, type: integer, flag: -e }
+
+  - id: gto.fasta.extract.pattern.coords
+    name: Fasta Extract Pattern Coords (GTO)
+    bin: gto_fasta_extract_pattern_coords
+    category: Sequence Manipulation
+    description: Extracts the header and coordinates from a Multi-FASTA file format given a pattern/motif in the sequence.
+    io:
+      inputs:
+        - { name: in, types: [Multi-FASTA], mode: stdin }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: pattern, type: string, flag: -p, required: true }
+
+  - id: gto.fasta.extract.read.by.pattern
+    name: Fasta Extract Read By Pattern (GTO)
+    bin: gto_fasta_extract_read_by_pattern
+    category: Sequence Manipulation
+    description: Extracts reads from a Multi-FASTA file format given a pattern in the header. Also, this pattern is case insensitive.
+    io:
+      inputs:
+        - { name: in, types: [Multi-FASTA], mode: stdin }
+      outputs:
+        - { name: out, types: [Multi-FASTA], mode: stdout }
+    parameters:
+      - { name: pattern, type: string, flag: -p, required: true }
+
+  - id: gto.fasta.find.n.pos
+    name: Fasta Find N Pos (GTO)
+    bin: gto_fasta_find_n_pos
+    category: Information and Analysis
+    description: Reports the 'N' regions in a sequence or FASTA (seq) file.
+    io:
+      inputs:
+        - { name: in, types: [FASTA], mode: stdin }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters: []
+
+  - id: gto.fasta.from.seq
+    name: Fasta From Seq (GTO)
+    bin: gto_fasta_from_seq
+    category: Format Conversion
+    description: Converts a genomic sequence to pseudo FASTA file format.
+    io:
+      inputs:
+        - { name: in, types: [DNA, RNA, AminoAcids], mode: stdin }
+      outputs:
+        - { name: out, types: [FASTA], mode: stdout }
+    parameters:
+      - { name: name, type: string, flag: -n }
+      - { name: lineSize, type: integer, flag: -l }
+
+  - id: gto.fasta.info
+    name: Fasta Info (GTO)
+    bin: gto_fasta_info
+    category: Information and Analysis
+    description: Shows the readed information of a FASTA or Multi-FASTA file format.
+    io:
+      inputs:
+        - { name: in, types: [FASTA], mode: stdin }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters: []
+
+  # - id: gto.fasta.merge.streams
+  #   name: Fasta Merge Streams (GTO)
+  #   bin: gto_fasta_merge_streams
+  #   category: Sequence Manipulation
+  #   description: It merges the three channels of information (headers, extra and DNA) and writes it into a FASTA file.
+  #   io:
+  #     inputs:
+  #       - { name: in, types: [TEXT, DNA, AminoAcids, RNA], mode: file }
+  #     outputs:
+  #       - { name: out, types: [FASTA, Multi-FASTA], mode: stdout }
+  #   parameters:
+  #     - { name: headers, type: "" }
+  #     - { name: extra, type: "" }
+  #     - { name: dna, type: "" }
+
+  - id: gto.fasta.mutate
+    name: Fasta Mutate (GTO)
+    bin: gto_fasta_mutate
+    category: Sequence Manipulation
+    description: Creates a synthetic mutation of a FASTA file given specific rates of editions, deletions and additions.
+    io:
+      inputs:
+        - { name: in, types: [FASTA, Multi-FASTA], mode: stdin }
+      outputs:
+        - { name: out, types: [FASTA, Multi-FASTA], mode: stdout }
+    parameters:
+      - { name: seed, type: integer, flag: -s }
+      - { name: edit-rate, type: float, flag: -e }
+      - { name: deletion-rate, type: float, flag: -d }
+      - { name: insertion-rate, type: float, flag: -i }
+
+  - id: gto.fasta.rand.extra.chars
+    name: Fasta Rand Extra Chars (GTO)
+    bin: gto_fasta_rand_extra_chars
+    category: Sequence Manipulation
+    description: Substitutes in the DNA sequence the outside ACGT chars by random ACGT symbols. It works both in FASTA and Multi-FASTA file formats.
+    io:
+      inputs:
+        - { name: in, types: [FASTA, Multi-FASTA], mode: stdin }
+      outputs:
+        - { name: out, types: [FASTA, Multi-FASTA], mode: stdout }
+    parameters: []
+
+  - id: gto.fasta.rename.human.headers
+    name: Fasta Rename Human Headers (GTO)
+    bin: gto_fasta_rename_human_headers
+    description: Changes the headers of FASTA or Multi-FASTA file to simple chrX by order, where X is the number.
+    io:
+      inputs:
+        - { name: in, types: [FASTA], mode: stdin }
+      outputs:
+        - { name: out, types: [FASTA], mode: stdout }
+    parameters: []
+
+  - id: gto.fasta.reverse
+    name: Fasta Reverse (GTO)
+    bin: gto_fasta_reverse
+    category: Sequence Manipulation
+    description: Reverses the order of a FASTA or Multi-FASTA file format.
+    io:
+      inputs:
+        - { name: in, types: [FASTA, Multi-FASTA], mode: stdin }
+      outputs:
+        - { name: out, types: [FASTA, Multi-FASTA], mode: stdout }
+    parameters: []
+
+  # TODO: The number of outputs is dynamic 
+  # We need to implement a way to deal with that
+  #
+  # - id: gto.fasta.split.reads
+  #   name: Fasta Split Reads (GTO)
+  #   bin: gto_fasta_split_reads
+  #   category: Sequence Manipulation
+  #   description: Splits a Multi-FASTA file to multiple FASTA files.
+  #   io:
+  #     inputs:
+  #       - { name: in, types: [Multi-FASTA], mode: stdin}
+  #     outputs:
+  #       - { name: out, types: [FASTA], mode: files }
+  #   parameters: []
+
+  - id: gto.fasta.split.streams
+    name: Fasta Split Streams (GTO)
+    bin: gto_fasta_split_streams
+    category: Sequence Manipulation
+    description: "Splits and writes a FASTA file into three channels of information: headers, extra and DNA."
+    io:
+      inputs:
+        - { name: in, types: [FASTA, Multi-FASTA], mode: stdin }
+      outputs:
+        - { name: headers, types: [TEXT], mode: file, filename: "HEADERS.JV2"}
+        - { name: extra, types: [TEXT], mode: file, filename: "EXTRA.JV2"}
+        - { name: DNA, types: [TEXT, DNA, AminoAcids, RNA], mode: file, filename: "DNA.JV2"}
+        
+    parameters: []
+
+  - id: gto.fasta.to.seq
+    name: Fasta To Seq (GTO)
+    bin: gto_fasta_to_seq
+    category: Format Conversion
+    description: Converts a FASTA or Multi-FASTA file format to a seq.
+    io:
+      inputs:
+        - { name: in, types: [FASTA, Multi-FASTA], mode: stdin }
+      outputs:
+        - { name: out, types: [DNA, RNA, AminoAcids], mode: stdout }
+    parameters: []
+
+  - id: gto.fastq.complement
+    name: Fastq Complement (GTO)
+    bin: gto_fastq_complement
+    category: Sequence Manipulation
+    description: Replaces the ACGT bases with their complements in a FASTQ file format.
+    io:
+      inputs:
+        - { name: in, types: [FASTQ], mode: stdin }
+      outputs:
+        - { name: out, types: [FASTQ], mode: stdout }
+    parameters: []
+
+  - id: gto.fastq.cut
+    name: Fastq Cut (GTO)
+    bin: gto_fastq_cut
+    category: Sequence Manipulation
+    description: Cuts read sequences in a FASTQ file. It requires that the initial and end positions for the cut.
+    io:
+      inputs:
+        - { name: in, types: [FASTQ], mode: stdin }
+      outputs:
+        - { name: out, types: [FASTQ], mode: stdout }
+    parameters:
+      - { name: initial, type: integer, flag: -i, required: true }
+      - { name: end, type: integer, flag: -e, required: true }
+
+  - id: gto.fastq.exclude.n
+    name: Fastq Exclude N (GTO)
+    bin: gto_fastq_exclude_n
+    category: Sequence Manipulation
+    description: Discards the FASTQ reads with the minimum number of 'N' symbols. If present, it will erase the second header (after +).
+    io:
+      inputs:
+        - { name: in, types: [FASTQ], mode: stdin }
+      outputs:
+        - { name: out, types: [FASTQ], mode: stdout }
+    parameters:
+      - { name: max, type: integer, flag: -m, required: true }
+
+  - id: gto.fastq.extract.quality.scores
+    name: Fastq Extract Quality Scores (GTO)
+    bin: gto_fastq_extract_quality_scores
+    category: Sequence Manipulation
+    description: Extracts all the quality-scores from FASTQ reads.
+    io:
+      inputs:
+        - { name: in, types: [FASTQ], mode: stdin }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters: []
+
+  - id: gto.fastq.from.seq
+    name: Fastq From Seq (GTO)
+    bin: gto_fastq_from_seq
+    category: Format Conversion
+    description: Converts a genomic sequence to pseudo FASTQ file format.
+    io:
+      inputs:
+        - { name: in, types: [DNA, RNA, AminoAcids], mode: stdin }
+      outputs:
+        - { name: out, types: [FASTQ], mode: stdout }
+    parameters:
+      - { name: name, type: string, flag: -n }
+      - { name: lineSize, type: integer, flag: -l }
+
+  - id: gto.fastq.info
+    name: Fastq Info (GTO)
+    bin: gto_fastq_info
+    category: Information and Analysis
+    description: Analyses the basic information of FASTQ file format.
+    io:
+      inputs:
+        - { name: in, types: [FASTQ], mode: stdin }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters: []
+
+  - id: gto.fastq.maximum.read.size
+    name: Fastq Maximum Read Size (GTO)
+    bin: gto_fastq_maximum_read_size
+    category: Sequence Manipulation
+    description: Filters the FASTQ reads with the length higher than the value defined. If present, it will erase the second header (after +).
+    io:
+      inputs:
+        - { name: in, types: [FASTQ], mode: stdin }
+      outputs:
+        - { name: out, types: [FASTQ], mode: stdout }
+    parameters:
+      - { name: size, type: integer, flag: -s, required: true }
+
+  # Note(andrade):
+  # This gives an `*** stack smashing detected ***: terminated` error in the tests
+  #
+  # - id: gto.fastq.minimum.local.quality.score.forward
+  #   name: Fastq Minimum Local Quality Score Forward (GTO)
+  #   bin: gto_fastq_minimum_local_quality_score_forward
+  #   category: Sequence Manipulation
+  #   description: Filters the reads considering the quality score average of a defined window size of bases.
+  #   io:
+  #     inputs:
+  #       - { name: in, types: [FASTQ], mode: stdin }
+  #     outputs:
+  #       - { name: out, types: [FASTQ], mode: stdout }
+  #   parameters:
+  #     - { name: windowsize, type: integer, flag: -k }
+  #     - { name: minavg, type: integer, flag: -w }
+  #     - { name: minqs, type: integer, flag: -m }
+
+  # Note(andrade):
+  # This gives an `*** stack smashing detected ***: terminated` error in the tests
+  #
+  # - id: gto.fastq.minimum.local.quality.score.reverse
+  #   name: Fastq Minimum Local Quality Score Reverse (GTO)
+  #   bin: gto_fastq_minimum_local_quality_score_reverse
+  #   category: Sequence Manipulation
+  #   description: Filters the reverse reads, considering the quality score average of a defined window size of bases.
+  #   io:
+  #     inputs:
+  #       - { name: in, types: [FASTQ], mode: stdin }
+  #     outputs:
+  #       - { name: out, types: [FASTQ], mode: stdout }
+  #   parameters:
+  #     - { name: windowsize, type: integer, flag: -k }
+  #     - { name: minavg, type: integer, flag: -w }
+  #     - { name: minqs, type: integer, flag: -m }
+
+  - id: gto.fastq.minimum.quality.score
+    name: Fastq Minimum Quality Score (GTO)
+    bin: gto_fastq_minimum_quality_score
+    category: Sequence Manipulation
+    description: Discards reads with average quality-score below of the defined.
+    io:
+      inputs:
+        - { name: in, types: [FASTQ], mode: stdin }
+      outputs:
+        - { name: out, types: [FASTQ], mode: stdout }
+    parameters:
+      - { name: min, type: integer, flag: -m, required: true }
+
+  - id: gto.fastq.minimum.read.size
+    name: Fastq Minimum Read Size (GTO)
+    bin: gto_fastq_minimum_read_size
+    category: Sequence Manipulation
+    description: Filters the FASTQ reads with the length smaller than the value defined. If present, it will erase the second header (after +).
+    io:
+      inputs:
+        - { name: in, types: [FASTQ], mode: stdin }
+      outputs:
+        - { name: out, types: [FASTQ], mode: stdout }
+    parameters:
+      - { name: size, type: integer, flag: -s, required: true }
+
+  - id: gto.fastq.mutate
+    name: Fastq Mutate (GTO)
+    bin: gto_fastq_mutate
+    category: Sequence Manipulation
+    description: Creates a synthetic mutation of a FASTQ file given specific rates of mutations, deletions and additions.
+    io:
+      inputs:
+        - { name: in, types: [FASTQ], mode: stdin }
+      outputs:
+        - { name: out, types: [FASTQ], mode: stdout }
+    parameters:
+      - { name: seed, type: integer, flag: -s }
+      - { name: mutation-rate, type: float, flag: -m }
+      - { name: deletion-rate, type: float, flag: -d }
+      - { name: insertion-rate, type: float, flag: -i }
+
+  # Note(andrade)
+  # This seems like a mess i don't want to deal with
+  #
+  # - id: gto.fastq.pack
+  #   name: Fastq Pack (GTO)
+  #   bin: gto_fastq_pack
+  #   category: Sequence Manipulation
+  #   description: Packages each FASTQ read in a single line. It can show the read score first or the dna sequence, depending on the execution mode.
+  #   io:
+  #     inputs:
+  #       - { name: in, types: [FASTQ], mode: stdin }
+  #     outputs:
+  #       - { name: out, types: [PackagedFASTQ], mode: stdout }
+  #   parameters: []
+
+  - id: gto.fastq.quality.score.info
+    name: Fastq Quality Score Info (GTO)
+    bin: gto_fastq_quality_score_info
+    category: Sequence Manipulation
+    description: Analyses the quality-scores of a FASTQ file.
+    io:
+      inputs:
+        - { name: in, types: [FASTQ], mode: stdin }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: max, type: integer, flag: -m }
+
+  - id: gto.fastq.quality.score.max
+    name: Fastq Quality Score Max (GTO)
+    bin: gto_fastq_quality_score_max
+    category: Sequence Manipulation
+    description: Analyses the maximal quality-scores of a FASTQ file.
+    io:
+      inputs:
+        - { name: in, types: [FASTQ], mode: stdin }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: max, type: integer, flag: -m }
+
+  - id: gto.fastq.quality.score.min
+    name: Fastq Quality Score Min (GTO)
+    bin: gto_fastq_quality_score_min
+    category: Sequence Manipulation
+    description: Analyses the minimal quality-scores of a FASTQ file.
+    io:
+      inputs:
+        - { name: in, types: [FASTQ], mode: stdin }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: max, type: integer, flag: -m }
+
+  - id: gto.fastq.rand.extra.chars
+    name: Fastq Rand Extra Chars (GTO)
+    bin: gto_fastq_rand_extra_chars
+    category: Sequence Manipulation
+    description: Substitutes in the FASTQ files, the DNA sequence the outside ACGT chars by random ACGT symbols.
+    io:
+      inputs:
+        - { name: in, types: [FASTQ], mode: stdin }
+      outputs:
+        - { name: out, types: [FASTQ], mode: stdout }
+    parameters: []
+
+  - id: gto.fastq.reverse
+    name: Fastq Reverse (GTO)
+    bin: gto_fastq_reverse
+    category: Sequence Manipulation
+    description: Reverses the ACGT bases order for each read in a FASTQ file format.
+    io:
+      inputs:
+        - { name: in, types: [FASTQ], mode: stdin }
+      outputs:
+        - { name: out, types: [FASTQ], mode: stdout }
+    parameters: []
+
+  # TODO: This requires the output folders to be passed as arguments or it won't run
+  # we need to implement something that makes sure we create the files for the outputs before running
+  #
+  # - id: gto.fastq.split
+  #   name: Fastq Split (GTO)
+  #   bin: gto_fastq_split
+  #   category: Sequence Manipulation
+  #   description: Splits Paired End files according to the direction of the strand ('/1' or '/2'). It writes by default singleton reads as forward stands.
+  #   io:
+  #     inputs:
+  #       - { name: in, types: [FASTQ], mode: stdin }
+  #     outputs:
+  #       - { name: forward, types: [FASTQ], mode: file }  
+  #       - { name: reverse, types: [FASTQ], mode: file }
+  #       - { name: read_info, types: [TEXT], mode: stdout }
+  #   parameters: []
+
+  - id: gto.fastq.to.fasta
+    name: Fastq To Fasta (GTO)
+    bin: gto_fastq_to_fasta
+    category: Format Conversion
+    description: Converts a FASTQ file format to a pseudo FASTA file. It does NOT align the sequence. It extracts the sequence and adds a pseudo header.
+    io:
+      inputs:
+        - { name: in, types: [FASTQ], mode: stdin }
+      outputs:
+        - { name: out, types: [FASTA], mode: stdout }
+    parameters: []
+
+  - id: gto.fastq.to.mfasta
+    name: Fastq To Mfasta (GTO)
+    bin: gto_fastq_to_mfasta
+    category: Format Conversion
+    description: Converts a FASTQ file format to a pseudo Multi-FASTA file. It does NOT align the sequence. It extracts the sequence and adds each header in a Multi-FASTA format.
+    io:
+      inputs:
+        - { name: in, types: [FASTQ], mode: stdin }
+      outputs:
+        - { name: out, types: [Multi-FASTA], mode: stdout }
+    parameters: []
+
+  # - id: gto.fastq.unpack
+  #   name: Fastq Unpack (GTO)
+  #   bin: gto_fastq_unpack
+  #   category: Sequence Manipulation
+  #   description: Unpacks the FASTQ reads packaged using the gto_fastq_pack tool.
+  #   io:
+  #     inputs:
+  #       - { name: in, types: [PackagedFASTQ], mode: stdin }
+  #     outputs:
+  #       - { name: out, types: [FASTQ], mode: stdout }
+  #   parameters: []
+
+  - id: gto.filter
+    name: Filter (GTO)
+    bin: gto_filter
+    category: Text Processing
+    description: Filters numerical sequences using a low-pass filter.
+    io:
+      inputs:
+        - { name: in, types: [NUM], mode: stdin }
+      outputs:
+        # NOTE(andrade):
+        # Not currently marked as file since the format
+        # is not the same as the usual NUM output
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: windowsize, type: integer, flag: -w }
+      - { name: drop, type: float, flag: -d }
+      - { name: windowtype, type: integer, flag: -t }
+
+  - id: gto.genomic.complement
+    name: Genomic Complement (GTO)
+    bin: gto_genomic_complement
+    category: Genomic Operations
+    description: Replaces the ACGT bases with their complements in a DNA sequence. It works in sequence file formats.
+    io:
+      inputs:
+        - { name: in, types: [DNA], mode: stdin }
+      outputs:
+        - { name: out, types: [DNA], mode: stdout }
+    parameters: []
+
+  - id: gto.genomic.count.bases
+    name: Genomic Count Bases (GTO)
+    bin: gto_genomic_count_bases
+    category: Genomic Operations
+    description: Counts the number of bases in sequence, FASTA or FASTQ files.
+    io:
+      inputs:
+        - { name: in, types: [DNA, FASTA, FASTQ], mode: stdin }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters: []
+
+  - id: gto.genomic.dna.mutate
+    name: Genomic Dna Mutate (GTO)
+    bin: gto_genomic_dna_mutate
+    category: Genomic Operations
+    description: Creates a synthetic mutation of a sequence file given specific rates of mutations, deletions and additions.
+    io:
+      inputs:
+        - { name: in, types: [DNA], mode: stdin }
+      outputs:
+        - { name: out, types: [DNA], mode: stdout }
+    parameters:
+      - { name: seed, type: integer, flag: -s }
+      - { name: mutation-rate, type: float, flag: -m }
+      - { name: deletion-rate, type: float, flag: -d }
+      - { name: insertion-rate, type: float, flag: -i }
+
+  - id: gto.genomic.extract
+    name: Genomic Extract (GTO)
+    bin: gto_genomic_extract
+    category: Genomic Operations
+    description: Extracts sequences from a sequence file, which the range is defined by the user in the parameters.
+    io:
+      inputs:
+        - { name: in, types: [DNA], mode: stdin }
+      outputs:
+        - { name: out, types: [DNA], mode: stdout }
+    parameters:
+      - { name: init, type: integer, flag: -i }
+      - { name: end, type: integer, flag: -e }
+
+  - id: gto.genomic.gen.random.dna
+    name: Genomic Gen Random Dna (GTO)
+    bin: gto_genomic_gen_random_dna
+    category: Genomic Operations
+    description: Generates a synthetic DNA.
+    io:
+      inputs: []
+      outputs:
+        - { name: out, types: [DNA], mode: stdout }
+    parameters:
+      - { name: seed, type: integer, flag: -s }
+      - { name: nSymbols, type: integer, flag: -n }
+      - { name: frequency, type: string, flag: -f }
+
+  # - id: gto.genomic.period
+  #   name: Genomic Period (GTO)
+  #   bin: gto_genomic_period
+  #   category: Genomic Operations
+  #   description: Calculates the best order depth of a sequence, using FCMs. It only works "ACGT", while the rest will be discarded.
+  #   io:
+  #     inputs:
+  #       - { name: in, types: [DNA], mode: stdin }
+  #     outputs:
+  #       - { name: out, types: [NUM], mode: stdout }
+  #   parameters: []
+
+  - id: gto.genomic.rand.seq.extra.chars
+    name: Genomic Rand Seq Extra Chars (GTO)
+    bin: gto_genomic_rand_seq_extra_chars
+    category: Genomic Operations
+    description: Substitutes in the DNA sequence the outside ACGT chars by random ACGT symbols. It works in sequence file formats.
+    io:
+      inputs:
+        - { name: in, types: [DNA], mode: stdin }
+      outputs:
+        - { name: out, types: [DNA], mode: stdout }
+    parameters: []
+
+  - id: gto.genomic.reverse
+    name: Genomic Reverse (GTO)
+    bin: gto_genomic_reverse
+    category: Genomic Operations
+    description: Reverses the ACGT bases order for each read in a sequence file.
+    io:
+      inputs:
+        - { name: in, types: [DNA], mode: stdin }
+      outputs:
+        - { name: out, types: [DNA], mode: stdout }
+    parameters: []
+
+  - id: gto.info
+    name: Info (GTO)
+    bin: gto_info
+    category: Information and Analysis
+    description: Gives the basic properties of the file, namely size, cardinality, distribution percentage of the symbols, among others.
+    io:
+      inputs:
+        - { name: in, types: [TEXT, Multi-FASTA, FASTA, FASTQ, NUM, DNA, RNA, AminoAcids], mode: stdin}
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters: []
+
+  - id: gto.lower.bound
+    name: Lower Bound (GTO)
+    bin: gto_lower_bound
+    category: Mathematical Operations
+    description: Sets an lower bound in a file with a value per line.
+    io:
+      inputs:
+        - { name: in, types: [NUM], mode: stdin }
+      outputs:
+        - { name: out, types: [NUM], mode: stdout }
+    parameters:
+      - { name: lowerbound, type: integer, flag: -l, required: true }
+
+  - id: gto.max
+    name: Max (GTO)
+    bin: gto_max
+    category: Mathematical Operations
+    description: Computes the maximum value in each row between two files.
+    io:
+      inputs:
+        - { name: file1, types: [NUM], mode: file, flag: -f }
+        - { name: file2, types: [NUM], mode: file, flag: -s }
+      outputs:
+        - { name: out, types: [NUM], mode: stdout }
+    parameters: []
+
+  - id: gto.min
+    name: Min (GTO)
+    bin: gto_min
+    category: Mathematical Operations
+    description: Computes the minium value in each row between two files.
+    io:
+      inputs:
+        - { name: file1, types: [NUM], mode: file, flag: -f }
+        - { name: file2, types: [NUM], mode: file, flag: -s }
+      outputs:
+        - { name: out, types: [NUM], mode: stdout }
+    parameters: []
+
+  - id: gto.new.line.on.new.x
+    name: New Line On New X (GTO)
+    bin: gto_new_line_on_new_x
+    category: Text Processing
+    description: Splits different rows with a new empty row.
+    io:
+      inputs:
+        - { name: in, types: [NUM], mode: stdin }
+      outputs:
+        # NOTE(andrade):
+        # This outputs a matrix so maybe 
+        # we need to add support for that
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters: []
+
+  - id: gto.permute.by.blocks
+    name: Permute By Blocks (GTO)
+    bin: gto_permute_by_blocks
+    category: Mathematical Operations
+    description: Permutates by block sequence, FASTA and Multi-FASTA files.
+    io:
+      inputs:
+        - { name: in, types: [FASTA, Multi-FASTA], mode: stdin }
+      outputs:
+        - { name: out, types: [DNA, RNA, AminoAcids], mode: stdout }
+    parameters:
+      - { name: numbases, type: integer, flag: -b, required: true }
+      - { name: seed, type: integer, flag: -s, required: true }
+
+  - id: gto.real.to.binary.with.threshold
+    name: Real To Binary With Threshold (GTO)
+    bin: gto_real_to_binary_with_threshold
+    category: Mathematical Operations
+    description: Converts a sequence of real numbers into a binary sequence, given a threshold. The numbers below to the threshold will be 0.
+    io:
+      inputs:
+        - { name: in, types: [NUM], mode: stdin }
+      outputs:
+        - { name: out, types: [BIN], mode: stdout }
+    parameters:
+      - { name: threshold, type: float, flag: -t, required: true }
+
+  - id: gto.segment
+    name: Segment (GTO)
+    bin: gto_segment
+    category: Text Processing
+    description: Segments a filtered sequence based on a threshold.
+    io:
+      inputs:
+        - { name: in, types: [NUM], mode: stdin }
+      outputs:
+        - { name: out, types: [TEXT, NUM], mode: stdout }
+    parameters:
+      - { name: threshold, type: float, flag: -t, required: true }
+
+  - id: gto.sum
+    name: Sum (GTO)
+    bin: gto_sum
+    category: Mathematical Operations
+    description: Adds decimal values in file, line by line, splitted by spaces or tabs.
+    io:
+      inputs:
+        - { name: in, types: [NUM], mode: stdin }
+      outputs:
+        - { name: out, types: [NUM], mode: stdout }
+    parameters: []
+
+  - id: gto.upper.bound
+    name: Upper Bound (GTO)
+    bin: gto_upper_bound
+    category: Mathematical Operations
+    description: Sets an upper bound in a file with a value per line.
+    io:
+      inputs:
+        - { name: in, types: [NUM], mode: stdin }
+      outputs:
+        - { name: out, types: [NUM], mode: stdout }
+    parameters:
+      - { name: upperbound, type: integer, flag: -u, required: true }
+
+  - id: gto.word.search
+    name: Word Search (GTO)
+    bin: gto_word_search
+    category: Text Processing
+    description: Search for a word in a file. It is case sensitive.
+    io:
+      inputs:
+        - {name: in, types: [TEXT, Multi-FASTA, FASTA, FASTQ, NUM, DNA, RNA, AminoAcids], mode: stdin}
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout}
+    parameters:
+      - { name: word, type: string, flag: -w, required: true }
