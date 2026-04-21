@@ -41,7 +41,7 @@ operations:
     description: Search for lines matching a pattern in a file
     io:
       inputs:
-        - { name: input, types: [TEXT, FASTA, FASTQ], mode: file }
+        - { name: input, types: [TEXT, Multi-FASTA, FASTA, FASTQ, NUM, DNA, RNA, AminoAcids], mode: file }
       outputs:
         - { name: output, types: [TEXT], mode: stdout }
     parameters:
