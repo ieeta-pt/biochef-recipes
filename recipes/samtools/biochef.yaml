@@ -1,0 +1,326 @@
+apiVersion: v1
+
+id: app.biochef.samtools
+name: samtools
+description: Utilities for manipulating SAM/BAM/CRAM alignment files.
+
+version: 1.21-bc.1
+homepage: https://github.com/samtools/samtools
+license:
+  spdx: MIT
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/samtools/samtools
+  tag: "1.21"
+  version: "1.21"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: biowasm
+    biowasm:
+      package: samtools
+
+runtime:
+  modes: [wasm, remote]
+
+operations:
+  - id: samtools.view
+    name: View (samtools)
+    category: Format Conversion
+    bin: samtools
+    description: View, subset and convert SAM/BAM/CRAM alignments
+    io:
+      inputs:
+        - { name: in, types: [SAM, BAM, CRAM], mode: file }
+        - { name: fasta_ref, types: [FASTA], mode: file, flag: --reference }
+      outputs:
+        - { name: out, types: [SAM, BAM, CRAM], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: view, required: true, hidden: true }
+      - { name: bam_output, type: flag, flag: -b }
+      - { name: cram_output, type: flag, flag: -C }
+      - { name: with_header, type: flag, flag: -h }
+      - { name: header_only, type: flag, flag: -H }
+      - { name: count_only, type: flag, flag: -c }
+      - { name: require_flags, type: integer, flag: -f }
+      - { name: exclude_flags, type: integer, flag: -F }
+      - { name: min_mapq, type: integer, flag: -q }
+      - { name: regions_bed, type: string, flag: -L }
+      - { name: read_group, type: string, flag: -r }
+      - { name: subsample, type: float, flag: -s }
+      - { name: min_qlen, type: integer, flag: -m }
+      - { name: filter_expr, type: string, flag: -e }
+      - { name: no_pg, type: flag, flag: --no-PG }
+      - { name: threads, type: integer, flag: --threads, default: 1 }
+
+  - id: samtools.sort
+    name: Sort (samtools)
+    category: Genomic Operations
+    bin: samtools
+    description: Sort SAM/BAM/CRAM by coordinate or read name
+    io:
+      inputs:
+        - { name: in, types: [SAM, BAM, CRAM], mode: file }
+        - { name: fasta_ref, types: [FASTA], mode: file, flag: --reference }
+      outputs:
+        - { name: out, types: [SAM, BAM, CRAM], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: sort, required: true, hidden: true }
+      - { name: output_format, type: string, flag: -O }
+      - { name: name_sort, type: flag, flag: -n }
+      - { name: tag_sort, type: string, flag: -t }
+      - { name: max_mem, type: string, flag: -m }
+      - { name: minimiser_sort, type: flag, flag: -M }
+      - { name: threads, type: integer, flag: --threads, default: 1 }
+
+  - id: samtools.index
+    name: Index (samtools)
+    category: Genomic Operations
+    bin: samtools
+    description: Index a coordinate-sorted BAM/CRAM (writes .bai sibling file)
+    io:
+      inputs:
+        - { name: in, types: [BAM, CRAM], mode: file }
+      outputs:
+        - { name: out, types: [BIN], mode: file, filename: "in.txt.bai" }
+    parameters:
+      - { name: command, type: string, default: index, required: true, hidden: true }
+      - { name: threads, type: integer, flag: --threads, default: 1 }
+
+  - id: samtools.faidx
+    name: Faidx (samtools)
+    category: Genomic Operations
+    bin: samtools
+    description: Index a FASTA file (writes .fai sibling file)
+    io:
+      inputs:
+        - { name: in, types: [FASTA], mode: file }
+      outputs:
+        - { name: out, types: [BIN], mode: file, filename: "in.txt.fai" }
+    parameters:
+      - { name: command, type: string, default: faidx, required: true, hidden: true }
+
+  - id: samtools.fastq
+    name: Fastq (samtools)
+    category: Format Conversion
+    bin: samtools
+    description: Convert BAM/CRAM alignments to FASTQ
+    io:
+      inputs:
+        - { name: in, types: [BAM, CRAM], mode: file }
+        - { name: fasta_ref, types: [FASTA], mode: file, flag: --reference }
+      outputs:
+        - { name: out, types: [FASTQ], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: fastq, required: true, hidden: true }
+      - { name: require_flags, type: integer, flag: -f }
+      - { name: exclude_flags, type: integer, flag: -F }
+      - { name: tags_to_keep, type: string, flag: -T }
+      - { name: append_pair_suffix, type: flag, flag: -N }
+      - { name: illumina_format, type: flag, flag: -i }
+      - { name: threads, type: integer, flag: --threads, default: 1 }
+
+  - id: samtools.fasta
+    name: Fasta (samtools)
+    category: Format Conversion
+    bin: samtools
+    description: Convert BAM/CRAM alignments to FASTA
+    io:
+      inputs:
+        - { name: in, types: [BAM, CRAM], mode: file }
+        - { name: fasta_ref, types: [FASTA], mode: file, flag: --reference }
+      outputs:
+        - { name: out, types: [FASTA], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: fasta, required: true, hidden: true }
+      - { name: require_flags, type: integer, flag: -f }
+      - { name: exclude_flags, type: integer, flag: -F }
+      - { name: tags_to_keep, type: string, flag: -T }
+      - { name: threads, type: integer, flag: --threads, default: 1 }
+
+  - id: samtools.flagstat
+    name: Flagstat (samtools)
+    category: Information and Analysis
+    bin: samtools
+    description: Per-flag counts (counts of alignments by SAM flag bit)
+    io:
+      inputs:
+        - { name: in, types: [BAM, CRAM, SAM], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: flagstat, required: true, hidden: true }
+      - { name: threads, type: integer, flag: --threads, default: 1 }
+
+  - id: samtools.stats
+    name: Stats (samtools)
+    category: Information and Analysis
+    bin: samtools
+    description: Comprehensive alignment statistics
+    io:
+      inputs:
+        - { name: in, types: [BAM, CRAM, SAM], mode: file }
+        - { name: fasta_ref, types: [FASTA], mode: file, flag: --reference }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: stats, required: true, hidden: true }
+      - { name: target_regions, type: string, flag: -t }
+      - { name: bwa_trim_quality, type: integer, flag: -q }
+      - { name: insert_size, type: integer, flag: -i }
+      - { name: read_length, type: integer, flag: -l }
+      - { name: required_flag, type: integer, flag: -f }
+      - { name: filtering_flag, type: integer, flag: -F }
+      - { name: split_tag, type: string, flag: -S }
+      - { name: threads, type: integer, flag: --threads, default: 1 }
+
+  - id: samtools.depth
+    name: Depth (samtools)
+    category: Information and Analysis
+    bin: samtools
+    description: Per-position read depth
+    io:
+      inputs:
+        - { name: in, types: [BAM, CRAM], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: depth, required: true, hidden: true }
+      - { name: all_positions, type: flag, flag: -a }
+      - { name: regions_bed, type: string, flag: -b }
+      - { name: region, type: string, flag: -r }
+      - { name: min_base_qual, type: integer, flag: -q }
+      - { name: min_map_qual, type: integer, flag: -Q }
+      - { name: max_depth, type: integer, flag: -d }
+      - { name: threads, type: integer, flag: --threads, default: 1 }
+
+  - id: samtools.merge
+    name: Merge (samtools)
+    category: Genomic Operations
+    bin: samtools
+    description: Merge two coordinate-sorted BAM/CRAM files
+    io:
+      inputs:
+        - { name: in1, types: [BAM, CRAM], mode: file }
+        - { name: in2, types: [BAM, CRAM], mode: file }
+      outputs:
+        - { name: out, types: [BAM, CRAM], mode: file, flag: -o }
+    parameters:
+      - { name: command, type: string, default: merge, required: true, hidden: true }
+      - { name: force, type: flag, flag: -f }
+      - { name: name_sorted, type: flag, flag: -n }
+      - { name: header_file, type: string, flag: -h }
+      - { name: region, type: string, flag: -R }
+      - { name: combine_RG, type: flag, flag: -c }
+      - { name: combine_PG, type: flag, flag: -p }
+      - { name: compression_level, type: integer, flag: -l }
+      - { name: threads, type: integer, flag: --threads, default: 1 }
+
+  - id: samtools.mpileup
+    name: Mpileup (samtools)
+    category: Information and Analysis
+    bin: samtools
+    description: Per-position pileup of read bases (text format)
+    io:
+      inputs:
+        - { name: in, types: [BAM, CRAM], mode: file }
+        - { name: fasta_ref, types: [FASTA], mode: file, flag: -f }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: mpileup, required: true, hidden: true }
+      - { name: regions_bed, type: string, flag: -l }
+      - { name: region, type: string, flag: -r }
+      - { name: min_base_qual, type: integer, flag: -Q }
+      - { name: min_map_qual, type: integer, flag: -q }
+      - { name: max_depth, type: integer, flag: -d }
+      - { name: count_anomalous, type: flag, flag: -A }
+      - { name: disable_BAQ, type: flag, flag: -B }
+      - { name: extended_BAQ, type: flag, flag: -E }
+      - { name: output_BP, type: flag, flag: -O }
+      - { name: output_MQ, type: flag, flag: -s }
+      - { name: output_all, type: flag, flag: -a }
+
+  - id: samtools.markdup
+    name: Markdup (samtools)
+    category: Genomic Operations
+    bin: samtools
+    description: Mark or remove PCR/optical duplicates in a coordinate-sorted BAM
+    io:
+      inputs:
+        - { name: in, types: [BAM, CRAM], mode: file }
+      outputs:
+        - { name: out, types: [BAM, CRAM], mode: file }
+    parameters:
+      - { name: command, type: string, default: markdup, required: true, hidden: true }
+      - { name: remove_duplicates, type: flag, flag: -r }
+      - { name: enable_stats, type: flag, flag: -s }
+      - { name: stats_file, type: string, flag: -f }
+      - { name: tag_original, type: flag, flag: -t }
+      - { name: optical_distance, type: integer, flag: -d }
+      - { name: barcode_tag, type: string, flag: --barcode-tag }
+      - { name: threads, type: integer, flag: --threads, default: 1 }
+
+  - id: samtools.coverage
+    name: Coverage (samtools)
+    category: Information and Analysis
+    bin: samtools
+    description: Per-reference coverage summary (mean depth, % covered, mapq)
+    io:
+      inputs:
+        - { name: in, types: [BAM, CRAM], mode: file }
+        - { name: fasta_ref, types: [FASTA], mode: file, flag: --reference }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: coverage, required: true, hidden: true }
+      - { name: region, type: string, flag: -r }
+      - { name: histogram, type: flag, flag: -m }
+      - { name: n_bins, type: integer, flag: -w }
+      - { name: min_map_qual, type: integer, flag: -q }
+      - { name: min_base_qual, type: integer, flag: -Q }
+      - { name: max_depth, type: integer, flag: -d }
+      - { name: no_header, type: flag, flag: -H }
+
+  - id: samtools.dict
+    name: Dict (samtools)
+    category: Format Conversion
+    bin: samtools
+    description: Build a sequence dictionary text file from a FASTA reference
+    io:
+      inputs:
+        - { name: in, types: [FASTA], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: dict, required: true, hidden: true }
+      - { name: assembly, type: string, flag: -a }
+      - { name: species, type: string, flag: -s }
+      - { name: uri, type: string, flag: -u }
+      - { name: alias, type: flag, flag: -A }
+      - { name: no_header, type: flag, flag: -H }
+
+  - id: samtools.collate
+    name: Collate (samtools)
+    category: Genomic Operations
+    bin: samtools
+    description: Group reads of the same name together (fast, not strictly sorted)
+    io:
+      inputs:
+        - { name: in, types: [BAM, CRAM, SAM], mode: file }
+        - { name: fasta_ref, types: [FASTA], mode: file, flag: --reference }
+      outputs:
+        - { name: out, types: [BAM, CRAM, SAM], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: collate, required: true, hidden: true }
+      - { name: stdout_output, type: flag, flag: -O, required: true, hidden: true }
+      - { name: output_format, type: string, flag: --output-fmt }
+      - { name: fast_mode, type: flag, flag: -f }
+      - { name: temp_files, type: integer, flag: -n }
+      - { name: read_buffer, type: string, flag: -r }
+      - { name: threads, type: integer, flag: --threads, default: 1 }
