@@ -1,0 +1,289 @@
+apiVersion: v1
+
+id: app.biochef.bedtools
+name: bedtools
+description: Genome arithmetic over BED/GFF/VCF/BAM intervals.
+
+version: 2.31.0-bc.1
+homepage: https://github.com/arq5x/bedtools2
+license:
+  spdx: GPL-2.0-only
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/arq5x/bedtools2
+  tag: "v2.31.0"
+  version: "2.31.0"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: biowasm
+    biowasm:
+      package: bedtools
+
+runtime:
+  modes: [wasm, remote]
+
+operations:
+  - id: bedtools.intersect
+    name: Intersect (bedtools)
+    category: Genomic Operations
+    bin: bedtools
+    description: Report features in A that overlap B (and vice-versa)
+    io:
+      inputs:
+        - { name: a, types: [BED, GFF, VCF, BAM], mode: file, flag: -a }
+        - { name: b, types: [BED, GFF, VCF, BAM], mode: file, flag: -b }
+      outputs:
+        - { name: out, types: [BED], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: intersect, required: true, hidden: true }
+      - { name: write_a, type: flag, flag: -wa }
+      - { name: write_b, type: flag, flag: -wb }
+      - { name: write_overlap, type: flag, flag: -wo }
+      - { name: write_a_or_overlap, type: flag, flag: -wao }
+      - { name: left_outer, type: flag, flag: -loj }
+      - { name: count_overlaps, type: flag, flag: -c }
+      - { name: report_no_overlap, type: flag, flag: -v }
+      - { name: unique, type: flag, flag: -u }
+      - { name: same_strand, type: flag, flag: -s }
+      - { name: opposite_strand, type: flag, flag: -S }
+      - { name: min_overlap_a, type: float, flag: -f }
+      - { name: min_overlap_b, type: float, flag: -F }
+      - { name: reciprocal, type: flag, flag: -r }
+      - { name: either_overlap, type: flag, flag: -e }
+      - { name: split_blocks, type: flag, flag: -split }
+      - { name: header, type: flag, flag: -header }
+      - { name: sorted, type: flag, flag: -sorted }
+
+  - id: bedtools.merge
+    name: Merge (bedtools)
+    category: Genomic Operations
+    bin: bedtools
+    description: Merge overlapping or adjacent BED/GFF/VCF features (sorted input required)
+    io:
+      inputs:
+        - { name: i, types: [BED, GFF, VCF], mode: file, flag: -i }
+      outputs:
+        - { name: out, types: [BED], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: merge, required: true, hidden: true }
+      - { name: same_strand, type: flag, flag: -s }
+      - { name: strand, type: string, flag: -S }
+      - { name: distance, type: integer, flag: -d }
+      - { name: columns, type: string, flag: -c }
+      - { name: operations, type: string, flag: -o }
+      - { name: delimiter, type: string, flag: -delim }
+      - { name: header, type: flag, flag: -header }
+
+  - id: bedtools.sort
+    name: Sort (bedtools)
+    category: Genomic Operations
+    bin: bedtools
+    description: Sort BED/GFF/VCF by chromosome and position
+    io:
+      inputs:
+        - { name: i, types: [BED, GFF, VCF], mode: file, flag: -i }
+      outputs:
+        - { name: out, types: [BED], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: sort, required: true, hidden: true }
+      - { name: chrom_then_size_asc, type: flag, flag: -chrThenSizeA }
+      - { name: chrom_then_size_desc, type: flag, flag: -chrThenSizeD }
+      - { name: chrom_then_score_asc, type: flag, flag: -chrThenScoreA }
+      - { name: chrom_then_score_desc, type: flag, flag: -chrThenScoreD }
+      - { name: size_asc, type: flag, flag: -sizeA }
+      - { name: size_desc, type: flag, flag: -sizeD }
+      - { name: header, type: flag, flag: -header }
+
+  - id: bedtools.subtract
+    name: Subtract (bedtools)
+    category: Genomic Operations
+    bin: bedtools
+    description: Remove from A any feature overlap with B
+    io:
+      inputs:
+        - { name: a, types: [BED, GFF, VCF], mode: file, flag: -a }
+        - { name: b, types: [BED, GFF, VCF], mode: file, flag: -b }
+      outputs:
+        - { name: out, types: [BED], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: subtract, required: true, hidden: true }
+      - { name: remove_entire, type: flag, flag: -A }
+      - { name: remove_full_only, type: flag, flag: -N }
+      - { name: same_strand, type: flag, flag: -s }
+      - { name: opposite_strand, type: flag, flag: -S }
+      - { name: min_overlap_a, type: float, flag: -f }
+      - { name: min_overlap_b, type: float, flag: -F }
+      - { name: reciprocal, type: flag, flag: -r }
+      - { name: either_overlap, type: flag, flag: -e }
+      - { name: header, type: flag, flag: -header }
+
+  - id: bedtools.closest
+    name: Closest (bedtools)
+    category: Genomic Operations
+    bin: bedtools
+    description: Find the closest feature in B for each feature in A
+    io:
+      inputs:
+        - { name: a, types: [BED, GFF, VCF], mode: file, flag: -a }
+        - { name: b, types: [BED, GFF, VCF], mode: file, flag: -b }
+      outputs:
+        - { name: out, types: [BED], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: closest, required: true, hidden: true }
+      - { name: report_distance, type: flag, flag: -d }
+      - { name: distance_mode, type: string, flag: -D }
+      - { name: top_k, type: integer, flag: -k }
+      - { name: tie_mode, type: string, flag: -t }
+      - { name: same_strand, type: flag, flag: -s }
+      - { name: opposite_strand, type: flag, flag: -S }
+      - { name: ignore_overlaps, type: flag, flag: -io }
+      - { name: ignore_upstream, type: flag, flag: -iu }
+      - { name: ignore_downstream, type: flag, flag: -id }
+      - { name: header, type: flag, flag: -header }
+
+  - id: bedtools.complement
+    name: Complement (bedtools)
+    category: Genomic Operations
+    bin: bedtools
+    description: Report intervals NOT covered by features in input (needs genome file)
+    io:
+      inputs:
+        - { name: i, types: [BED, GFF, VCF], mode: file, flag: -i }
+        - { name: g, types: [TEXT], mode: file, flag: -g }
+      outputs:
+        - { name: out, types: [BED], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: complement, required: true, hidden: true }
+      - { name: limit_to_chroms, type: flag, flag: -L }
+
+  - id: bedtools.coverage
+    name: Coverage (bedtools)
+    category: Information and Analysis
+    bin: bedtools
+    description: Coverage of features in B over intervals in A
+    io:
+      inputs:
+        - { name: a, types: [BED, GFF, VCF], mode: file, flag: -a }
+        - { name: b, types: [BED, GFF, VCF, BAM], mode: file, flag: -b }
+      outputs:
+        - { name: out, types: [BED], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: coverage, required: true, hidden: true }
+      - { name: counts_only, type: flag, flag: -counts }
+      - { name: histogram, type: flag, flag: -hist }
+      - { name: per_base, type: flag, flag: -d }
+      - { name: mean, type: flag, flag: -mean }
+      - { name: same_strand, type: flag, flag: -s }
+      - { name: opposite_strand, type: flag, flag: -S }
+      - { name: split_blocks, type: flag, flag: -split }
+      - { name: min_overlap_a, type: float, flag: -f }
+      - { name: header, type: flag, flag: -header }
+      - { name: sorted, type: flag, flag: -sorted }
+
+  - id: bedtools.genomecov
+    name: Genomecov (bedtools)
+    category: Information and Analysis
+    bin: bedtools
+    description: Histogram, BedGraph, or per-base genome coverage from a BED file
+    io:
+      inputs:
+        - { name: i, types: [BED, GFF, VCF], mode: file, flag: -i }
+        - { name: g, types: [TEXT], mode: file, flag: -g }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: genomecov, required: true, hidden: true }
+      - { name: bedgraph, type: flag, flag: -bg }
+      - { name: bedgraph_all, type: flag, flag: -bga }
+      - { name: per_base, type: flag, flag: -d }
+      - { name: per_base_zero, type: flag, flag: -dz }
+      - { name: split_blocks, type: flag, flag: -split }
+      - { name: same_strand, type: flag, flag: -strand }
+      - { name: scale, type: float, flag: -scale }
+      - { name: max_depth, type: integer, flag: -max }
+
+  - id: bedtools.getfasta
+    name: Getfasta (bedtools)
+    category: Format Conversion
+    bin: bedtools
+    description: Extract sequences from a FASTA reference using BED intervals
+    io:
+      inputs:
+        - { name: fi, types: [FASTA], mode: file, flag: -fi }
+        - { name: bed, types: [BED, GFF, VCF], mode: file, flag: -bed }
+      outputs:
+        - { name: out, types: [FASTA], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: getfasta, required: true, hidden: true }
+      - { name: name_only, type: flag, flag: -name }
+      - { name: tab_output, type: flag, flag: -tab }
+      - { name: strand, type: flag, flag: -s }
+      - { name: full_header, type: flag, flag: -fullHeader }
+      - { name: split_blocks, type: flag, flag: -split }
+
+  - id: bedtools.slop
+    name: Slop (bedtools)
+    category: Genomic Operations
+    bin: bedtools
+    description: Extend intervals by a fixed amount on each side (capped by genome bounds)
+    io:
+      inputs:
+        - { name: i, types: [BED, GFF, VCF], mode: file, flag: -i }
+        - { name: g, types: [TEXT], mode: file, flag: -g }
+      outputs:
+        - { name: out, types: [BED], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: slop, required: true, hidden: true }
+      - { name: both, type: integer, flag: -b }
+      - { name: left, type: integer, flag: -l }
+      - { name: right, type: integer, flag: -r }
+      - { name: strand_aware, type: flag, flag: -s }
+      - { name: percent, type: flag, flag: -pct }
+      - { name: header, type: flag, flag: -header }
+
+  - id: bedtools.flank
+    name: Flank (bedtools)
+    category: Genomic Operations
+    bin: bedtools
+    description: Create flanking intervals on either side of input features
+    io:
+      inputs:
+        - { name: i, types: [BED, GFF, VCF], mode: file, flag: -i }
+        - { name: g, types: [TEXT], mode: file, flag: -g }
+      outputs:
+        - { name: out, types: [BED], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: flank, required: true, hidden: true }
+      - { name: both, type: integer, flag: -b }
+      - { name: left, type: integer, flag: -l }
+      - { name: right, type: integer, flag: -r }
+      - { name: strand_aware, type: flag, flag: -s }
+      - { name: percent, type: flag, flag: -pct }
+      - { name: header, type: flag, flag: -header }
+
+  - id: bedtools.jaccard
+    name: Jaccard (bedtools)
+    category: Information and Analysis
+    bin: bedtools
+    description: Jaccard statistic of intersection between two sorted BED/GFF/VCF files
+    io:
+      inputs:
+        - { name: a, types: [BED, GFF, VCF], mode: file, flag: -a }
+        - { name: b, types: [BED, GFF, VCF], mode: file, flag: -b }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: jaccard, required: true, hidden: true }
+      - { name: same_strand, type: flag, flag: -s }
+      - { name: opposite_strand, type: flag, flag: -S }
+      - { name: min_overlap_a, type: float, flag: -f }
+      - { name: min_overlap_b, type: float, flag: -F }
+      - { name: reciprocal, type: flag, flag: -r }
+      - { name: either_overlap, type: flag, flag: -e }
+      - { name: split_blocks, type: flag, flag: -split }
