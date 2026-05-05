@@ -1,0 +1,125 @@
+apiVersion: v1
+
+id: app.biochef.minimap2
+name: minimap2
+description: Versatile pairwise sequence aligner for long reads, assemblies, and splice alignment.
+
+version: 2.22-bc.1
+homepage: https://github.com/lh3/minimap2
+license:
+  spdx: MIT
+  files: [LICENSE.txt]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/lh3/minimap2
+  tag: "v2.22"
+  version: "2.22"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: biowasm
+    biowasm:
+      package: minimap2
+
+runtime:
+  modes: [wasm, remote]
+
+operations:
+  - id: minimap2.align
+    name: Align (minimap2)
+    category: Genomic Operations
+    bin: minimap2
+    description: Pairwise align reads (or sequences) to a reference FASTA or pre-built .mmi index
+    io:
+      inputs:
+        - { name: ref, types: [FASTA, BIN], mode: file }
+        - { name: reads, types: [FASTA, FASTQ], mode: file }
+      outputs:
+        - { name: out, types: [SAM, TEXT], mode: stdout }
+    parameters:
+      - { name: preset, type: string, flag: -x }
+      - { name: sam_output, type: flag, flag: -a }
+      - { name: kmer_size, type: integer, flag: -k }
+      - { name: window_size, type: integer, flag: -w }
+      - { name: hpc_minimizer, type: flag, flag: -H }
+      - { name: split_index_size, type: string, flag: -I }
+      - { name: minibatch_size, type: string, flag: -K }
+      - { name: bandwidth, type: string, flag: -r }
+      - { name: top_frac_seeds, type: string, flag: -f }
+      - { name: stop_chain_gap, type: integer, flag: -g }
+      - { name: max_intron_len, type: integer, flag: -G }
+      - { name: max_secondary, type: integer, flag: -N }
+      - { name: secondary_score_ratio, type: float, flag: -p }
+      - { name: min_chain_score, type: integer, flag: -m }
+      - { name: min_minimizers, type: integer, flag: -n }
+      - { name: min_dp_score, type: integer, flag: -s }
+      - { name: match_score, type: integer, flag: -A }
+      - { name: mismatch_penalty, type: integer, flag: -B }
+      - { name: gap_open_penalty, type: string, flag: -O }
+      - { name: gap_ext_penalty, type: string, flag: -E }
+      - { name: zdrop, type: string, flag: -z }
+      - { name: mask_level, type: float, flag: -M }
+      - { name: read_group, type: string, flag: -R }
+      - { name: drop_quality, type: flag, flag: -Q }
+      - { name: long_cigar, type: flag, flag: -L }
+      - { name: output_cigar, type: flag, flag: -c }
+      - { name: skip_self_dual, type: flag, flag: -X }
+      - { name: all_vs_all, type: flag, flag: -P }
+      - { name: yaml_output, type: flag, flag: -y }
+      - { name: pre_align_softmask, type: flag, flag: -Y }
+      - { name: filter_repetitive, type: integer, flag: -F }
+      - { name: cs_tag, type: string, flag: --cs }
+      - { name: md_tag, type: flag, flag: --MD }
+      - { name: eqx_cigar, type: flag, flag: --eqx }
+      - { name: secondary_mode, type: string, flag: --secondary }
+      - { name: forward_only, type: flag, flag: --for-only }
+      - { name: reverse_only, type: flag, flag: --rev-only }
+      - { name: no_self, type: flag, flag: -D }
+      - { name: paf_no_hit, type: flag, flag: --paf-no-hit }
+      - { name: sam_hit_only, type: flag, flag: --sam-hit-only }
+      - { name: splice_mode, type: flag, flag: --splice }
+      - { name: sr_mode, type: flag, flag: --sr }
+      - { name: splice_flank, type: string, flag: --splice-flank }
+      - { name: cost_non_gt_ag, type: integer, flag: -C }
+      - { name: heap_sort, type: string, flag: --heap-sort }
+      - { name: max_chain_skip, type: integer, flag: --max-chain-skip }
+      - { name: max_chain_iter, type: integer, flag: --max-chain-iter }
+      - { name: min_dp_len, type: integer, flag: --min-dp-len }
+      - { name: end_bonus, type: integer, flag: --end-bonus }
+      - { name: end_seed_pen, type: integer, flag: --end-seed-pen }
+      - { name: dual, type: string, flag: --dual }
+      - { name: junc_bed, type: string, flag: --junc-bed }
+      - { name: junc_bonus, type: integer, flag: --junc-bonus }
+      - { name: alt_drop, type: float, flag: --alt-drop }
+      - { name: rmq, type: string, flag: --rmq }
+      - { name: split_prefix, type: string, flag: --split-prefix }
+      - { name: bucket_bits, type: integer, flag: --bucket-bits }
+      - { name: seed, type: integer, flag: --seed }
+      - { name: print_qname, type: flag, flag: --print-qname }
+      - { name: threads, type: integer, flag: -t, default: 1 }
+
+  - id: minimap2.index
+    name: Index (minimap2)
+    category: Genomic Operations
+    bin: minimap2
+    description: Build a minimap2 .mmi index from a reference FASTA for reuse
+    io:
+      inputs:
+        - { name: ref, types: [FASTA], mode: file }
+      outputs:
+        - { name: out, types: [BIN], mode: file, flag: -d }
+    parameters:
+      - { name: preset, type: string, flag: -x }
+      - { name: kmer_size, type: integer, flag: -k }
+      - { name: window_size, type: integer, flag: -w }
+      - { name: hpc_minimizer, type: flag, flag: -H }
+      - { name: split_index_size, type: string, flag: -I }
+      - { name: bucket_bits, type: integer, flag: --bucket-bits }
+      - { name: idx_no_seq, type: flag, flag: --idx-no-seq }
+      - { name: alt, type: string, flag: --alt }
+      - { name: alt_drop, type: float, flag: --alt-drop }
+      - { name: threads, type: integer, flag: -t, default: 1 }
