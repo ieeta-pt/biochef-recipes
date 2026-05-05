@@ -1,0 +1,189 @@
+apiVersion: v1
+
+id: app.biochef.gffread
+name: gffread
+description: Filter, convert or cluster GFF/GTF/BED records and extract transcript sequences from a genome.
+
+version: 0.12.7-bc.1
+homepage: https://github.com/gpertea/gffread
+license:
+  spdx: MIT
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/gpertea/gffread
+  tag: "v0.12.7"
+  version: "0.12.7"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: biowasm
+    biowasm:
+      package: gffread
+
+runtime:
+  modes: [wasm, remote]
+
+operations:
+  - id: gffread.convert
+    name: Convert (gffread)
+    category: Format Conversion
+    bin: gffread
+    description: Convert / filter / cluster GFF/GTF/BED — output GFF (default), GTF, BED, TLF, or attribute table
+    io:
+      inputs:
+        - { name: in, types: [GFF, BED, TEXT], mode: file }
+        - { name: genome, types: [FASTA], mode: file, flag: -g }
+      outputs:
+        - { name: out, types: [GFF, BED, TEXT], mode: stdout }
+    parameters:
+      - { name: bed_output, type: flag, flag: --bed }
+      - { name: gtf_output, type: flag, flag: -T }
+      - { name: tlf_output, type: flag, flag: --tlf }
+      - { name: table_attrs, type: string, flag: --table }
+      - { name: process_non_transcript, type: flag, flag: -O }
+      - { name: keep_genes, type: flag, flag: --keep-genes }
+      - { name: keep_comments, type: flag, flag: --keep-comments }
+      - { name: keep_exon_attrs, type: flag, flag: --keep-exon-attrs }
+      - { name: keep_attrs, type: flag, flag: -F }
+      - { name: move_exon_attrs, type: flag, flag: -G }
+      - { name: gene2exon, type: flag, flag: --gene2exon }
+      - { name: force_exons, type: flag, flag: --force-exons }
+      - { name: ids_keep, type: string, flag: --ids }
+      - { name: ids_drop, type: string, flag: --nids }
+      - { name: attrs_filter, type: string, flag: --attrs }
+      - { name: max_intron, type: integer, flag: -i }
+      - { name: min_length, type: integer, flag: -l }
+      - { name: range, type: string, flag: -r }
+      - { name: range_strict, type: flag, flag: -R }
+      - { name: jmatch, type: string, flag: --jmatch }
+      - { name: discard_single_exon, type: flag, flag: -U }
+      - { name: coding_only, type: flag, flag: -C }
+      - { name: noncoding_only, type: flag, flag: --nc }
+      - { name: ignore_locus, type: flag, flag: --ignore-locus }
+      - { name: no_pseudo, type: flag, flag: --no-pseudo }
+      - { name: discard_noncanonical, type: flag, flag: -N }
+      - { name: discard_incomplete_cds, type: flag, flag: -J }
+      - { name: drop_inframe_stop, type: flag, flag: -V }
+      - { name: adjust_phase, type: flag, flag: -H }
+      - { name: check_opposite_strand, type: flag, flag: -B }
+      - { name: add_coding_attrs, type: flag, flag: -P }
+      - { name: add_hasCDS, type: flag, flag: --add-hasCDS }
+      - { name: adj_stop, type: flag, flag: --adj-stop }
+      - { name: cluster_merge, type: flag, flag: -M }
+      - { name: cluster_only, type: flag, flag: --cluster-only }
+      - { name: containment, type: flag, flag: -K }
+      - { name: cset, type: flag, flag: --cset }
+      - { name: no_boundary_check, type: flag, flag: -Q }
+      - { name: discard_overlapping_se, type: flag, flag: -Y }
+      - { name: ensembl, type: flag, flag: -L }
+      - { name: in_bed, type: flag, flag: --in-bed }
+      - { name: in_tlf, type: flag, flag: --in-tlf }
+      - { name: stream, type: flag, flag: --stream }
+      - { name: sort_alpha, type: flag, flag: --sort-alpha }
+      - { name: sort_by, type: string, flag: --sort-by }
+      - { name: rename_chrs, type: string, flag: -m }
+      - { name: trackname, type: string, flag: -t }
+      - { name: decode_url, type: flag, flag: -D }
+      - { name: merge_close_exons, type: flag, flag: -Z }
+      - { name: warn_duplicates, type: flag, flag: -E }
+      - { name: verbose, type: flag, flag: -v }
+
+  - id: gffread.extract.exons
+    name: Extract Spliced Exons (gffread)
+    category: Format Conversion
+    bin: gffread
+    description: Write a FASTA of spliced exon sequences for each transcript (requires genome FASTA)
+    io:
+      inputs:
+        - { name: in, types: [GFF, BED, TEXT], mode: file }
+        - { name: genome, types: [FASTA], mode: file, flag: -g }
+      outputs:
+        - { name: out, types: [FASTA], mode: file, flag: -w }
+    parameters:
+      - { name: w_add, type: integer, flag: --w-add }
+      - { name: w_nocds, type: flag, flag: --w-nocds }
+      - { name: write_exon_coords, type: flag, flag: -W }
+      - { name: keep_attrs, type: flag, flag: -F }
+      - { name: max_intron, type: integer, flag: -i }
+      - { name: min_length, type: integer, flag: -l }
+      - { name: range, type: string, flag: -r }
+      - { name: range_strict, type: flag, flag: -R }
+      - { name: jmatch, type: string, flag: --jmatch }
+      - { name: discard_single_exon, type: flag, flag: -U }
+      - { name: coding_only, type: flag, flag: -C }
+      - { name: noncoding_only, type: flag, flag: --nc }
+      - { name: discard_noncanonical, type: flag, flag: -N }
+      - { name: discard_incomplete_cds, type: flag, flag: -J }
+      - { name: no_pseudo, type: flag, flag: --no-pseudo }
+      - { name: ids_keep, type: string, flag: --ids }
+      - { name: ids_drop, type: string, flag: --nids }
+      - { name: in_bed, type: flag, flag: --in-bed }
+      - { name: in_tlf, type: flag, flag: --in-tlf }
+
+  - id: gffread.extract.cds
+    name: Extract Spliced CDS (gffread)
+    category: Format Conversion
+    bin: gffread
+    description: Write a FASTA of spliced CDS sequences for each transcript (requires genome FASTA)
+    io:
+      inputs:
+        - { name: in, types: [GFF, BED, TEXT], mode: file }
+        - { name: genome, types: [FASTA], mode: file, flag: -g }
+      outputs:
+        - { name: out, types: [FASTA], mode: file, flag: -x }
+    parameters:
+      - { name: write_exon_coords, type: flag, flag: -W }
+      - { name: keep_attrs, type: flag, flag: -F }
+      - { name: max_intron, type: integer, flag: -i }
+      - { name: min_length, type: integer, flag: -l }
+      - { name: range, type: string, flag: -r }
+      - { name: range_strict, type: flag, flag: -R }
+      - { name: jmatch, type: string, flag: --jmatch }
+      - { name: discard_single_exon, type: flag, flag: -U }
+      - { name: coding_only, type: flag, flag: -C }
+      - { name: discard_noncanonical, type: flag, flag: -N }
+      - { name: discard_incomplete_cds, type: flag, flag: -J }
+      - { name: drop_inframe_stop, type: flag, flag: -V }
+      - { name: adjust_phase, type: flag, flag: -H }
+      - { name: check_opposite_strand, type: flag, flag: -B }
+      - { name: no_pseudo, type: flag, flag: --no-pseudo }
+      - { name: ids_keep, type: string, flag: --ids }
+      - { name: ids_drop, type: string, flag: --nids }
+      - { name: in_bed, type: flag, flag: --in-bed }
+      - { name: in_tlf, type: flag, flag: --in-tlf }
+
+  - id: gffread.extract.protein
+    name: Extract Protein Translation (gffread)
+    category: Format Conversion
+    bin: gffread
+    description: Translate CDS to protein and write a FASTA (requires genome FASTA)
+    io:
+      inputs:
+        - { name: in, types: [GFF, BED, TEXT], mode: file }
+        - { name: genome, types: [FASTA], mode: file, flag: -g }
+      outputs:
+        - { name: out, types: [AminoAcids, FASTA], mode: file, flag: -y }
+    parameters:
+      - { name: stop_as_star, type: flag, flag: -S }
+      - { name: write_exon_coords, type: flag, flag: -W }
+      - { name: keep_attrs, type: flag, flag: -F }
+      - { name: max_intron, type: integer, flag: -i }
+      - { name: min_length, type: integer, flag: -l }
+      - { name: range, type: string, flag: -r }
+      - { name: range_strict, type: flag, flag: -R }
+      - { name: jmatch, type: string, flag: --jmatch }
+      - { name: coding_only, type: flag, flag: -C }
+      - { name: discard_noncanonical, type: flag, flag: -N }
+      - { name: discard_incomplete_cds, type: flag, flag: -J }
+      - { name: drop_inframe_stop, type: flag, flag: -V }
+      - { name: adjust_phase, type: flag, flag: -H }
+      - { name: no_pseudo, type: flag, flag: --no-pseudo }
+      - { name: ids_keep, type: string, flag: --ids }
+      - { name: ids_drop, type: string, flag: --nids }
+      - { name: in_bed, type: flag, flag: --in-bed }
+      - { name: in_tlf, type: flag, flag: --in-tlf }
