@@ -1,0 +1,96 @@
+apiVersion: v1
+
+id: app.biochef.muscle
+name: muscle
+description: Multiple sequence alignment with high accuracy and high throughput.
+
+version: 5.1.0-bc.1
+homepage: https://github.com/rcedgar/muscle
+license:
+  spdx: GPL-3.0-only
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/rcedgar/muscle
+  tag: "v5.1"
+  version: "5.1.0"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: biowasm
+    biowasm:
+      package: muscle
+
+runtime:
+  modes: [wasm, remote]
+
+operations:
+  - id: muscle.align
+    name: Align (muscle)
+    category: Genomic Operations
+    bin: muscle
+    description: Multiple sequence alignment using the standard Muscle 5 algorithm
+    io:
+      inputs:
+        - { name: in, types: [Multi-FASTA, FASTA], mode: file, flag: -align }
+      outputs:
+        - { name: out, types: [Multi-FASTA, FASTA], mode: file, flag: -output }
+    parameters:
+      - { name: nucleotide, type: flag, flag: -nt }
+      - { name: amino, type: flag, flag: -amino }
+      - { name: perm, type: string, flag: -perm }
+      - { name: perturb, type: integer, flag: -perturb }
+      - { name: stratified, type: flag, flag: -stratified }
+      - { name: diversified, type: flag, flag: -diversified }
+      - { name: replicates, type: integer, flag: -replicates }
+      - { name: max_gap_fraction, type: float, flag: -maxgapfract }
+      - { name: min_confidence, type: float, flag: -minconf }
+      - { name: threads, type: integer, flag: -threads, default: 1 }
+
+  - id: muscle.super5
+    name: Super5 (muscle)
+    category: Genomic Operations
+    bin: muscle
+    description: Multiple sequence alignment using the Super5 algorithm (for hundreds–thousands of sequences)
+    io:
+      inputs:
+        - { name: in, types: [Multi-FASTA, FASTA], mode: file, flag: -super5 }
+      outputs:
+        - { name: out, types: [Multi-FASTA, FASTA], mode: file, flag: -output }
+    parameters:
+      - { name: nucleotide, type: flag, flag: -nt }
+      - { name: amino, type: flag, flag: -amino }
+      - { name: perm, type: string, flag: -perm }
+      - { name: perturb, type: integer, flag: -perturb }
+      - { name: threads, type: integer, flag: -threads, default: 1 }
+
+  - id: muscle.resample
+    name: Resample Ensemble (muscle)
+    category: Genomic Operations
+    bin: muscle
+    description: Resample columns from an existing ensemble FASTA (with replacement)
+    io:
+      inputs:
+        - { name: in, types: [Multi-FASTA, FASTA], mode: file, flag: -resample }
+      outputs:
+        - { name: out, types: [Multi-FASTA, FASTA], mode: file, flag: -output }
+    parameters:
+      - { name: max_gap_fraction, type: float, flag: -maxgapfract }
+      - { name: min_confidence, type: float, flag: -minconf }
+      - { name: replicates, type: integer, flag: -replicates }
+
+  - id: muscle.disperse
+    name: Disperse (muscle)
+    category: Information and Analysis
+    bin: muscle
+    description: Compute dispersion of an ensemble alignment
+    io:
+      inputs:
+        - { name: in, types: [Multi-FASTA, FASTA], mode: file, flag: -disperse }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters: []
