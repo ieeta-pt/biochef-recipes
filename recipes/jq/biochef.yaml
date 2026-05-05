@@ -1,0 +1,61 @@
+apiVersion: v1
+
+id: app.biochef.jq
+name: jq
+description: Lightweight command-line JSON processor.
+
+version: 1.6-bc.1
+homepage: https://github.com/jqlang/jq
+license:
+  spdx: MIT
+  files: [COPYING]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/jqlang/jq
+  tag: "jq-1.6"
+  version: "1.6"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: biowasm
+    biowasm:
+      package: jq
+
+runtime:
+  modes: [wasm, remote]
+
+operations:
+  - id: jq.query
+    name: Query (jq)
+    category: Text Processing
+    bin: jq
+    description: Apply a jq filter to a JSON document and emit the transformed JSON
+    io:
+      inputs:
+        - { name: in, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: compact, type: flag, flag: -c }
+      - { name: raw_output, type: flag, flag: -r }
+      - { name: raw_input, type: flag, flag: -R }
+      - { name: slurp, type: flag, flag: -s }
+      - { name: null_input, type: flag, flag: -n }
+      - { name: exit_status, type: flag, flag: -e }
+      - { name: sort_keys, type: flag, flag: -S }
+      - { name: ascii_output, type: flag, flag: -a }
+      - { name: monochrome_output, type: flag, flag: -M }
+      - { name: join_output, type: flag, flag: -j }
+      - { name: tab, type: flag, flag: --tab }
+      - { name: indent, type: integer, flag: --indent }
+      - { name: unbuffered, type: flag, flag: --unbuffered }
+      - { name: seq, type: flag, flag: --seq }
+      - { name: stream, type: flag, flag: --stream }
+      - { name: stream_errors, type: flag, flag: --stream-errors }
+      - { name: from_file, type: flag, flag: -f }
+      - { name: search_path, type: string, flag: -L }
+      - { name: filter, type: string, required: true }
