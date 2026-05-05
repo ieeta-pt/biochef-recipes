@@ -1,0 +1,138 @@
+apiVersion: v1
+
+id: app.biochef.ivar
+name: ivar
+description: Computational tools for primer trimming, variant calling, and consensus assembly of viral amplicon sequencing data.
+
+version: 1.3.1-bc.1
+homepage: https://github.com/andersen-lab/ivar
+license:
+  spdx: GPL-3.0-only
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/andersen-lab/ivar
+  tag: "v1.3.1"
+  version: "1.3.1"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: biowasm
+    biowasm:
+      package: ivar
+
+runtime:
+  modes: [wasm, remote]
+
+operations:
+  - id: ivar.consensus
+    name: Consensus (ivar)
+    category: Genomic Operations
+    bin: ivar
+    description: Call a consensus FASTA from samtools-mpileup output (piped via stdin)
+    io:
+      inputs:
+        - { name: in, types: [TEXT], mode: stdin }
+      outputs:
+        - { name: out, types: [FASTA], mode: file, filename: "out.fa" }
+    parameters:
+      - { name: command, type: string, default: consensus, required: true, hidden: true }
+      - { name: prefix, type: string, flag: -p, default: out, required: true, hidden: true }
+      - { name: min_quality, type: integer, flag: -q }
+      - { name: min_freq_threshold, type: float, flag: -t }
+      - { name: min_depth, type: integer, flag: -m }
+      - { name: skip_low_coverage, type: flag, flag: -k }
+      - { name: low_coverage_char, type: string, flag: -n }
+      - { name: fasta_header, type: string, flag: -i }
+
+  - id: ivar.variants
+    name: Variants (ivar)
+    category: Genomic Operations
+    bin: ivar
+    description: Call variants from samtools-mpileup output (piped via stdin) — TSV out
+    io:
+      inputs:
+        - { name: in, types: [TEXT], mode: stdin }
+        - { name: fasta_ref, types: [FASTA], mode: file, flag: -r }
+        - { name: gff, types: [GFF], mode: file, flag: -g }
+      outputs:
+        - { name: out, types: [TEXT], mode: file, filename: "out.tsv" }
+    parameters:
+      - { name: command, type: string, default: variants, required: true, hidden: true }
+      - { name: prefix, type: string, flag: -p, default: out, required: true, hidden: true }
+      - { name: min_quality, type: integer, flag: -q }
+      - { name: min_freq_threshold, type: float, flag: -t }
+      - { name: min_depth, type: integer, flag: -m }
+
+  - id: ivar.trim
+    name: Trim Primers (ivar)
+    category: Genomic Operations
+    bin: ivar
+    description: Trim primer sequences and low-quality bases from a sorted BAM
+    io:
+      inputs:
+        - { name: in, types: [BAM], mode: file, flag: -i }
+        - { name: primers_bed, types: [BED], mode: file, flag: -b }
+        - { name: primer_pairs, types: [TEXT], mode: file, flag: -f }
+      outputs:
+        - { name: out, types: [BAM], mode: file, filename: "out.bam" }
+    parameters:
+      - { name: command, type: string, default: trim, required: true, hidden: true }
+      - { name: prefix, type: string, flag: -p, default: out, required: true, hidden: true }
+      - { name: min_length, type: integer, flag: -m }
+      - { name: min_quality, type: integer, flag: -q }
+      - { name: sliding_window, type: integer, flag: -s }
+      - { name: include_no_primers, type: flag, flag: -e }
+      - { name: keep_failed, type: flag, flag: -k }
+
+  - id: ivar.filtervariants
+    name: Filter Variants (ivar)
+    category: Genomic Operations
+    bin: ivar
+    description: Filter variants across two replicates/samples (TSV inputs)
+    io:
+      inputs:
+        - { name: in1, types: [TEXT], mode: file }
+        - { name: in2, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: file, filename: "out.tsv" }
+    parameters:
+      - { name: command, type: string, default: filtervariants, required: true, hidden: true }
+      - { name: prefix, type: string, flag: -p, default: out, required: true, hidden: true }
+      - { name: min_fraction, type: float, flag: -t }
+
+  - id: ivar.getmasked
+    name: Get Masked (ivar)
+    category: Genomic Operations
+    bin: ivar
+    description: Detect primer mismatches and identify primer indices to mask
+    io:
+      inputs:
+        - { name: in, types: [TEXT], mode: file, flag: -i }
+        - { name: primers_bed, types: [BED], mode: file, flag: -b }
+        - { name: primer_pairs, types: [TEXT], mode: file, flag: -f }
+      outputs:
+        - { name: out, types: [TEXT], mode: file, filename: "out.txt" }
+    parameters:
+      - { name: command, type: string, default: getmasked, required: true, hidden: true }
+      - { name: prefix, type: string, flag: -p, default: out, required: true, hidden: true }
+
+  - id: ivar.removereads
+    name: Remove Reads (ivar)
+    category: Genomic Operations
+    bin: ivar
+    description: Remove reads from a trimmed BAM matching given primer indices
+    io:
+      inputs:
+        - { name: in, types: [BAM], mode: file, flag: -i }
+        - { name: indices, types: [TEXT], mode: file, flag: -t }
+        - { name: primers_bed, types: [BED], mode: file, flag: -b }
+      outputs:
+        - { name: out, types: [BAM], mode: file, filename: "out.bam" }
+    parameters:
+      - { name: command, type: string, default: removereads, required: true, hidden: true }
+      - { name: prefix, type: string, flag: -p, default: out, required: true, hidden: true }
