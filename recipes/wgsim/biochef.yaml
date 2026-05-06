@@ -1,0 +1,84 @@
+apiVersion: v1
+
+id: app.biochef.wgsim
+name: wgsim
+description: Whole-genome simulation of NGS reads from a reference FASTA, with configurable error rate, indels and substitutions.
+
+version: 0.3.1-bc.1
+homepage: https://github.com/lh3/wgsim
+license:
+  spdx: MIT
+  text: |
+    The MIT License
+
+    Copyright (c) 2008 Genome Research Ltd (GRL).
+                  2011 Heng Li <lh3@live.co.uk>
+
+    Permission is hereby granted, free of charge, to any person obtaining
+    a copy of this software and associated documentation files (the
+    "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish,
+    distribute, sublicense, and/or sell copies of the Software, and to
+    permit persons to whom the Software is furnished to do so, subject to
+    the following conditions:
+
+    The above copyright notice and this permission notice shall be
+    included in all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+    EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+    NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+    BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+    ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+    CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/lh3/wgsim
+  commit: "a12da3375ff3b51a5594d4b6fa35591173ecc229"
+  version: "0.3.1"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      buildsystem: make
+      workDir: .
+      outputDir: .
+      commands:
+        - "printf 'all: wgsim.js\\nwgsim.js: wgsim.c\\n\\t$(CC) wgsim.c -o wgsim.js $(EM_FLAGS) -lm -O2 -w\\n' > Makefile"
+      env: []
+
+runtime:
+  modes: [wasm, remote]
+
+operations:
+  - id: wgsim.simulate
+    name: Simulate (wgsim)
+    category: Genomic Operations
+    bin: wgsim
+    description: Simulate paired-end short reads from a reference FASTA
+    io:
+      inputs:
+        - { name: ref, types: [FASTA, Multi-FASTA], mode: file }
+      outputs:
+        - { name: out1, types: [FASTQ], mode: file }
+        - { name: out2, types: [FASTQ], mode: file }
+    parameters:
+      - { name: error_rate, type: float, flag: -e }
+      - { name: outer_distance, type: integer, flag: -d }
+      - { name: std_dev, type: integer, flag: -s }
+      - { name: num_pairs, type: integer, flag: -N }
+      - { name: read1_length, type: integer, flag: "-1" }
+      - { name: read2_length, type: integer, flag: "-2" }
+      - { name: mutation_rate, type: float, flag: -r }
+      - { name: indel_fraction, type: float, flag: -R }
+      - { name: indel_extend_prob, type: float, flag: -X }
+      - { name: seed, type: integer, flag: -S }
+      - { name: max_ambiguous_frac, type: float, flag: -A }
+      - { name: haplotype, type: flag, flag: -h }
