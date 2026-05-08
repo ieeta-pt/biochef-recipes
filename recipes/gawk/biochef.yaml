@@ -1,0 +1,86 @@
+apiVersion: v1
+
+id: app.biochef.gawk
+name: gawk
+description: GNU implementation of awk — pattern-action programming language for text processing.
+
+version: 5.1.0-bc.1
+homepage: https://www.gnu.org/software/gawk/
+license:
+  spdx: GPL-3.0-or-later
+  files: [COPYING]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://git.savannah.gnu.org/git/gawk.git
+  tag: "gawk-5.1.0"
+  version: "5.1.0"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: biowasm
+    biowasm:
+      package: gawk
+
+runtime:
+  modes: [wasm, remote]
+
+operations:
+  - id: gawk.script
+    name: Script (gawk)
+    category: Text Processing
+    bin: gawk
+    description: Run an inline gawk program on a text stream
+    io:
+      inputs:
+        - { name: in, types: [TEXT, FASTA, FASTQ, Multi-FASTA, NUM, DNA, RNA, AminoAcids, LIST], mode: file }
+      outputs:
+        - { name: out, types: [TEXT, LIST], mode: stdout }
+    parameters:
+      - { name: field_separator, type: string, flag: -F }
+      - { name: variable_assign, type: string, flag: -v }
+      - { name: include_file, type: string, flag: -i }
+      - { name: load_extension, type: string, flag: -l }
+      - { name: traditional, type: flag, flag: -c }
+      - { name: posix, type: flag, flag: -P }
+      - { name: bignum, type: flag, flag: -M }
+      - { name: sandbox, type: flag, flag: -S }
+      - { name: characters_as_bytes, type: flag, flag: -b }
+      - { name: non_decimal_data, type: flag, flag: -n }
+      - { name: re_interval, type: flag, flag: -r }
+      - { name: optimize, type: flag, flag: -O }
+      - { name: no_optimize, type: flag, flag: -s }
+      - { name: lint_old, type: flag, flag: -t }
+      - { name: gen_pot, type: flag, flag: -g }
+      - { name: program, type: string, flag: -e, required: true }
+
+  - id: gawk.from.file
+    name: From File (gawk)
+    category: Text Processing
+    bin: gawk
+    description: Run a gawk program loaded from a file (script connected as workflow input)
+    io:
+      inputs:
+        - { name: script, types: [TEXT], mode: file, flag: -f }
+        - { name: in, types: [TEXT, FASTA, FASTQ, Multi-FASTA, NUM, DNA, RNA, AminoAcids, LIST], mode: file }
+      outputs:
+        - { name: out, types: [TEXT, LIST], mode: stdout }
+    parameters:
+      - { name: field_separator, type: string, flag: -F }
+      - { name: variable_assign, type: string, flag: -v }
+      - { name: include_file, type: string, flag: -i }
+      - { name: load_extension, type: string, flag: -l }
+      - { name: traditional, type: flag, flag: -c }
+      - { name: posix, type: flag, flag: -P }
+      - { name: bignum, type: flag, flag: -M }
+      - { name: sandbox, type: flag, flag: -S }
+      - { name: characters_as_bytes, type: flag, flag: -b }
+      - { name: non_decimal_data, type: flag, flag: -n }
+      - { name: re_interval, type: flag, flag: -r }
+      - { name: optimize, type: flag, flag: -O }
+      - { name: no_optimize, type: flag, flag: -s }
+      - { name: lint_old, type: flag, flag: -t }
+      - { name: gen_pot, type: flag, flag: -g }
