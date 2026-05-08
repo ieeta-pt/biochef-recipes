@@ -36,9 +36,9 @@ operations:
     description: Run an inline gawk program on a text stream
     io:
       inputs:
-        - { name: in, types: [TEXT, FASTA, FASTQ, Multi-FASTA, NUM, DNA, RNA, AminoAcids], mode: file }
+        - { name: in, types: [TEXT, FASTA, FASTQ, Multi-FASTA, NUM, DNA, RNA, AminoAcids, LIST], mode: file }
       outputs:
-        - { name: out, types: [TEXT], mode: stdout }
+        - { name: out, types: [TEXT, LIST], mode: stdout }
     parameters:
       - { name: field_separator, type: string, flag: -F }
       - { name: variable_assign, type: string, flag: -v }
@@ -65,9 +65,9 @@ operations:
     io:
       inputs:
         - { name: script, types: [TEXT], mode: file, flag: -f }
-        - { name: in, types: [TEXT, FASTA, FASTQ, Multi-FASTA, NUM, DNA, RNA, AminoAcids], mode: file }
+        - { name: in, types: [TEXT, FASTA, FASTQ, Multi-FASTA, NUM, DNA, RNA, AminoAcids, LIST], mode: file }
       outputs:
-        - { name: out, types: [TEXT], mode: stdout }
+        - { name: out, types: [TEXT, LIST], mode: stdout }
     parameters:
       - { name: field_separator, type: string, flag: -F }
       - { name: variable_assign, type: string, flag: -v }
