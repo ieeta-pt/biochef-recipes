@@ -142,21 +142,21 @@ operations:
       - { name: command, type: string, default: gap, required: true, hidden: true }
       - { name: min_gap_size, type: integer, flag: -l }
 
-  # - id: seqtk.subseq
-  #   name: Subseq (SEQTK)
-  #   bin: seqtk
-  #   description: Extract subsequences from FASTA/Q
-  #   io:
-  #     inputs:
-  #       - { name: in, types: [FASTA, FASTQ], mode: file }
-  #       - { name: regions, types: [BED, LIST], mode: file }
-  #     outputs:
-  #       - { name: out, types: [FASTA, FASTQ, TEXT], mode: stdout }
-  #   parameters:
-  #     - { name: command, type: string, default: subseq, required: true, hidden: true }
-  #     - { name: tab_output, type: flag, flag: -t }
-  #     - { name: strand_aware, type: flag, flag: -s }
-  #     - { name: line_length, type: integer, flag: -l }
+  - id: seqtk.subseq
+    name: Subseq (SEQTK)
+    bin: seqtk
+    description: Extract subsequences from FASTA/Q
+    io:
+      inputs:
+        - { name: in, types: [FASTA, FASTQ], mode: file }
+        - { name: regions, types: [BED, LIST], mode: file }
+      outputs:
+        - { name: out, types: [FASTA, FASTQ, TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: subseq, required: true, hidden: true }
+      - { name: tab_output, type: flag, flag: -t }
+      - { name: strand_aware, type: flag, flag: -s }
+      - { name: line_length, type: integer, flag: -l }
 
   - id: seqtk.mergefa
     name: Mergefa (SEQTK)
