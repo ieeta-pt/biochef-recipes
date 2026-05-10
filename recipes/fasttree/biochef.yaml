@@ -1,0 +1,81 @@
+apiVersion: v1
+
+id: app.biochef.fasttree
+name: FastTree
+description: Approximately-maximum-likelihood phylogenetic trees from large alignments.
+
+version: 2.1.11-bc.1
+homepage: http://www.microbesonline.org/fasttree/
+license:
+  spdx: GPL-3.0-only
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/morgannprice/fasttree
+  version: "2.1.11"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: biowasm
+    biowasm:
+      package: fasttree
+
+runtime:
+  modes: [wasm, remote]
+
+operations:
+  - id: fasttree.build
+    name: Build Tree (FastTree)
+    category: Genomic Operations
+    bin: fasttree
+    description: Build an approximately-maximum-likelihood phylogenetic tree from a multiple sequence alignment (Newick output)
+    io:
+      inputs:
+        - { name: in, types: [Multi-FASTA, FASTA], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: nucleotide, type: flag, flag: -nt }
+      - { name: gtr, type: flag, flag: -gtr }
+      - { name: lg, type: flag, flag: -lg }
+      - { name: wag, type: flag, flag: -wag }
+      - { name: cat, type: integer, flag: -cat }
+      - { name: nocat, type: flag, flag: -nocat }
+      - { name: gamma, type: flag, flag: -gamma }
+      - { name: noml, type: flag, flag: -noml }
+      - { name: mllen, type: flag, flag: -mllen }
+      - { name: mlnni, type: integer, flag: -mlnni }
+      - { name: mlacc, type: integer, flag: -mlacc }
+      - { name: nni, type: integer, flag: -nni }
+      - { name: spr, type: integer, flag: -spr }
+      - { name: sprlength, type: integer, flag: -sprlength }
+      - { name: slownni, type: flag, flag: -slownni }
+      - { name: slow, type: flag, flag: -slow }
+      - { name: fastest, type: flag, flag: -fastest }
+      - { name: pseudo, type: flag, flag: -pseudo }
+      - { name: rawdist, type: flag, flag: -rawdist }
+      - { name: matrix, type: string, flag: -matrix }
+      - { name: nomatrix, type: flag, flag: -nomatrix }
+      - { name: trans, type: string, flag: -trans }
+      - { name: nj, type: flag, flag: -nj }
+      - { name: bionj, type: flag, flag: -bionj }
+      - { name: boot, type: integer, flag: -boot }
+      - { name: nosupport, type: flag, flag: -nosupport }
+      - { name: nome, type: flag, flag: -nome }
+      - { name: intree, type: string, flag: -intree }
+      - { name: intree1, type: string, flag: -intree1 }
+      - { name: constraints, type: string, flag: -constraints }
+      - { name: constraintWeight, type: float, flag: -constraintWeight }
+      - { name: seed, type: integer, flag: -seed }
+      - { name: top, type: flag, flag: -top }
+      - { name: notop, type: flag, flag: -notop }
+      - { name: topm, type: float, flag: -topm }
+      - { name: close, type: float, flag: -close }
+      - { name: refresh, type: float, flag: -refresh }
+      - { name: quiet, type: flag, flag: -quiet }
+      - { name: nopr, type: flag, flag: -nopr }
+      - { name: quote, type: flag, flag: -quote }
