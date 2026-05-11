@@ -38,7 +38,7 @@ operations:
       inputs:
         - { name: in, types: [Multi-FASTA, FASTA], mode: file, flag: -align }
       outputs:
-        - { name: out, types: [Multi-FASTA, FASTA], mode: file, flag: -output }
+        - { name: out, types: [Multi-FASTA, FASTA, EFA], mode: file, flag: -output }
     parameters:
       - { name: nucleotide, type: flag, flag: -nt }
       - { name: amino, type: flag, flag: -amino }
@@ -75,9 +75,9 @@ operations:
     description: Resample columns from an existing ensemble FASTA (with replacement)
     io:
       inputs:
-        - { name: in, types: [Multi-FASTA, FASTA], mode: file, flag: -resample }
+        - { name: in, types: [Multi-FASTA, FASTA, EFA], mode: file, flag: -resample }
       outputs:
-        - { name: out, types: [Multi-FASTA, FASTA], mode: file, flag: -output }
+        - { name: out, types: [Multi-FASTA, FASTA, EFA], mode: file, flag: -output }
     parameters:
       - { name: max_gap_fraction, type: float, flag: -maxgapfract }
       - { name: min_confidence, type: float, flag: -minconf }
@@ -90,7 +90,7 @@ operations:
     description: Compute dispersion of an ensemble alignment
     io:
       inputs:
-        - { name: in, types: [Multi-FASTA, FASTA], mode: file, flag: -disperse }
+        - { name: in, types: [Multi-FASTA, FASTA, EFA], mode: file, flag: -disperse }
       outputs:
-        - { name: out, types: [TEXT], mode: stdout }
+        - { name: out, types: [TEXT], mode: file, flag: -log }
     parameters: []
