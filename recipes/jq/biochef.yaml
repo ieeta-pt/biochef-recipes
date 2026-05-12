@@ -36,9 +36,9 @@ operations:
     description: Apply a jq filter to a JSON document and emit the transformed JSON
     io:
       inputs:
-        - { name: in, types: [TEXT], mode: file }
+        - { name: in, types: [JSON, TEXT], mode: file }
       outputs:
-        - { name: out, types: [TEXT], mode: stdout }
+        - { name: out, types: [JSON, TEXT], mode: stdout }
     parameters:
       - { name: compact, type: flag, flag: -c }
       - { name: raw_output, type: flag, flag: -r }
@@ -48,7 +48,7 @@ operations:
       - { name: exit_status, type: flag, flag: -e }
       - { name: sort_keys, type: flag, flag: -S }
       - { name: ascii_output, type: flag, flag: -a }
-      - { name: monochrome_output, type: flag, flag: -M }
+      - { name: monochrome_output, type: flag, flag: -M, required: true, hidden: true }
       - { name: join_output, type: flag, flag: -j }
       - { name: tab, type: flag, flag: --tab }
       - { name: indent, type: integer, flag: --indent }
@@ -56,6 +56,5 @@ operations:
       - { name: seq, type: flag, flag: --seq }
       - { name: stream, type: flag, flag: --stream }
       - { name: stream_errors, type: flag, flag: --stream-errors }
-      - { name: from_file, type: flag, flag: -f }
       - { name: search_path, type: string, flag: -L }
       - { name: filter, type: string, required: true }
