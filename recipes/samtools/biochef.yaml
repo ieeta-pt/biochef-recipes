@@ -39,7 +39,7 @@ operations:
         - { name: in, types: [SAM, BAM, CRAM], mode: file }
         - { name: fasta_ref, types: [FASTA], mode: file, flag: --reference }
       outputs:
-        - { name: out, types: [SAM, BAM, CRAM], mode: stdout }
+        - { name: out, types: [SAM, BAM, CRAM], mode: file, flag: -o }
     parameters:
       - { name: command, type: string, default: view, required: true, hidden: true }
       - { name: bam_output, type: flag, flag: -b }
@@ -68,7 +68,7 @@ operations:
         - { name: in, types: [SAM, BAM, CRAM], mode: file }
         - { name: fasta_ref, types: [FASTA], mode: file, flag: --reference }
       outputs:
-        - { name: out, types: [SAM, BAM, CRAM], mode: stdout }
+        - { name: out, types: [SAM, BAM, CRAM], mode: file, flag: -o }
     parameters:
       - { name: command, type: string, default: sort, required: true, hidden: true }
       - { name: output_format, type: string, flag: -O }
@@ -315,7 +315,7 @@ operations:
         - { name: in, types: [BAM, CRAM, SAM], mode: file }
         - { name: fasta_ref, types: [FASTA], mode: file, flag: --reference }
       outputs:
-        - { name: out, types: [BAM, CRAM, SAM], mode: stdout }
+        - { name: out, types: [BAM, CRAM, SAM], mode: file, flag: -o }
     parameters:
       - { name: command, type: string, default: collate, required: true, hidden: true }
       - { name: stdout_output, type: flag, flag: -O, required: true, hidden: true }
