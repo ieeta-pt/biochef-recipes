@@ -87,7 +87,7 @@ operations:
       inputs:
         - { name: in, types: [BAM, CRAM], mode: file }
       outputs:
-        - { name: out, types: [BIN], mode: file, filename: "in.txt.bai" }
+        - { name: out, types: [BAI], mode: file, flag: -o, filename: "in.txt.bai"}
     parameters:
       - { name: command, type: string, default: index, required: true, hidden: true }
       - { name: threads, type: integer, flag: --threads, default: 1 }
@@ -101,7 +101,7 @@ operations:
       inputs:
         - { name: in, types: [FASTA], mode: file }
       outputs:
-        - { name: out, types: [BIN], mode: file, filename: "in.txt.fai" }
+        - { name: out, types: [FAI], mode: file, flag: -o, filename: "in.txt.fai" }
     parameters:
       - { name: command, type: string, default: faidx, required: true, hidden: true }
 
@@ -135,7 +135,7 @@ operations:
         - { name: in, types: [BAM, CRAM], mode: file }
         - { name: fasta_ref, types: [FASTA], mode: file, flag: --reference }
       outputs:
-        - { name: out, types: [FASTA], mode: stdout }
+        - { name: out, types: [FASTA, Multi-FASTA], mode: stdout }
     parameters:
       - { name: command, type: string, default: fasta, required: true, hidden: true }
       - { name: require_flags, type: integer, flag: -f }
@@ -318,7 +318,6 @@ operations:
         - { name: out, types: [BAM, CRAM, SAM], mode: file, flag: -o }
     parameters:
       - { name: command, type: string, default: collate, required: true, hidden: true }
-      - { name: stdout_output, type: flag, flag: -O, required: true, hidden: true }
       - { name: output_format, type: string, flag: --output-fmt }
       - { name: fast_mode, type: flag, flag: -f }
       - { name: temp_files, type: integer, flag: -n }
