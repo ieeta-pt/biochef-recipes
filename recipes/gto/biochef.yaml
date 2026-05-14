@@ -350,9 +350,9 @@ operations:
       inputs:
         - { name: in, types: [FASTA, Multi-FASTA], mode: stdin }
       outputs:
-        - { name: headers, types: [TEXT], mode: file, filename: "HEADERS.JV2"}
-        - { name: extra, types: [TEXT], mode: file, filename: "EXTRA.JV2"}
-        - { name: DNA, types: [TEXT, DNA, AminoAcids, RNA], mode: file, filename: "DNA.JV2"}
+        - { name: headers, types: [TEXT], mode: file, flag: -H,  filename: "HEADERS.JV2"}
+        - { name: extra, types: [TEXT], mode: file, flag: -e, filename: "EXTRA.JV2"}
+        - { name: DNA, types: [TEXT, DNA, AminoAcids, RNA], mode: file, flag: -d, filename: "DNA.JV2"}
         
     parameters: []
 
