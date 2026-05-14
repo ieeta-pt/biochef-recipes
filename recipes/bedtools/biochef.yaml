@@ -89,7 +89,7 @@ operations:
       inputs:
         - { name: i, types: [BED, GFF, VCF], mode: file, flag: -i }
       outputs:
-        - { name: out, types: [BED], mode: stdout }
+        - { name: out, types: [BED, GFF, VCF], mode: stdout }
     parameters:
       - { name: command, type: string, default: sort, required: true, hidden: true }
       - { name: chrom_then_size_asc, type: flag, flag: -chrThenSizeA }
@@ -215,10 +215,10 @@ operations:
     description: Extract sequences from a FASTA reference using BED intervals
     io:
       inputs:
-        - { name: fi, types: [FASTA], mode: file, flag: -fi }
+        - { name: fi, types: [FASTA, Multi-FASTA], mode: file, flag: -fi }
         - { name: bed, types: [BED, GFF, VCF], mode: file, flag: -bed }
       outputs:
-        - { name: out, types: [FASTA], mode: stdout }
+        - { name: out, types: [FASTA, Multi-FASTA], mode: stdout }
     parameters:
       - { name: command, type: string, default: getfasta, required: true, hidden: true }
       - { name: name_only, type: flag, flag: -name }
