@@ -38,7 +38,7 @@ operations:
       inputs:
         - { name: in, types: [VCF, BCF], mode: file }
       outputs:
-        - { name: out, types: [VCF, BCF], mode: stdout }
+        - { name: out, types: [VCF, BCF], mode: file, flag: -o }
     parameters:
       - { name: command, type: string, default: view, required: true, hidden: true }
       - { name: output_type, type: string, flag: -O }
@@ -112,7 +112,7 @@ operations:
       inputs:
         - { name: in, types: [VCF, BCF], mode: file }
       outputs:
-        - { name: out, types: [VCF, BCF], mode: stdout }
+        - { name: out, types: [VCF, BCF], mode: file, flag: -o }
     parameters:
       - { name: command, type: string, default: filter, required: true, hidden: true }
       - { name: include, type: string, flag: -i }
@@ -136,7 +136,7 @@ operations:
       inputs:
         - { name: in, types: [VCF, BCF], mode: file }
       outputs:
-        - { name: out, types: [VCF, BCF], mode: stdout }
+        - { name: out, types: [VCF, BCF], mode: file, flag: -o }
     parameters:
       - { name: command, type: string, default: sort, required: true, hidden: true }
       - { name: output_type, type: string, flag: -O }
@@ -152,7 +152,7 @@ operations:
         - { name: in, types: [VCF, BCF], mode: file }
         - { name: fasta_ref, types: [FASTA], mode: file, flag: -f }
       outputs:
-        - { name: out, types: [VCF, BCF], mode: stdout }
+        - { name: out, types: [VCF, BCF], mode: file, flag: -o }
     parameters:
       - { name: command, type: string, default: norm, required: true, hidden: true }
       - { name: check_ref, type: string, flag: -c }
@@ -175,7 +175,7 @@ operations:
         - { name: in1, types: [VCF, BCF], mode: file }
         - { name: in2, types: [VCF, BCF], mode: file }
       outputs:
-        - { name: out, types: [VCF, BCF], mode: stdout }
+        - { name: out, types: [VCF, BCF], mode: file, flag: -o }
     parameters:
       - { name: command, type: string, default: concat, required: true, hidden: true }
       - { name: allow_overlaps, type: flag, flag: -a }
@@ -197,7 +197,7 @@ operations:
         - { name: in1, types: [VCF, BCF], mode: file }
         - { name: in2, types: [VCF, BCF], mode: file }
       outputs:
-        - { name: out, types: [VCF, BCF], mode: stdout }
+        - { name: out, types: [VCF, BCF], mode: file, flag: -o }
     parameters:
       - { name: command, type: string, default: merge, required: true, hidden: true }
       - { name: force_samples, type: flag, flag: --force-samples }
@@ -222,7 +222,7 @@ operations:
         - { name: in1, types: [VCF, BCF], mode: file }
         - { name: in2, types: [VCF, BCF], mode: file }
       outputs:
-        - { name: out, types: [VCF, BCF], mode: stdout }
+        - { name: out, types: [VCF, BCF], mode: file, flag: -o }
     parameters:
       - { name: command, type: string, default: isec, required: true, hidden: true }
       - { name: nfiles, type: string, flag: -n, default: "=2" }
@@ -243,7 +243,7 @@ operations:
       inputs:
         - { name: in, types: [VCF, BCF], mode: file }
       outputs:
-        - { name: out, types: [VCF, BCF], mode: stdout }
+        - { name: out, types: [VCF, BCF], mode: file, flag: -o }
     parameters:
       - { name: command, type: string, default: annotate, required: true, hidden: true }
       - { name: annotations, type: string, flag: -a }
@@ -291,7 +291,7 @@ operations:
       inputs:
         - { name: in, types: [VCF, BCF], mode: file }
       outputs:
-        - { name: out, types: [BIN], mode: file, filename: "in.txt.csi" }
+        - { name: out, types: [CSI], mode: file, flag: -o, filename: "in.txt.csi" }
     parameters:
       - { name: command, type: string, default: index, required: true, hidden: true }
       - { name: csi, type: flag, flag: -c }
