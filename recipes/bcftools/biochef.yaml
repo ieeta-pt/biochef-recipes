@@ -1,0 +1,299 @@
+apiVersion: v1
+
+id: app.biochef.bcftools
+name: BCFtools
+description: Utilities for variant calling and manipulating VCF/BCF files.
+
+version: 1.10-bc.1
+homepage: https://github.com/samtools/bcftools
+license:
+  spdx: MIT
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/samtools/bcftools
+  tag: "1.10"
+  version: "1.10"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: biowasm
+    biowasm:
+      package: bcftools
+
+runtime:
+  modes: [wasm, remote]
+
+operations:
+  - id: bcftools.view
+    name: View (BCFtools)
+    category: Format Conversion
+    bin: bcftools
+    description: View, subset and filter VCF/BCF files
+    io:
+      inputs:
+        - { name: in, types: [VCF, BCF], mode: file }
+      outputs:
+        - { name: out, types: [VCF, BCF], mode: file, flag: -o }
+    parameters:
+      - { name: command, type: string, default: view, required: true, hidden: true }
+      - { name: output_type, type: string, flag: -O }
+      - { name: regions, type: string, flag: -r }
+      - { name: targets, type: string, flag: -t }
+      - { name: samples, type: string, flag: -s }
+      - { name: samples_file, type: string, flag: -S }
+      - { name: min_alleles, type: integer, flag: -m }
+      - { name: max_alleles, type: integer, flag: -M }
+      - { name: types, type: string, flag: -v }
+      - { name: exclude_types, type: string, flag: -V }
+      - { name: include, type: string, flag: -i }
+      - { name: exclude, type: string, flag: -e }
+      - { name: known, type: flag, flag: -k }
+      - { name: novel, type: flag, flag: -n }
+      - { name: drop_genotypes, type: flag, flag: -G }
+      - { name: header_only, type: flag, flag: -h }
+      - { name: no_header, type: flag, flag: -H }
+      - { name: threads, type: integer, flag: --threads, default: 1 }
+
+  - id: bcftools.query
+    name: Query (BCFtools)
+    category: Information and Analysis
+    bin: bcftools
+    description: Extract fields from VCF/BCF as a tab-delimited table
+    io:
+      inputs:
+        - { name: in, types: [VCF, BCF], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: query, required: true, hidden: true }
+      - { name: format, type: string, flag: -f, required: true }
+      - { name: regions, type: string, flag: -r }
+      - { name: targets, type: string, flag: -t }
+      - { name: samples, type: string, flag: -s }
+      - { name: include, type: string, flag: -i }
+      - { name: exclude, type: string, flag: -e }
+      - { name: list_samples, type: flag, flag: -l }
+      - { name: print_header, type: flag, flag: -H }
+      - { name: allow_undef_tags, type: flag, flag: -u }
+
+  - id: bcftools.stats
+    name: Stats (BCFtools)
+    category: Information and Analysis
+    bin: bcftools
+    description: Produce VCF/BCF statistics
+    io:
+      inputs:
+        - { name: in, types: [VCF, BCF], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: stats, required: true, hidden: true }
+      - { name: regions, type: string, flag: -r }
+      - { name: targets, type: string, flag: -t }
+      - { name: samples, type: string, flag: -s }
+      - { name: apply_filters, type: string, flag: -f }
+      - { name: split_by_id, type: flag, flag: -I }
+      - { name: depth, type: string, flag: -d }
+      - { name: af_bins, type: string, flag: --af-bins }
+      - { name: include, type: string, flag: -i }
+      - { name: exclude, type: string, flag: -e }
+
+  - id: bcftools.filter
+    name: Filter (BCFtools)
+    category: Genomic Operations
+    bin: bcftools
+    description: Apply soft or hard filters to VCF/BCF
+    io:
+      inputs:
+        - { name: in, types: [VCF, BCF], mode: file }
+      outputs:
+        - { name: out, types: [VCF, BCF], mode: file, flag: -o }
+    parameters:
+      - { name: command, type: string, default: filter, required: true, hidden: true }
+      - { name: include, type: string, flag: -i }
+      - { name: exclude, type: string, flag: -e }
+      - { name: soft_filter, type: string, flag: -s }
+      - { name: mode, type: string, flag: -m }
+      - { name: snp_gap, type: integer, flag: -g }
+      - { name: indel_gap, type: integer, flag: -G }
+      - { name: set_GTs, type: string, flag: -S }
+      - { name: regions, type: string, flag: -r }
+      - { name: targets, type: string, flag: -t }
+      - { name: output_type, type: string, flag: -O }
+      - { name: threads, type: integer, flag: --threads, default: 1 }
+
+  - id: bcftools.sort
+    name: Sort (BCFtools)
+    category: Genomic Operations
+    bin: bcftools
+    description: Sort VCF/BCF file by chromosome and position
+    io:
+      inputs:
+        - { name: in, types: [VCF, BCF], mode: file }
+      outputs:
+        - { name: out, types: [VCF, BCF], mode: file, flag: -o }
+    parameters:
+      - { name: command, type: string, default: sort, required: true, hidden: true }
+      - { name: output_type, type: string, flag: -O }
+      - { name: max_mem, type: string, flag: -m }
+
+  - id: bcftools.norm
+    name: Norm (BCFtools)
+    category: Genomic Operations
+    bin: bcftools
+    description: Left-align and normalize indels; split or join multiallelic sites
+    io:
+      inputs:
+        - { name: in, types: [VCF, BCF], mode: file }
+        - { name: fasta_ref, types: [FASTA], mode: file, flag: -f }
+      outputs:
+        - { name: out, types: [VCF, BCF], mode: file, flag: -o }
+    parameters:
+      - { name: command, type: string, default: norm, required: true, hidden: true }
+      - { name: check_ref, type: string, flag: -c }
+      - { name: multiallelics, type: string, flag: -m }
+      - { name: do_not_normalize, type: flag, flag: -N }
+      - { name: rm_dup, type: string, flag: -d }
+      - { name: site_win, type: integer, flag: -w }
+      - { name: regions, type: string, flag: -r }
+      - { name: targets, type: string, flag: -t }
+      - { name: output_type, type: string, flag: -O }
+      - { name: threads, type: integer, flag: --threads, default: 1 }
+
+  - id: bcftools.concat
+    name: Concat (BCFtools)
+    category: Genomic Operations
+    bin: bcftools
+    description: Concatenate or combine VCF/BCF files with the same set of samples
+    io:
+      inputs:
+        - { name: in1, types: [VCF, BCF], mode: file }
+        - { name: in2, types: [VCF, BCF], mode: file }
+      outputs:
+        - { name: out, types: [VCF, BCF], mode: file, flag: -o }
+    parameters:
+      - { name: command, type: string, default: concat, required: true, hidden: true }
+      - { name: allow_overlaps, type: flag, flag: -a }
+      - { name: compact_PS, type: flag, flag: -c }
+      - { name: rm_dups, type: string, flag: -d }
+      - { name: remove_duplicates, type: flag, flag: -D }
+      - { name: ligate, type: flag, flag: -l }
+      - { name: naive, type: flag, flag: -n }
+      - { name: output_type, type: string, flag: -O }
+      - { name: threads, type: integer, flag: --threads, default: 1 }
+
+  - id: bcftools.merge
+    name: Merge (BCFtools)
+    category: Genomic Operations
+    bin: bcftools
+    description: Merge multiple VCF/BCF files from non-overlapping sample sets
+    io:
+      inputs:
+        - { name: in1, types: [VCF, BCF], mode: file }
+        - { name: in2, types: [VCF, BCF], mode: file }
+      outputs:
+        - { name: out, types: [VCF, BCF], mode: file, flag: -o }
+    parameters:
+      - { name: command, type: string, default: merge, required: true, hidden: true }
+      - { name: force_samples, type: flag, flag: --force-samples }
+      - { name: print_header, type: flag, flag: --print-header }
+      - { name: use_header, type: string, flag: --use-header }
+      - { name: missing_to_ref, type: flag, flag: "-0" }
+      - { name: apply_filters, type: string, flag: -f }
+      - { name: filter_logic, type: string, flag: -F }
+      - { name: info_rules, type: string, flag: -i }
+      - { name: merge, type: string, flag: -m }
+      - { name: regions, type: string, flag: -r }
+      - { name: output_type, type: string, flag: -O }
+      - { name: threads, type: integer, flag: --threads, default: 1 }
+
+  - id: bcftools.isec
+    name: Isec (BCFtools)
+    category: Genomic Operations
+    bin: bcftools
+    description: Two-file intersection of VCF/BCF (writes records of file 1 present in both) — inputs must be bgzipped and indexed
+    io:
+      inputs:
+        - { name: in1, types: [VCF, BCF], mode: file }
+        - { name: in2, types: [VCF, BCF], mode: file }
+      outputs:
+        - { name: out, types: [VCF, BCF], mode: file, flag: -o }
+    parameters:
+      - { name: command, type: string, default: isec, required: true, hidden: true }
+      - { name: nfiles, type: string, flag: -n, default: "=2" }
+      - { name: write, type: string, flag: -w, default: "1" }
+      - { name: collapse, type: string, flag: -c }
+      - { name: complement, type: flag, flag: -C }
+      - { name: apply_filters, type: string, flag: -f }
+      - { name: regions, type: string, flag: -r }
+      - { name: targets, type: string, flag: -t }
+      - { name: output_type, type: string, flag: -O }
+
+  - id: bcftools.annotate
+    name: Annotate (BCFtools)
+    category: Genomic Operations
+    bin: bcftools
+    description: Add or remove annotations in VCF/BCF
+    io:
+      inputs:
+        - { name: in, types: [VCF, BCF], mode: file }
+      outputs:
+        - { name: out, types: [VCF, BCF], mode: file, flag: -o }
+    parameters:
+      - { name: command, type: string, default: annotate, required: true, hidden: true }
+      - { name: annotations, type: string, flag: -a }
+      - { name: columns, type: string, flag: -c }
+      - { name: header_lines, type: string, flag: -h }
+      - { name: set_id, type: string, flag: -I }
+      - { name: include, type: string, flag: -i }
+      - { name: exclude, type: string, flag: -e }
+      - { name: mark_sites, type: string, flag: -m }
+      - { name: rename_chrs, type: string, flag: --rename-chrs }
+      - { name: remove, type: string, flag: -x }
+      - { name: regions, type: string, flag: -r }
+      - { name: output_type, type: string, flag: -O }
+      - { name: threads, type: integer, flag: --threads, default: 1 }
+
+  - id: bcftools.consensus
+    name: Consensus (BCFtools)
+    category: Genomic Operations
+    bin: bcftools
+    description: Apply VCF variants to a reference FASTA to produce a consensus sequence
+    io:
+      inputs:
+        - { name: in, types: [VCF, BCF], mode: file }
+        - { name: fasta_ref, types: [FASTA], mode: file, flag: -f }
+      outputs:
+        - { name: out, types: [FASTA], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: consensus, required: true, hidden: true }
+      - { name: chain, type: string, flag: -c }
+      - { name: haplotype, type: string, flag: -H }
+      - { name: iupac_codes, type: flag, flag: -I }
+      - { name: mask, type: string, flag: -m }
+      - { name: missing, type: string, flag: -M }
+      - { name: sample, type: string, flag: -s }
+      - { name: include, type: string, flag: -i }
+      - { name: exclude, type: string, flag: -e }
+      - { name: regions, type: string, flag: -r }
+
+  - id: bcftools.index
+    name: Index (BCFtools)
+    category: Genomic Operations
+    bin: bcftools
+    description: Index a bgzipped VCF/BCF for random access (writes a .csi sibling file)
+    io:
+      inputs:
+        - { name: in, types: [VCF, BCF], mode: file }
+      outputs:
+        - { name: out, types: [CSI], mode: file, flag: -o, filename: "in.txt.csi" }
+    parameters:
+      - { name: command, type: string, default: index, required: true, hidden: true }
+      - { name: csi, type: flag, flag: -c }
+      - { name: force, type: flag, flag: -f }
+      - { name: min_shift, type: integer, flag: -m }
