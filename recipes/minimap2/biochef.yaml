@@ -36,7 +36,7 @@ operations:
     description: Pairwise align reads (or sequences) to a reference FASTA or pre-built .mmi index
     io:
       inputs:
-        - { name: ref, types: [FASTA, BIN], mode: file }
+        - { name: ref, types: [FASTA, MMI], mode: file }
         - { name: reads, types: [FASTA, FASTQ], mode: file }
       outputs:
         - { name: out, types: [SAM, TEXT], mode: stdout }
@@ -111,7 +111,7 @@ operations:
       inputs:
         - { name: ref, types: [FASTA], mode: file }
       outputs:
-        - { name: out, types: [BIN], mode: file, flag: -d }
+        - { name: out, types: [MMI], mode: file, flag: -d }
     parameters:
       - { name: preset, type: string, flag: -x }
       - { name: kmer_size, type: integer, flag: -k }
