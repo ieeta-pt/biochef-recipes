@@ -255,7 +255,7 @@ operations:
       inputs:
         - { name: in, types: [BAM, CRAM], mode: file }
       outputs:
-        - { name: out, types: [BAM, CRAM], mode: file }
+        - { name: out, types: [BAM, CRAM], flag: "", mode: file }
     parameters:
       - { name: command, type: string, default: markdup, required: true, hidden: true }
       - { name: remove_duplicates, type: flag, flag: -r }
