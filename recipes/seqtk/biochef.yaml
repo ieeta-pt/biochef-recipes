@@ -38,9 +38,9 @@ operations:
     description: Common transformation of FASTA/Q
     io:
       inputs:
-        - { name: in, types: [FASTA, FASTQ], mode: file }
+        - { name: in, types: [FASTA, Multi-FASTA, FASTQ], mode: file }
       outputs:
-        - { name: out, types: [FASTA, FASTQ], mode: stdout }
+        - { name: out, types: [FASTA, Multi-FASTA, FASTQ], mode: stdout }
     parameters:
       - { name: command, type: string, default: seq, required: true, hidden: true }
       - { name: quality_min, type: integer, flag: -q }
