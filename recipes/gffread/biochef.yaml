@@ -103,7 +103,7 @@ operations:
         - { name: in, types: [GFF, BED, TEXT], mode: file }
         - { name: genome, types: [FASTA], mode: file, flag: -g }
       outputs:
-        - { name: out, types: [FASTA], mode: file, flag: -w }
+        - { name: out, types: [FASTA, Multi-FASTA], mode: file, flag: -w }
     parameters:
       - { name: w_add, type: integer, flag: --w-add }
       - { name: w_nocds, type: flag, flag: --w-nocds }
@@ -135,7 +135,7 @@ operations:
         - { name: in, types: [GFF, BED, TEXT], mode: file }
         - { name: genome, types: [FASTA], mode: file, flag: -g }
       outputs:
-        - { name: out, types: [FASTA], mode: file, flag: -x }
+        - { name: out, types: [FASTA, Multi-FASTA], mode: file, flag: -x }
     parameters:
       - { name: write_exon_coords, type: flag, flag: -W }
       - { name: keep_attrs, type: flag, flag: -F }
@@ -167,7 +167,7 @@ operations:
         - { name: in, types: [GFF, BED, TEXT], mode: file }
         - { name: genome, types: [FASTA], mode: file, flag: -g }
       outputs:
-        - { name: out, types: [AminoAcids, FASTA], mode: file, flag: -y }
+        - { name: out, types: [AminoAcids, FASTA, Multi-FASTA], mode: file, flag: -y }
     parameters:
       - { name: stop_as_star, type: flag, flag: -S }
       - { name: write_exon_coords, type: flag, flag: -W }
