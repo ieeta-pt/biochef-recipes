@@ -255,7 +255,7 @@ operations:
     description: Shows the readed information of a FASTA or Multi-FASTA file format.
     io:
       inputs:
-        - { name: in, types: [FASTA], mode: stdin }
+        - { name: in, types: [FASTA, Multi-FASTA], mode: stdin }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters: []

@@ -91,7 +91,7 @@ operations:
     description: Get nucleotide composition of FASTA/Q
     io:
       inputs:
-        - { name: in, types: [FASTA], mode: file }
+        - { name: in, types: [FASTA, Multi-FASTA], mode: file }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
