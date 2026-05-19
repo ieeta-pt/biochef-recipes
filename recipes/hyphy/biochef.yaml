@@ -1,0 +1,103 @@
+apiVersion: v1
+
+id: app.biochef.hyphy
+name: hyphy
+description: Comparative sequence analysis using stochastic evolutionary models. Tests for selection (BUSTED, MEME, FEL, aBSREL) on codon alignments given a phylogeny.
+
+version: 2.5.57-bc.1
+homepage: https://github.com/veg/hyphy
+license:
+  spdx: MIT
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/veg/hyphy
+  tag: "2.5.57"
+  version: "2.5.57"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: biowasm
+    biowasm:
+      package: hyphy
+
+runtime:
+  modes: [wasm, remote]
+
+operations:
+  - id: hyphy.busted
+    name: BUSTED (HyPhy)
+    category: Genomic Operations
+    bin: hyphy
+    description: Branch-Site Unrestricted Statistical Test for Episodic Diversification — gene-wide test for episodic positive selection on a (subset of) phylogenetic branches.
+    io:
+      inputs:
+        - { name: alignment, types: [Multi-FASTA, FASTA], mode: file, flag: --alignment }
+        - { name: tree, types: [TEXT], mode: file, flag: --tree }
+      outputs:
+        - { name: out, types: [JSON], mode: file, flag: --output }
+    parameters:
+      - { name: command, type: string, default: BUSTED, required: true, hidden: true }
+      - { name: branches, type: string, flag: --branches }
+      - { name: srv, type: string, flag: --srv }
+      - { name: syn_rates, type: integer, flag: --syn-rates }
+      - { name: multiple_hits, type: string, flag: --multiple-hits }
+      - { name: starting_points, type: integer, flag: --starting-points }
+
+  - id: hyphy.meme
+    name: MEME (HyPhy)
+    category: Genomic Operations
+    bin: hyphy
+    description: Mixed Effects Model of Evolution — per-site test for episodic positive selection.
+    io:
+      inputs:
+        - { name: alignment, types: [Multi-FASTA, FASTA], mode: file, flag: --alignment }
+        - { name: tree, types: [TEXT], mode: file, flag: --tree }
+      outputs:
+        - { name: out, types: [JSON], mode: file, flag: --output }
+    parameters:
+      - { name: command, type: string, default: MEME, required: true, hidden: true }
+      - { name: branches, type: string, flag: --branches }
+      - { name: pvalue, type: float, flag: --pvalue }
+      - { name: srv, type: string, flag: --srv }
+      - { name: resample, type: integer, flag: --resample }
+
+  - id: hyphy.fel
+    name: FEL (HyPhy)
+    category: Genomic Operations
+    bin: hyphy
+    description: Fixed Effects Likelihood — per-site frequentist test for pervasive selection (dN/dS != 1).
+    io:
+      inputs:
+        - { name: alignment, types: [Multi-FASTA, FASTA], mode: file, flag: --alignment }
+        - { name: tree, types: [TEXT], mode: file, flag: --tree }
+      outputs:
+        - { name: out, types: [JSON], mode: file, flag: --output }
+    parameters:
+      - { name: command, type: string, default: FEL, required: true, hidden: true }
+      - { name: branches, type: string, flag: --branches }
+      - { name: pvalue, type: float, flag: --pvalue }
+      - { name: srv, type: string, flag: --srv }
+      - { name: ci, type: string, flag: --ci }
+      - { name: resample, type: integer, flag: --resample }
+
+  - id: hyphy.absrel
+    name: aBSREL (HyPhy)
+    category: Genomic Operations
+    bin: hyphy
+    description: Adaptive Branch-Site Random Effects Likelihood — branch-site test for episodic diversification, allowing per-branch rate categories.
+    io:
+      inputs:
+        - { name: alignment, types: [Multi-FASTA, FASTA], mode: file, flag: --alignment }
+        - { name: tree, types: [TEXT], mode: file, flag: --tree }
+      outputs:
+        - { name: out, types: [JSON], mode: file, flag: --output }
+    parameters:
+      - { name: command, type: string, default: aBSREL, required: true, hidden: true }
+      - { name: branches, type: string, flag: --branches }
+      - { name: pvalue, type: float, flag: --pvalue }
+      - { name: multiple_hits, type: string, flag: --multiple-hits }
