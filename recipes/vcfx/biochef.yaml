@@ -1,0 +1,759 @@
+apiVersion: v1
+
+id: app.biochef.vcfx
+name: VCFX
+description: Comprehensive VCF manipulation toolkit (60 specialized tools) from IEETA. Each tool reads from stdin and writes to stdout, pipeline-friendly.
+
+version: 1.1.4-bc.1
+homepage: https://github.com/ieeta-pt/VCFX
+license:
+  spdx: MIT
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/ieeta-pt/VCFX
+  tag: "v1.1.4"
+  version: "1.1.4"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      buildsystem: make
+      workDir: .
+      outputDir: build_wasm
+      commands:
+        - 'bash compile_wasm.sh'
+        - 'find build_wasm/src -name "*.js" -exec cp {} build_wasm/ \;'
+        - 'find build_wasm/src -name "*.wasm" -exec cp {} build_wasm/ \;'
+        - "echo 'all:' > Makefile"
+      env: []
+
+runtime:
+  modes: [wasm, remote]
+
+operations:
+
+  - id: vcfx.af.subsetter
+    name: Af Subsetter (VCFX)
+    category: Variant Analysis
+    bin: VCFX_af_subsetter
+    description: VCFX af subsetter tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['VCF'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.alignment.checker
+    name: Alignment Checker (VCFX)
+    category: Variant Analysis
+    bin: VCFX_alignment_checker
+    description: VCFX alignment checker tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['TEXT'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.allele.balance.calc
+    name: Allele Balance Calc (VCFX)
+    category: Variant Analysis
+    bin: VCFX_allele_balance_calc
+    description: VCFX allele balance calc tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['TEXT'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.allele.balance.filter
+    name: Allele Balance Filter (VCFX)
+    category: Variant Analysis
+    bin: VCFX_allele_balance_filter
+    description: VCFX allele balance filter tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['VCF'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.allele.counter
+    name: Allele Counter (VCFX)
+    category: Variant Analysis
+    bin: VCFX_allele_counter
+    description: VCFX allele counter tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['TEXT'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.allele.freq.calc
+    name: Allele Freq Calc (VCFX)
+    category: Variant Analysis
+    bin: VCFX_allele_freq_calc
+    description: VCFX allele freq calc tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['TEXT'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.ancestry.assigner
+    name: Ancestry Assigner (VCFX)
+    category: Variant Analysis
+    bin: VCFX_ancestry_assigner
+    description: VCFX ancestry assigner tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['TEXT'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.ancestry.inferrer
+    name: Ancestry Inferrer (VCFX)
+    category: Variant Analysis
+    bin: VCFX_ancestry_inferrer
+    description: VCFX ancestry inferrer tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['TEXT'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.annotation.extractor
+    name: Annotation Extractor (VCFX)
+    category: Variant Analysis
+    bin: VCFX_annotation_extractor
+    description: VCFX annotation extractor tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['TEXT'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.compressor
+    name: Compressor (VCFX)
+    category: Variant Analysis
+    bin: VCFX_compressor
+    description: VCFX compressor tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['VCF'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.concordance.checker
+    name: Concordance Checker (VCFX)
+    category: Variant Analysis
+    bin: VCFX_concordance_checker
+    description: VCFX concordance checker tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['TEXT'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.cross.sample.concordance
+    name: Cross Sample Concordance (VCFX)
+    category: Variant Analysis
+    bin: VCFX_cross_sample_concordance
+    description: VCFX cross sample concordance tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['VCF', 'TEXT'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.custom.annotator
+    name: Custom Annotator (VCFX)
+    category: Variant Analysis
+    bin: VCFX_custom_annotator
+    description: VCFX custom annotator tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['VCF', 'TEXT'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.diff.tool
+    name: Diff Tool (VCFX)
+    category: Variant Analysis
+    bin: VCFX_diff_tool
+    description: VCFX diff tool tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['VCF', 'TEXT'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.distance.calculator
+    name: Distance Calculator (VCFX)
+    category: Variant Analysis
+    bin: VCFX_distance_calculator
+    description: VCFX distance calculator tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['TEXT'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.dosage.calculator
+    name: Dosage Calculator (VCFX)
+    category: Variant Analysis
+    bin: VCFX_dosage_calculator
+    description: VCFX dosage calculator tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['TEXT'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.duplicate.remover
+    name: Duplicate Remover (VCFX)
+    category: Variant Analysis
+    bin: VCFX_duplicate_remover
+    description: VCFX duplicate remover tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['VCF'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.fasta.converter
+    name: Fasta Converter (VCFX)
+    category: Variant Analysis
+    bin: VCFX_fasta_converter
+    description: VCFX fasta converter tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['FASTA'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.field.extractor
+    name: Field Extractor (VCFX)
+    category: Variant Analysis
+    bin: VCFX_field_extractor
+    description: VCFX field extractor tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['TEXT'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.file.splitter
+    name: File Splitter (VCFX)
+    category: Variant Analysis
+    bin: VCFX_file_splitter
+    description: VCFX file splitter tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['VCF'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.format.converter
+    name: Format Converter (VCFX)
+    category: Variant Analysis
+    bin: VCFX_format_converter
+    description: VCFX format converter tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['VCF'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.genotype.query
+    name: Genotype Query (VCFX)
+    category: Variant Analysis
+    bin: VCFX_genotype_query
+    description: VCFX genotype query tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['TEXT'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.gl.filter
+    name: Gl Filter (VCFX)
+    category: Variant Analysis
+    bin: VCFX_gl_filter
+    description: VCFX gl filter tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['VCF'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.haplotype.extractor
+    name: Haplotype Extractor (VCFX)
+    category: Variant Analysis
+    bin: VCFX_haplotype_extractor
+    description: VCFX haplotype extractor tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['TEXT'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.haplotype.phaser
+    name: Haplotype Phaser (VCFX)
+    category: Variant Analysis
+    bin: VCFX_haplotype_phaser
+    description: VCFX haplotype phaser tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['VCF'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.header.parser
+    name: Header Parser (VCFX)
+    category: Variant Analysis
+    bin: VCFX_header_parser
+    description: VCFX header parser tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['TEXT'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.hwe.tester
+    name: Hwe Tester (VCFX)
+    category: Variant Analysis
+    bin: VCFX_hwe_tester
+    description: VCFX hwe tester tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['TEXT'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.impact.filter
+    name: Impact Filter (VCFX)
+    category: Variant Analysis
+    bin: VCFX_impact_filter
+    description: VCFX impact filter tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['VCF'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.inbreeding.calculator
+    name: Inbreeding Calculator (VCFX)
+    category: Variant Analysis
+    bin: VCFX_inbreeding_calculator
+    description: VCFX inbreeding calculator tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['TEXT'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.indel.normalizer
+    name: Indel Normalizer (VCFX)
+    category: Variant Analysis
+    bin: VCFX_indel_normalizer
+    description: VCFX indel normalizer tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['VCF'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.indexer
+    name: Indexer (VCFX)
+    category: Variant Analysis
+    bin: VCFX_indexer
+    description: VCFX indexer tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['VCF'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.info.aggregator
+    name: Info Aggregator (VCFX)
+    category: Variant Analysis
+    bin: VCFX_info_aggregator
+    description: VCFX info aggregator tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['TEXT'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.info.parser
+    name: Info Parser (VCFX)
+    category: Variant Analysis
+    bin: VCFX_info_parser
+    description: VCFX info parser tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['TEXT'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.info.summarizer
+    name: Info Summarizer (VCFX)
+    category: Variant Analysis
+    bin: VCFX_info_summarizer
+    description: VCFX info summarizer tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['TEXT'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.ld.calculator
+    name: Ld Calculator (VCFX)
+    category: Variant Analysis
+    bin: VCFX_ld_calculator
+    description: VCFX ld calculator tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['TEXT'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.merger
+    name: Merger (VCFX)
+    category: Variant Analysis
+    bin: VCFX_merger
+    description: VCFX merger tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['VCF'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.metadata.summarizer
+    name: Metadata Summarizer (VCFX)
+    category: Variant Analysis
+    bin: VCFX_metadata_summarizer
+    description: VCFX metadata summarizer tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['TEXT'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.missing.data.handler
+    name: Missing Data Handler (VCFX)
+    category: Variant Analysis
+    bin: VCFX_missing_data_handler
+    description: VCFX missing data handler tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['VCF'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.missing.detector
+    name: Missing Detector (VCFX)
+    category: Variant Analysis
+    bin: VCFX_missing_detector
+    description: VCFX missing detector tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['TEXT'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.multiallelic.splitter
+    name: Multiallelic Splitter (VCFX)
+    category: Variant Analysis
+    bin: VCFX_multiallelic_splitter
+    description: VCFX multiallelic splitter tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['VCF'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.nonref.filter
+    name: Nonref Filter (VCFX)
+    category: Variant Analysis
+    bin: VCFX_nonref_filter
+    description: VCFX nonref filter tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['VCF'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.outlier.detector
+    name: Outlier Detector (VCFX)
+    category: Variant Analysis
+    bin: VCFX_outlier_detector
+    description: VCFX outlier detector tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['TEXT'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.phase.checker
+    name: Phase Checker (VCFX)
+    category: Variant Analysis
+    bin: VCFX_phase_checker
+    description: VCFX phase checker tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['TEXT'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.phase.quality.filter
+    name: Phase Quality Filter (VCFX)
+    category: Variant Analysis
+    bin: VCFX_phase_quality_filter
+    description: VCFX phase quality filter tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['VCF'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.phred.filter
+    name: Phred Filter (VCFX)
+    category: Variant Analysis
+    bin: VCFX_phred_filter
+    description: VCFX phred filter tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['VCF'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.population.filter
+    name: Population Filter (VCFX)
+    category: Variant Analysis
+    bin: VCFX_population_filter
+    description: VCFX population filter tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['VCF'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.position.subsetter
+    name: Position Subsetter (VCFX)
+    category: Variant Analysis
+    bin: VCFX_position_subsetter
+    description: VCFX position subsetter tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['VCF'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.probability.filter
+    name: Probability Filter (VCFX)
+    category: Variant Analysis
+    bin: VCFX_probability_filter
+    description: VCFX probability filter tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['VCF'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.quality.adjuster
+    name: Quality Adjuster (VCFX)
+    category: Variant Analysis
+    bin: VCFX_quality_adjuster
+    description: VCFX quality adjuster tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['VCF'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.record.filter
+    name: Record Filter (VCFX)
+    category: Variant Analysis
+    bin: VCFX_record_filter
+    description: VCFX record filter tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['VCF'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.ref.comparator
+    name: Ref Comparator (VCFX)
+    category: Variant Analysis
+    bin: VCFX_ref_comparator
+    description: VCFX ref comparator tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['TEXT'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.reformatter
+    name: Reformatter (VCFX)
+    category: Variant Analysis
+    bin: VCFX_reformatter
+    description: VCFX reformatter tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['VCF'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.region.subsampler
+    name: Region Subsampler (VCFX)
+    category: Variant Analysis
+    bin: VCFX_region_subsampler
+    description: VCFX region subsampler tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['VCF', 'TEXT'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.sample.extractor
+    name: Sample Extractor (VCFX)
+    category: Variant Analysis
+    bin: VCFX_sample_extractor
+    description: VCFX sample extractor tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['TEXT'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.sorter
+    name: Sorter (VCFX)
+    category: Variant Analysis
+    bin: VCFX_sorter
+    description: VCFX sorter tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['VCF'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.subsampler
+    name: Subsampler (VCFX)
+    category: Variant Analysis
+    bin: VCFX_subsampler
+    description: VCFX subsampler tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['VCF', 'TEXT'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.sv.handler
+    name: Sv Handler (VCFX)
+    category: Variant Analysis
+    bin: VCFX_sv_handler
+    description: VCFX sv handler tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['VCF'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.validator
+    name: Validator (VCFX)
+    category: Variant Analysis
+    bin: VCFX_validator
+    description: VCFX validator tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['VCF', 'TEXT'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.variant.classifier
+    name: Variant Classifier (VCFX)
+    category: Variant Analysis
+    bin: VCFX_variant_classifier
+    description: VCFX variant classifier tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['VCF'], mode: stdout }
+    parameters: []
+
+  - id: vcfx.variant.counter
+    name: Variant Counter (VCFX)
+    category: Variant Analysis
+    bin: VCFX_variant_counter
+    description: VCFX variant counter tool.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: ['TEXT'], mode: stdout }
+    parameters: []
