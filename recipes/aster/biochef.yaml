@@ -1,0 +1,93 @@
+apiVersion: v1
+
+id: app.biochef.aster
+name: ASTER
+description: Accurate Species Tree EstimatoR. Quartet-based species tree inference from gene trees (ASTRAL, ASTRAL-Pro, wASTRAL) or directly from multi-locus sequence alignments (CASTER).
+
+version: 1.23.0-bc.1
+homepage: https://github.com/chaoszhang/ASTER
+license:
+  spdx: AGPL-3.0-or-later
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/chaoszhang/ASTER
+  tag: "v1.23"
+  version: "1.23"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: biowasm
+    biowasm:
+      package: ASTER
+
+runtime:
+  modes: [wasm, remote]
+
+operations:
+  - id: aster.astral
+    name: Species Tree (ASTRAL)
+    category: Genomic Operations
+    bin: astral
+    description: Quartet-based species tree estimation from a set of gene trees (Newick).
+    io:
+      inputs:
+        - { name: gene_trees, types: [TEXT], mode: file, flag: -i }
+      outputs:
+        - { name: out, types: [TEXT], mode: file, flag: -o }
+    parameters:
+      - { name: seed, type: integer, flag: -s }
+      - { name: rounds, type: integer, flag: -r }
+      - { name: subsample, type: integer, flag: -u }
+      - { name: threads, type: integer, flag: -t, default: 1 }
+
+  - id: aster.astral.pro
+    name: Species Tree with Paralogs (ASTRAL-Pro)
+    category: Genomic Operations
+    bin: astral-pro
+    description: Paralog-aware species tree estimation. Handles multi-copy gene families using a gene-to-species mapping.
+    io:
+      inputs:
+        - { name: gene_trees, types: [TEXT], mode: file, flag: -i }
+        - { name: mapping, types: [TEXT], mode: file, flag: -a }
+      outputs:
+        - { name: out, types: [TEXT], mode: file, flag: -o }
+    parameters:
+      - { name: seed, type: integer, flag: -s }
+      - { name: rounds, type: integer, flag: -r }
+      - { name: threads, type: integer, flag: -t, default: 1 }
+
+  - id: aster.wastral
+    name: Weighted Species Tree (wASTRAL)
+    category: Genomic Operations
+    bin: wastral
+    description: Weighted ASTRAL — combines branch lengths and support values for more accurate species tree estimation.
+    io:
+      inputs:
+        - { name: gene_trees, types: [TEXT], mode: file, flag: -i }
+      outputs:
+        - { name: out, types: [TEXT], mode: file, flag: -o }
+    parameters:
+      - { name: seed, type: integer, flag: -s }
+      - { name: rounds, type: integer, flag: -r }
+      - { name: weight_mode, type: string, flag: -w }
+      - { name: threads, type: integer, flag: -t, default: 1 }
+
+  - id: aster.caster.site
+    name: Species Tree from Alignments (CASTER-site)
+    category: Genomic Operations
+    bin: caster-site
+    description: Species tree estimation directly from multi-locus sequence alignments (site-pattern model). Bypasses the gene-tree step.
+    io:
+      inputs:
+        - { name: alignment, types: [FASTA, Multi-FASTA], mode: file, flag: -i }
+      outputs:
+        - { name: out, types: [TEXT], mode: file, flag: -o }
+    parameters:
+      - { name: seed, type: integer, flag: -s }
+      - { name: rounds, type: integer, flag: -r }
+      - { name: threads, type: integer, flag: -t, default: 1 }
