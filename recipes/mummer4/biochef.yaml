@@ -1,0 +1,58 @@
+apiVersion: v1
+
+id: app.biochef.mummer4
+name: mummer4
+description: Rapidly align entire genomes by finding maximal exact matches and extending them via clustering. Exposes nucmer (the DNA aligner from the MUMmer 4 suite).
+
+version: 4.0.0-bc.1
+homepage: https://github.com/mummer4/mummer
+license:
+  spdx: Artistic-2.0
+  files: [LICENSE.md]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/mummer4/mummer
+  tag: "v4.0.0rc1"
+  version: "4.0.0rc1"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: biowasm
+    biowasm:
+      package: mummer4
+
+runtime:
+  modes: [wasm, remote]
+
+operations:
+  - id: mummer4.nucmer
+    name: Nucmer (MUMmer 4)
+    category: Genomic Operations
+    bin: nucmer
+    description: Align two genomic sequences (reference and query) and produce a delta-format alignment. Suitable for whole-genome dotplots and structural comparisons.
+    io:
+      inputs:
+        - { name: ref, types: [FASTA, Multi-FASTA], mode: file }
+        - { name: query, types: [FASTA, Multi-FASTA], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: file, flag: --delta }
+    parameters:
+      - { name: mum, type: flag, flag: --mum }
+      - { name: mumreference, type: flag, flag: --mumreference }
+      - { name: maxmatch, type: flag, flag: --maxmatch }
+      - { name: breaklen, type: integer, flag: --breaklen }
+      - { name: mincluster, type: integer, flag: --mincluster }
+      - { name: diagdiff, type: integer, flag: --diagdiff }
+      - { name: diagfactor, type: float, flag: --diagfactor }
+      - { name: forward, type: flag, flag: --forward }
+      - { name: reverse, type: flag, flag: --reverse }
+      - { name: noextend, type: flag, flag: --noextend }
+      - { name: nooptimize, type: flag, flag: --nooptimize }
+      - { name: nosimplify, type: flag, flag: --nosimplify }
+      - { name: minmatch, type: integer, flag: --minmatch }
+      - { name: maxgap, type: integer, flag: --maxgap }
+      - { name: threads, type: integer, flag: --threads, default: 1 }
