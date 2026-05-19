@@ -1,0 +1,51 @@
+apiVersion: v1
+
+id: app.biochef.viralconsensus
+name: ViralConsensus
+description: Call viral consensus genomes directly from read alignments (BAM/SAM/CRAM) without an intermediate variant-calling step. Designed for viral whole-genome sequencing.
+
+version: 1.0.0-bc.1
+homepage: https://github.com/niemasd/ViralConsensus
+license:
+  spdx: GPL-3.0-or-later
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/niemasd/ViralConsensus
+  tag: "1.0.0"
+  version: "1.0.0"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: biowasm
+    biowasm:
+      package: ViralConsensus
+
+runtime:
+  modes: [wasm, remote]
+
+operations:
+  - id: viralconsensus.consensus
+    name: Consensus (ViralConsensus)
+    category: Genomic Operations
+    bin: viral_consensus
+    description: Build a consensus FASTA from a read alignment plus its reference, with per-base depth and frequency thresholds.
+    io:
+      inputs:
+        - { name: reads, types: [BAM, SAM, CRAM], mode: file, flag: -i }
+        - { name: reference, types: [FASTA], mode: file, flag: -r }
+      outputs:
+        - { name: out, types: [FASTA], mode: file, flag: -o }
+    parameters:
+      - { name: min_qual, type: integer, flag: -q }
+      - { name: min_depth, type: integer, flag: -d }
+      - { name: min_freq, type: float, flag: -f }
+      - { name: ambig_char, type: string, flag: -a }
+      - { name: primer_bed, type: string, flag: -p }
+      - { name: primer_offset, type: integer, flag: -po }
+      - { name: primer_strict, type: flag, flag: -ps }
+      - { name: quiet, type: flag, flag: --quiet }
