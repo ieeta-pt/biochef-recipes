@@ -1,0 +1,92 @@
+apiVersion: v1
+
+id: app.biochef.kentutils
+name: kentutils
+description: Subset of the UCSC Genome Browser toolkit (Jim Kent's tools) for BigBed and BigWig file conversion and inspection.
+
+version: 437.0.0-bc.1
+homepage: https://github.com/ucscGenomeBrowser/kent
+license:
+  spdx: MIT
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/ucscGenomeBrowser/kent
+  tag: "v437_base"
+  version: "437"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: biowasm
+    biowasm:
+      package: kentutils
+
+runtime:
+  modes: [wasm, remote]
+
+operations:
+  - id: kentutils.bigbed.to.bed
+    name: BigBed → BED (kentutils)
+    category: Format Conversion
+    bin: bigBedToBed
+    description: Convert a BigBed binary file into a plain BED file. Supports optional region restriction.
+    io:
+      inputs:
+        - { name: in, types: [BIGBED], mode: file }
+      outputs:
+        - { name: out, types: [BED], mode: file, filename: out.bed }
+    parameters:
+      - { name: chrom, type: string, flag: -chrom }
+      - { name: start, type: integer, flag: -start }
+      - { name: end, type: integer, flag: -end }
+      - { name: max_items, type: integer, flag: -maxItems }
+      - { name: header, type: flag, flag: -header }
+
+  - id: kentutils.bigbed.info
+    name: BigBed Info (kentutils)
+    category: Information and Analysis
+    bin: bigBedInfo
+    description: Print metadata about a BigBed file (chromosomes, item counts, zoom levels).
+    io:
+      inputs:
+        - { name: in, types: [BIGBED], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: chroms, type: flag, flag: -chroms }
+      - { name: zooms, type: flag, flag: -zooms }
+      - { name: as_definition, type: flag, flag: -as }
+
+  - id: kentutils.bigwig.to.wig
+    name: BigWig → Wig (kentutils)
+    category: Format Conversion
+    bin: bigWigToWig
+    description: Convert a BigWig binary file into a plain Wig file. Supports optional region restriction.
+    io:
+      inputs:
+        - { name: in, types: [BIGWIG], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: file, filename: out.wig }
+    parameters:
+      - { name: chrom, type: string, flag: -chrom }
+      - { name: start, type: integer, flag: -start }
+      - { name: end, type: integer, flag: -end }
+
+  - id: kentutils.bigwig.info
+    name: BigWig Info (kentutils)
+    category: Information and Analysis
+    bin: bigWigInfo
+    description: Print metadata about a BigWig file (chromosomes, basesCovered, mean/min/max signal, zoom levels).
+    io:
+      inputs:
+        - { name: in, types: [BIGWIG], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: chroms, type: flag, flag: -chroms }
+      - { name: zooms, type: flag, flag: -zooms }
+      - { name: min_max, type: flag, flag: -minMax }
