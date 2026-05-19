@@ -1,0 +1,56 @@
+apiVersion: v1
+
+id: app.biochef.modbam2bed
+name: modbam2bed
+description: Summarize modified bases (e.g. 5mC methylation) from a modBAM alignment into a BED file with per-position counts and frequencies. Useful for Nanopore methylation analysis.
+
+version: 0.9.5-bc.1
+homepage: https://github.com/epi2me-labs/modbam2bed
+license:
+  spdx: LicenseRef-ONT-Public-1.0
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/epi2me-labs/modbam2bed
+  tag: "v0.9.5"
+  version: "0.9.5"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: biowasm
+    biowasm:
+      package: modbam2bed
+
+runtime:
+  modes: [wasm, remote]
+
+operations:
+  - id: modbam2bed.summarize
+    name: Summarize Methylation (modbam2bed)
+    category: Genomic Operations
+    bin: modbam2bed
+    description: Read a modBAM with MM/ML tags plus its reference and produce a BED summary of modification counts and frequencies per position.
+    io:
+      inputs:
+        - { name: reference, types: [FASTA], mode: file }
+        - { name: bam, types: [BAM], mode: file }
+      outputs:
+        - { name: out, types: [BED], mode: stdout }
+    parameters:
+      - { name: region, type: string, flag: -r }
+      - { name: extended, type: flag, flag: -e }
+      - { name: aggregate, type: flag, flag: -a }
+      - { name: haplotype, type: integer, flag: --haplotype }
+      - { name: mod_base, type: string, flag: -m }
+      - { name: canon_base, type: string, flag: -c }
+      - { name: threshold, type: float, flag: -f }
+      - { name: cpg, type: flag, flag: --cpg }
+      - { name: chg, type: flag, flag: --chg }
+      - { name: chh, type: flag, flag: --chh }
+      - { name: combine, type: flag, flag: --combine }
+      - { name: accumulated, type: flag, flag: --accumulated }
+      - { name: threads, type: integer, flag: -t, default: 1 }
