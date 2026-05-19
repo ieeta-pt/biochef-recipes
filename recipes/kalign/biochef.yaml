@@ -1,0 +1,53 @@
+apiVersion: v1
+
+id: app.biochef.kalign
+name: kalign
+description: Fast multiple sequence alignment program for biological sequences (Kalign 3). Faster than ClustalO, MAFFT and MUSCLE on large inputs while staying competitive on accuracy.
+
+version: 3.3.1-bc.1
+homepage: https://github.com/TimoLassmann/kalign
+license:
+  spdx: GPL-3.0-or-later
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/TimoLassmann/kalign
+  tag: "v3.3.1"
+  version: "3.3.1"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: biowasm
+    biowasm:
+      package: kalign
+
+runtime:
+  modes: [wasm, remote]
+
+operations:
+  - id: kalign.align
+    name: Align (Kalign)
+    category: Genomic Operations
+    bin: kalign
+    description: Multiple sequence alignment using Kalign 3.
+    io:
+      inputs:
+        - { name: in, types: [Multi-FASTA, FASTA], mode: file, flag: -i }
+      outputs:
+        - { name: out, types: [Multi-FASTA, FASTA], mode: file, flag: -o }
+    parameters:
+      - { name: format, type: string, flag: -f }
+      - { name: type, type: string, flag: --type }
+      - { name: chaos, type: integer, flag: -c }
+      - { name: rename, type: flag, flag: -r }
+      - { name: reformat, type: flag, flag: --reformat }
+      - { name: gap_open, type: float, flag: --gpo }
+      - { name: gap_ext, type: float, flag: --gpe }
+      - { name: terminal_gap_ext, type: float, flag: --tgpe }
+      - { name: matrix, type: string, flag: --matrix }
+      - { name: bisect, type: flag, flag: --bisect }
+      - { name: nthreads, type: integer, flag: -n, default: 1 }
