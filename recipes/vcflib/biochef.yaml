@@ -42,7 +42,7 @@ build:
         - 'sed -i.bak "/^  bz2\$/d" CMakeLists.txt'
         - 'sed -i.bak "s| -march=native | |g" contrib/WFA2-lib/CMakeLists.txt'
         - 'sed -i.bak "s#defined(__APPLE__) || defined(__FreeBSD__)#defined(__APPLE__) || defined(__FreeBSD__) || defined(__EMSCRIPTEN__)#" contrib/fastahack/LargeFileSupport.h'
-        - 'mkdir -p build && cd build && emcmake cmake -DZIG=OFF -DOPENMP=OFF -DBUILD_DOC=OFF -DWFA_GITMODULE=ON -DCMAKE_EXE_LINKER_FLAGS="-sALLOW_MEMORY_GROWTH=1 -sINITIAL_MEMORY=64MB -sSTACK_SIZE=33554432 -sFORCE_FILESYSTEM=1 -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain'']" ..'
+        - 'mkdir -p build && cd build && emcmake cmake -DZIG=OFF -DOPENMP=OFF -DBUILD_DOC=OFF -DWFA_GITMODULE=ON -DCMAKE_EXE_LINKER_FLAGS="-sUSE_ZLIB=1 -sALLOW_MEMORY_GROWTH=1 -sINITIAL_MEMORY=64MB -sSTACK_SIZE=33554432 -sFORCE_FILESYSTEM=1 -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain'']" ..'
         - 'cd build && emmake make -j4'
         - "echo 'all:' > Makefile"
       env: []
