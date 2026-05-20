@@ -1,0 +1,313 @@
+apiVersion: v1
+
+id: app.biochef.vcflib
+name: vcflib
+description: vcflib — a C++ library and 70+ command-line tools for parsing, manipulating, and analysing VCF files. Built from source against bundled htslib and WFA2-lib.
+
+version: 1.0.15-bc.1
+homepage: https://github.com/vcflib/vcflib
+license:
+  spdx: MIT
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/vcflib/vcflib
+  tag: "v1.0.15"
+  version: "1.0.15"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      buildsystem: make
+      workDir: .
+      outputDir: build
+      commands:
+        - 'git submodule update --init --recursive'
+        - 'sed -i.bak "s|^find_package(BZip2 REQUIRED).*|if(NOT EMSCRIPTEN)\nfind_package(BZip2 REQUIRED)\nendif()|" CMakeLists.txt'
+        - 'sed -i.bak "s|^find_package(LibLZMA REQUIRED).*|if(NOT EMSCRIPTEN)\nfind_package(LibLZMA REQUIRED)\nendif()|" CMakeLists.txt'
+        - 'sed -i.bak ''s|"-march=native -D_FILE_OFFSET_BITS=64"|"-D_FILE_OFFSET_BITS=64"|'' CMakeLists.txt'
+        - 'sed -i.bak "s|^if (NOT BUILD_STATIC) # only when not building static$|if (NOT BUILD_STATIC AND NOT EMSCRIPTEN AND pybind11_FOUND) # only when not building static|" CMakeLists.txt'
+        - 'sed -i.bak "s|set(flags \"-O2 -g -fPIC\")|set(flags \"-O2 -g -sUSE_ZLIB=1 -fPIC\")|" CMakeLists.txt'
+        - 'sed -i.bak "s|CONFIGURE_COMMAND ./configure --disable-s3|CONFIGURE_COMMAND emconfigure ./configure --disable-s3 --disable-bz2 --disable-lzma --disable-libcurl --disable-plugins CFLAGS=-sUSE_ZLIB=1 LDFLAGS=-sUSE_ZLIB=1|" CMakeLists.txt'
+        - 'sed -i.bak "s|BUILD_COMMAND \$(MAKE) CFLAGS=\${flags} lib-static|BUILD_COMMAND emmake make CFLAGS=\${flags} lib-static|" CMakeLists.txt'
+        - 'sed -i.bak "s|set(vcflib_LIBS curl deflate)|set(vcflib_LIBS)|" CMakeLists.txt'
+        - 'sed -i.bak "/^  lzma\$/d" CMakeLists.txt'
+        - 'sed -i.bak "/^  bz2\$/d" CMakeLists.txt'
+        - 'sed -i.bak "s| -march=native | |g" contrib/WFA2-lib/CMakeLists.txt'
+        - 'sed -i.bak "s#defined(__APPLE__) || defined(__FreeBSD__)#defined(__APPLE__) || defined(__FreeBSD__) || defined(__EMSCRIPTEN__)#" contrib/fastahack/LargeFileSupport.h'
+        - 'mkdir -p build && cd build && emcmake cmake -DZIG=OFF -DOPENMP=OFF -DBUILD_DOC=OFF -DWFA_GITMODULE=ON -DCMAKE_EXE_LINKER_FLAGS="-sALLOW_MEMORY_GROWTH=1 -sINITIAL_MEMORY=64MB -sSTACK_SIZE=33554432 -sFORCE_FILESYSTEM=1 -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain'']" ..'
+        - 'cd build && emmake make -j4'
+        - "echo 'all:' > Makefile"
+      env: []
+  native:
+    buildsystem: make
+    workDir: .
+    outputDir: bin
+
+runtime:
+  modes: [wasm, native, remote]
+
+operations:
+
+  - id: vcflib.echo
+    name: Echo (vcflib)
+    category: Variant Analysis
+    bin: vcfecho
+    description: Read and re-emit a VCF file unchanged. Useful for validating the I/O layer.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters: []
+
+  - id: vcflib.filter
+    name: Filter (vcflib)
+    category: Variant Analysis
+    bin: vcffilter
+    description: Filter VCF records by a per-site expression on QUAL/INFO fields.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: expression, type: string, flag: -f, required: true }
+      - { name: genotype_filter, type: string, flag: -g }
+      - { name: tag_pass, type: string, flag: -t }
+      - { name: invert, type: flag, flag: -v }
+
+  - id: vcflib.breakmulti
+    name: Break Multi-Allelics (vcflib)
+    category: Variant Analysis
+    bin: vcfbreakmulti
+    description: Split multi-allelic records (e.g. G to C,A) into bi-allelic records.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters: []
+
+  - id: vcflib.allelicprimitives
+    name: Allelic Primitives (vcflib)
+    category: Variant Analysis
+    bin: vcfallelicprimitives
+    description: Decompose complex variants into SNPs and indels via WFA2 alignment.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: tag_parsed, type: string, flag: -t }
+      - { name: keep_geno, type: flag, flag: -k }
+
+  - id: vcflib.wave
+    name: Wave Decomposition (vcflib)
+    category: Variant Analysis
+    bin: vcfwave
+    description: Decompose complex variants using WFA2 wavefront alignment; reports SNP/INDEL/MNP/complex types.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: tag_parsed, type: string, flag: -t }
+      - { name: keep_info, type: flag, flag: -k }
+
+  - id: vcflib.streamsort
+    name: Stream Sort (vcflib)
+    category: Variant Analysis
+    bin: vcfstreamsort
+    description: Sort VCF records on a sliding window — does not require the full input in memory.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: window, type: integer, flag: -w }
+
+  - id: vcflib.uniq
+    name: Uniq (vcflib)
+    category: Variant Analysis
+    bin: vcfuniq
+    description: Drop duplicate variant records (CHROM, POS, REF, ALT). Input must be sorted.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters: []
+
+  - id: vcflib.cat
+    name: Concatenate (vcflib)
+    category: Variant Analysis
+    bin: vcfcat
+    description: Concatenate VCF files (preserve the header from the first input).
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters: []
+
+  - id: vcflib.combine
+    name: Combine (vcflib)
+    category: Variant Analysis
+    bin: vcfcombine
+    description: Combine VCFs from multiple samples into one multi-sample VCF.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: region, type: string, flag: -r }
+
+  - id: vcflib.check
+    name: Check (vcflib)
+    category: Variant Analysis
+    bin: vcfcheck
+    description: Validate REF alleles in a VCF against a FASTA reference.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+        - { name: reference, types: [FASTA], mode: file, flag: -f }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters: []
+
+  - id: vcflib.countalleles
+    name: Count Alleles (vcflib)
+    category: Variant Analysis
+    bin: vcfcountalleles
+    description: Emit the total number of REF+ALT alleles across the input.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters: []
+
+  - id: vcflib.length
+    name: Length (vcflib)
+    category: Variant Analysis
+    bin: vcflength
+    description: Annotate each record with length, length.ref, length.alt.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters: []
+
+  - id: vcflib.samplenames
+    name: Sample Names (vcflib)
+    category: Variant Analysis
+    bin: vcfsamplenames
+    description: Emit sample names declared in the VCF header.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters: []
+
+  - id: vcflib.keepsamples
+    name: Keep Samples (vcflib)
+    category: Variant Analysis
+    bin: vcfkeepsamples
+    description: Keep only the listed samples from a multi-sample VCF.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters: []
+
+  - id: vcflib.removesamples
+    name: Remove Samples (vcflib)
+    category: Variant Analysis
+    bin: vcfremovesamples
+    description: Remove the listed samples from a multi-sample VCF.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters: []
+
+  - id: vcflib.tsv
+    name: To TSV (vcflib)
+    category: Variant Analysis
+    bin: vcf2tsv
+    description: Convert VCF to tab-separated values (TSV).
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: split_geno, type: flag, flag: -g }
+      - { name: null_string, type: string, flag: -n }
+
+  - id: vcflib.stats
+    name: Stats (vcflib)
+    category: Variant Analysis
+    bin: vcfstats
+    description: Per-site statistics including SNP/indel counts, Ts/Tv ratio, allele frequency.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters: []
+
+  - id: vcflib.flatten
+    name: Flatten (vcflib)
+    category: Variant Analysis
+    bin: vcfflatten
+    description: Reduce overlapping variant records by keeping the highest-quality call.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters: []
+
+  - id: vcflib.leftalign
+    name: Left Align (vcflib)
+    category: Variant Analysis
+    bin: vcfleftalign
+    description: Left-align indels against a reference FASTA, normalising representation.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+        - { name: reference, types: [FASTA], mode: file, flag: -r }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: window, type: integer, flag: -w }
+
+  - id: vcflib.intersect
+    name: Intersect (vcflib)
+    category: Variant Analysis
+    bin: vcfintersect
+    description: Intersect or subtract two VCF files by chromosome and position.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+        - { name: bed, types: [BED], mode: file, flag: -b }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: invert, type: flag, flag: -v }
+      - { name: window, type: integer, flag: -w }
