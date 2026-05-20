@@ -4,7 +4,7 @@ id: app.biochef.vcfx
 name: VCFX
 description: Comprehensive VCF manipulation toolkit (60 specialized tools) from IEETA. Each tool reads from stdin and writes to stdout, pipeline-friendly.
 
-version: 1.1.5-bc.1
+version: 1.1.6-bc.1
 homepage: https://github.com/ieeta-pt/VCFX
 license:
   spdx: MIT
@@ -14,8 +14,8 @@ maintainers:
 
 source:
   repo: https://github.com/ieeta-pt/VCFX
-  tag: "v1.1.5"
-  version: "1.1.5"
+  tag: "v1.1.6"
+  version: "1.1.6"
 
 status: experimental
 
