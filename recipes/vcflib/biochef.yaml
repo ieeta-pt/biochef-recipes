@@ -30,6 +30,8 @@ build:
         - 'git submodule update --init --recursive'
         - 'sed -i.bak "s|^find_package(BZip2 REQUIRED).*|if(NOT EMSCRIPTEN)\nfind_package(BZip2 REQUIRED)\nendif()|" CMakeLists.txt'
         - 'sed -i.bak "s|^find_package(LibLZMA REQUIRED).*|if(NOT EMSCRIPTEN)\nfind_package(LibLZMA REQUIRED)\nendif()|" CMakeLists.txt'
+        - 'sed -i.bak "s|^find_package(ZLIB REQUIRED).*|if(NOT EMSCRIPTEN)\nfind_package(ZLIB REQUIRED)\nendif()|" CMakeLists.txt'
+        - 'sed -i.bak "s|^set_package_properties(ZLIB PROPERTIES TYPE REQUIRED)$|if(NOT EMSCRIPTEN)\nset_package_properties(ZLIB PROPERTIES TYPE REQUIRED)\nendif()|" CMakeLists.txt'
         - 'sed -i.bak ''s|"-march=native -D_FILE_OFFSET_BITS=64"|"-D_FILE_OFFSET_BITS=64"|'' CMakeLists.txt'
         - 'sed -i.bak "s|^if (NOT BUILD_STATIC) # only when not building static$|if (NOT BUILD_STATIC AND NOT EMSCRIPTEN AND pybind11_FOUND) # only when not building static|" CMakeLists.txt'
         - 'sed -i.bak "s|set(flags \"-O2 -g -fPIC\")|set(flags \"-O2 -g -sUSE_ZLIB=1 -fPIC\")|" CMakeLists.txt'
