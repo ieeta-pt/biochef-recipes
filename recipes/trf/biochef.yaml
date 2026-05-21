@@ -1,0 +1,63 @@
+apiVersion: v1
+
+id: app.biochef.trf
+name: TRF
+description: Tandem Repeats Finder — locates tandem repeats in DNA sequences. Reports the period size, copy number, percent identity, and consensus pattern of each tandem array. The de facto standard for repeat annotation in genome assemblies.
+
+version: 4.10.0-bc.1
+homepage: https://tandem.bu.edu/trf/trf.html
+license:
+  spdx: AGPL-3.0-only
+  files: [COPYING]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/Benson-Genomics-Lab/TRF
+  commit: "355c1f92b24f6b2e71650eda3549d46f0316e571"
+  version: "4.10.0"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      buildsystem: make
+      workDir: src
+      outputDir: src/out
+      commands:
+        - 'emcc -O2 -I. -DPACKAGE_VERSION=''"4.10.0"'' -DTARGET_NAME=''"wasm32"'' -fno-align-functions -fno-align-loops -sFORCE_FILESYSTEM=1 -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain''] -sALLOW_MEMORY_GROWTH=1 trf.c -o trf.js'
+        - 'mkdir -p out && mv trf.js trf.wasm out/'
+        - "echo 'all:' > Makefile"
+      env: []
+
+runtime:
+  modes: [wasm, remote]
+
+operations:
+  - id: trf.find
+    name: Find Tandem Repeats (TRF)
+    category: Sequence Analysis
+    bin: trf
+    description: Locate tandem repeats in a DNA FASTA. The 7 numeric parameters set the scoring (match weight, mismatch / indel penalty, match / indel probability percentages) and reporting thresholds (minimum alignment score, maximum repeat period).
+    io:
+      inputs:
+        - { name: in, types: [FASTA, Multi-FASTA], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: match_weight, type: integer, default: 2, required: true, hidden: true }
+      - { name: mismatch_penalty, type: integer, default: 7, required: true, hidden: true }
+      - { name: indel_penalty, type: integer, default: 7, required: true, hidden: true }
+      - { name: match_probability, type: integer, default: 80, required: true, hidden: true }
+      - { name: indel_probability, type: integer, default: 10, required: true, hidden: true }
+      - { name: min_score, type: integer, default: 50, required: true, hidden: true }
+      - { name: max_period, type: integer, default: 500, required: true, hidden: true }
+      - { name: suppress_html, type: flag, flag: -h }
+      - { name: ngs_output, type: flag, flag: -ngs }
+      - { name: masked, type: flag, flag: -m }
+      - { name: flanking, type: flag, flag: -f }
+      - { name: data_file, type: flag, flag: -d }
+      - { name: no_redundancy, type: flag, flag: -r }
+      - { name: max_tr_length_millions, type: integer, flag: -l }
