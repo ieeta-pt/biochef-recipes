@@ -25,10 +25,11 @@ build:
     emscripten:
       buildsystem: make
       workDir: .
-      outputDir: .
+      outputDir: out
       commands:
         - 'emmake make CC=emcc AR=emar CFLAGS="-O2 -sUSE_ZLIB=1 -Wno-implicit-function-declaration" LIBS="-lz" -j4'
         - 'emcc -O2 -sUSE_ZLIB=1 -sFORCE_FILESYSTEM=1 -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain''] -sALLOW_MEMORY_GROWTH=1 main.o sys.o libgfa1.a -o gfatools.js -lz'
+        - 'mkdir -p out && mv gfatools.js gfatools.wasm out/'
         - "echo 'all:' > Makefile.stub && mv Makefile.stub Makefile"
       env: []
   native:
