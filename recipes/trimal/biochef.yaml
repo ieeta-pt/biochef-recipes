@@ -1,0 +1,105 @@
+apiVersion: v1
+
+id: app.biochef.trimal
+name: trimAl
+description: trimAl — automated alignment trimming for large-scale phylogenetic analyses. Removes spurious sequences and poorly-aligned columns from an MSA. Pairs naturally with muscle/kalign upstream and fasttree downstream.
+
+version: 1.5.1-bc.1
+homepage: https://trimal.readthedocs.io
+license:
+  spdx: GPL-3.0-or-later
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/inab/trimal
+  tag: "v1.5.1"
+  version: "1.5.1"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      buildsystem: make
+      workDir: source
+      outputDir: source
+      commands:
+        - 'emmake make CC=em++ FLAGS="-O2 -Wno-deprecated -Wno-implicit-function-declaration" -j4 all'
+        - 'em++ -O2 -sFORCE_FILESYSTEM=1 -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain''] -sALLOW_MEMORY_GROWTH=1 -o trimal.js main.cpp -lm alignment.o statisticsGaps.o utils.o similarityMatrix.o statisticsConservation.o sequencesMatrix.o compareFiles.o'
+        - 'em++ -O2 -sFORCE_FILESYSTEM=1 -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain''] -sALLOW_MEMORY_GROWTH=1 -o readal.js readAl.cpp -lm alignment.o statisticsGaps.o utils.o similarityMatrix.o statisticsConservation.o sequencesMatrix.o compareFiles.o'
+        - 'em++ -O2 -sFORCE_FILESYSTEM=1 -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain''] -sALLOW_MEMORY_GROWTH=1 -o statal.js statAl.cpp -lm alignment.o statisticsGaps.o utils.o similarityMatrix.o statisticsConservation.o sequencesMatrix.o compareFiles.o'
+        - "echo 'all:' > makefile"
+      env: []
+  native:
+    buildsystem: make
+    workDir: source
+    outputDir: .
+
+runtime:
+  modes: [wasm, native, remote]
+
+operations:
+  - id: trimal.trim
+    name: Trim (trimAl)
+    category: Sequence Analysis
+    bin: trimal
+    description: Trim a multiple sequence alignment by removing gappy or low-conservation columns. Supports automatic methods (gappyout, strict, strictplus, automated1) or manual thresholds.
+    io:
+      inputs:
+        - { name: in, types: [FASTA, Multi-FASTA], mode: file, flag: -in }
+      outputs:
+        - { name: out, types: [FASTA, Multi-FASTA], mode: file, flag: -out }
+    parameters:
+      - { name: gappyout, type: flag, flag: -gappyout }
+      - { name: strict, type: flag, flag: -strict }
+      - { name: strictplus, type: flag, flag: -strictplus }
+      - { name: automated1, type: flag, flag: -automated1 }
+      - { name: nogaps, type: flag, flag: -nogaps }
+      - { name: noallgaps, type: flag, flag: -noallgaps }
+      - { name: gapthreshold, type: float, flag: -gt }
+      - { name: simthreshold, type: float, flag: -st }
+      - { name: consthreshold, type: float, flag: -ct }
+      - { name: conservation, type: float, flag: -cons }
+      - { name: clustal_output, type: flag, flag: -clustal }
+      - { name: phylip_output, type: flag, flag: -phylip }
+      - { name: nexus_output, type: flag, flag: -nexus }
+      - { name: keep_header, type: flag, flag: -keepheader }
+
+  - id: trimal.readal
+    name: Readal (trimAl)
+    category: Sequence Analysis
+    bin: readal
+    description: Read and convert MSAs between formats (FASTA, CLUSTAL, NBRF/PIR, NEXUS, PHYLIP3.2, PHYLIP). Use as a format converter or to extract just the sequences without alignment characters.
+    io:
+      inputs:
+        - { name: in, types: [FASTA, Multi-FASTA], mode: file, flag: -in }
+      outputs:
+        - { name: out, types: [FASTA, Multi-FASTA], mode: file, flag: -out }
+    parameters:
+      - { name: only_seqs, type: flag, flag: -onlyseqs }
+      - { name: clustal_output, type: flag, flag: -clustal }
+      - { name: phylip_output, type: flag, flag: -phylip }
+      - { name: nexus_output, type: flag, flag: -nexus }
+      - { name: fasta_output, type: flag, flag: -fasta }
+      - { name: html, type: flag, flag: -html }
+      - { name: info, type: flag, flag: -info }
+
+  - id: trimal.statal
+    name: Statal (trimAl)
+    category: Sequence Analysis
+    bin: statal
+    description: Compute per-column statistics for an MSA (gap content, conservation, similarity). Useful for inspecting alignment quality before trimming.
+    io:
+      inputs:
+        - { name: in, types: [FASTA, Multi-FASTA], mode: file, flag: -in }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: gaps_per_column, type: flag, flag: -sgc }
+      - { name: gaps_total, type: flag, flag: -sgt }
+      - { name: similarity, type: flag, flag: -sct }
+      - { name: identity, type: flag, flag: -sident }
+      - { name: residues, type: flag, flag: -sres }
