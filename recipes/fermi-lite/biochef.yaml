@@ -36,7 +36,7 @@ runtime:
   modes: [wasm, remote]
 
 operations:
-  - id: fermi-lite.assemble
+  - id: fermilite.assemble
     name: De Novo Assemble (fermi-lite)
     category: Genomic Operations
     bin: fml-asm
