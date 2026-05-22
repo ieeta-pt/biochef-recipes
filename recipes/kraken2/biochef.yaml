@@ -61,7 +61,7 @@ operations:
       - { name: print_scientific_name, type: flag, flag: -K }
       - { name: paired, type: flag, flag: -P }
 
-  - id: kraken2.build_db
+  - id: kraken2.build.db
     name: Build Database (Kraken2)
     category: Sequence Analysis
     bin: build_db
@@ -84,7 +84,7 @@ operations:
       - { name: load_factor, type: float, flag: -L, default: 0.7 }
       - { name: protein, type: flag, flag: -X }
 
-  - id: kraken2.estimate_capacity
+  - id: kraken2.estimate.capacity
     name: Estimate Database Size (Kraken2)
     category: Sequence Analysis
     bin: estimate_capacity
@@ -99,7 +99,7 @@ operations:
       - { name: minimizer_length, type: integer, flag: -l, default: 31 }
       - { name: spaces, type: integer, flag: -s, default: 7 }
 
-  - id: kraken2.dump_table
+  - id: kraken2.dump.table
     name: Dump Database (Kraken2)
     category: Sequence Analysis
     bin: dump_table
@@ -115,7 +115,7 @@ operations:
       - { name: use_mmap, type: flag, flag: -M }
       - { name: skip_counts, type: flag, flag: -s }
 
-  - id: kraken2.lookup_accession
+  - id: kraken2.lookup.accession
     name: Lookup Accession to TaxID (Kraken2)
     category: Format Conversion
     bin: lookup_accession_numbers
