@@ -1,0 +1,63 @@
+apiVersion: v1
+
+id: app.biochef.mutscan
+name: MutScan
+description: MutScan — fast detection of target mutations directly from raw FASTQ reads. Skips alignment entirely; scans reads for matches against a user-supplied mutation list (CSV or VCF + reference). Designed for targeted resequencing — clinical hot-spot variant panels, CRISPR-edit verification, fusion detection — where you know in advance which mutations you care about. Output is a per-mutation HTML report plus optional JSON. From the OpenGene group, same authors as fastp.
+
+version: 1.9.0-bc.1
+homepage: https://github.com/OpenGene/MutScan
+license:
+  spdx: MIT
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/OpenGene/MutScan
+  commit: "118c7047e90cf498da4d1f56f9528190473c8e17"
+  version: "1.9.0"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      buildsystem: make
+      workDir: .
+      outputDir: out
+      commands:
+        # Drop -lpthread (no shared-memory pthreads in browser WASM) and wire
+        # in the standard emcc runtime flags via the LIB hook.
+        - "sed -i.bak 's|-lz -lpthread|-sUSE_ZLIB=1 -sFORCE_FILESYSTEM=1 -sALLOW_MEMORY_GROWTH=1 -sSTACK_SIZE=8MB -sEXPORTED_RUNTIME_METHODS=[\"FS\",\"callMain\"]|' Makefile"
+        - 'emmake make CC=em++ CFLAGS="-std=c++11 -O2 -I./inc -sUSE_ZLIB=1 -Wno-c++11-narrowing -Wno-narrowing" -j4'
+        - 'mkdir -p out && mv mutscan out/mutscan.js && mv mutscan.wasm out/mutscan.wasm'
+        - "echo 'all:' > Makefile"
+      env: []
+
+runtime:
+  modes: [wasm, remote]
+
+operations:
+  - id: mutscan.scan
+    name: Scan for Mutations (MutScan)
+    category: Sequence Analysis
+    bin: mutscan
+    description: Scan raw FASTQ reads (single- or paired-end) for matches against a target mutation set. Mutation list can be either a custom CSV or a standard VCF + matching reference FASTA. Output is a per-mutation HTML report plus optional JSON. No alignment step — works directly on the reads.
+    io:
+      inputs:
+        - { name: read1, types: [FASTQ], mode: file, flag: -1 }
+        - { name: read2, types: [FASTQ], mode: file, flag: -2 }
+        - { name: mutation, types: [VCF, TEXT], mode: file, flag: -m }
+        - { name: ref, types: [FASTA, Multi-FASTA], mode: file, flag: -r }
+      outputs:
+        - { name: html, types: [TEXT], mode: file, flag: -h, filename: "mutscan.html" }
+        - { name: json, types: [TEXT], mode: file, flag: -j, filename: "mutscan.json" }
+    parameters:
+      - { name: threads, type: integer, flag: -t, default: 1 }
+      - { name: min_support, type: integer, flag: -S, default: 2 }
+      - { name: mark_vcf, type: flag, flag: -k }
+      - { name: legacy, type: flag, flag: -l }
+      - { name: standalone_html, type: flag, flag: -s }
+      - { name: simplified, type: string, flag: --simplified, default: auto }
+      - { name: verbose, type: flag, flag: -v }
