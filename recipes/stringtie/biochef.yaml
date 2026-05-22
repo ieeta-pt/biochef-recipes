@@ -55,9 +55,9 @@ operations:
     io:
       inputs:
         - { name: in, types: [BAM], mode: file }
-        - { name: guide_gff, types: [GFF, GTF], mode: file, flag: -G }
+        - { name: guide_gff, types: [GFF], mode: file, flag: -G }
       outputs:
-        - { name: out, types: [GTF], mode: file, flag: -o, filename: "transcripts.gtf" }
+        - { name: out, types: [GFF], mode: file, flag: -o, filename: "transcripts.gtf" }
         - { name: gene_abundance, types: [TEXT], mode: file, flag: -A, filename: "gene_abundance.tab" }
     parameters:
       - { name: label_prefix, type: string, flag: -l, default: STRG }
@@ -86,9 +86,9 @@ operations:
     io:
       inputs:
         - { name: input_list, types: [TEXT], mode: file }
-        - { name: guide_gff, types: [GFF, GTF], mode: file, flag: -G }
+        - { name: guide_gff, types: [GFF], mode: file, flag: -G }
       outputs:
-        - { name: out, types: [GTF], mode: file, flag: -o, filename: "merged.gtf" }
+        - { name: out, types: [GFF], mode: file, flag: -o, filename: "merged.gtf" }
     parameters:
       - { name: merge_mode, type: flag, flag: --merge, required: true, hidden: true }
       - { name: label_prefix, type: string, flag: -l, default: MSTRG }
