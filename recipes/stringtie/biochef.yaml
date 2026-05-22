@@ -1,0 +1,100 @@
+apiVersion: v1
+
+id: app.biochef.stringtie
+name: StringTie
+description: StringTie — transcript assembly and quantification from spliced RNA-seq alignments. Reconstructs the full transcript structure from BAM files produced by HISAT2 / TopHat2 / STAR, with optional reference annotation guidance. Standard tool in the RNA-seq pipeline; pairs naturally with HISAT2 upstream. WASM build links against the vendored htslib (compression deps disabled — bz2/lzma/libdeflate stripped, zlib via emcc port) and runs single-threaded.
+
+version: 3.0.3-bc.1
+homepage: https://github.com/gpertea/stringtie
+license:
+  spdx: MIT
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/gpertea/stringtie
+  tag: "v3.0.3"
+  version: "3.0.3"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      buildsystem: make
+      workDir: .
+      outputDir: out
+      commands:
+        # Build the vendored htslib as a static library. Skip the configure step
+        # (not committed in the bundled htslib) and write a minimal config.h that
+        # disables every optional compression library — only zlib is available
+        # in WASM via the emscripten port. bz2/lzma/libdeflate are stripped.
+        - 'cd htslib && printf "#ifndef _XOPEN_SOURCE\n#define _XOPEN_SOURCE 600\n#endif\n#define HAVE_DRAND48 1\n" > config.h && emmake make CC=emcc AR=emar RANLIB=emranlib CFLAGS="-O2 -Wall -fvisibility=hidden -sUSE_ZLIB=1 -Wno-unused-function -Wno-unused-but-set-variable" CPPFLAGS="-I." lib-static'
+        # rlink.cpp uses printCovMutex unconditionally but stringtie.cpp only
+        # defines it under #ifndef NOTHREADS — replace the extern decl with an
+        # anonymous-struct no-op stub so lock/unlock calls compile out.
+        - "sed -i.bak 's|extern GFastMutex printCovMutex;|struct{void lock(){}void unlock(){}}printCovMutex;|' rlink.cpp"
+        # Build stringtie release linking against the freshly-built libhts.a.
+        # Empty LIBDEFLATE/LIBBZ2/LIBLZMA drop those from LIBS; NOTHREADS=1 removes pthread.
+        - 'emmake make release CXX=em++ LINKER=em++ LIBDEFLATE= LIBBZ2= LIBLZMA= LIBS="./htslib/libhts.a -sUSE_ZLIB=1 -lm -sFORCE_FILESYSTEM=1 -sALLOW_MEMORY_GROWTH=1 -sSTACK_SIZE=8MB -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain'']" NOTHREADS=1'
+        - 'mkdir -p out && mv stringtie out/stringtie.js && mv stringtie.wasm out/stringtie.wasm'
+        - "echo 'all:' > Makefile"
+      env: []
+
+runtime:
+  modes: [wasm, remote]
+
+operations:
+  - id: stringtie.assemble
+    name: Assemble Transcripts (StringTie)
+    category: Genomic Operations
+    bin: stringtie
+    description: Assemble spliced RNA-seq alignments into transcripts and compute per-transcript abundance. Input is a coordinate-sorted BAM (from HISAT2 / STAR / TopHat2). Output is a GTF of assembled transcripts with FPKM and TPM values, plus optional gene-level abundance estimates.
+    io:
+      inputs:
+        - { name: in, types: [BAM], mode: file }
+        - { name: guide_gff, types: [GFF, GTF], mode: file, flag: -G }
+      outputs:
+        - { name: out, types: [GTF], mode: file, flag: -o, filename: "transcripts.gtf" }
+        - { name: gene_abundance, types: [TEXT], mode: file, flag: -A, filename: "gene_abundance.tab" }
+    parameters:
+      - { name: label_prefix, type: string, flag: -l, default: STRG }
+      - { name: min_anchor_len, type: integer, flag: -a, default: 10 }
+      - { name: min_transcript_len, type: integer, flag: -m, default: 200 }
+      - { name: min_anchor_cov, type: integer, flag: -j, default: 1 }
+      - { name: min_isoform_fraction, type: float, flag: -f, default: 0.01 }
+      - { name: min_bundle_cov, type: float, flag: -c, default: 1.0 }
+      - { name: max_gap_dist, type: integer, flag: -g, default: 50 }
+      - { name: error_margin, type: integer, flag: -E }
+      - { name: ref_only, type: flag, flag: -e }
+      - { name: long_read_mode, type: flag, flag: -L }
+      - { name: mix_mode, type: flag, flag: --mix }
+      - { name: viral_mode, type: flag, flag: --viral }
+      - { name: conservative, type: flag, flag: --conservative }
+      - { name: fr_stranded, type: flag, flag: --fr }
+      - { name: rf_stranded, type: flag, flag: --rf }
+      - { name: ballgown_dir, type: string, flag: -b }
+      - { name: verbose, type: flag, flag: -v }
+
+  - id: stringtie.merge
+    name: Merge Transcripts (StringTie)
+    category: Genomic Operations
+    bin: stringtie
+    description: Merge multiple per-sample assembled-transcript GTFs into a single non-redundant set. Standard step in the StringTie / Ballgown workflow before re-running stringtie with -e against the merged reference for accurate quantification.
+    io:
+      inputs:
+        - { name: input_list, types: [TEXT], mode: file }
+        - { name: guide_gff, types: [GFF, GTF], mode: file, flag: -G }
+      outputs:
+        - { name: out, types: [GTF], mode: file, flag: -o, filename: "merged.gtf" }
+    parameters:
+      - { name: merge_mode, type: flag, flag: --merge, required: true, hidden: true }
+      - { name: label_prefix, type: string, flag: -l, default: MSTRG }
+      - { name: min_isoform_fraction, type: float, flag: -f, default: 0.01 }
+      - { name: min_transcript_len, type: integer, flag: -m, default: 50 }
+      - { name: min_cov, type: float, flag: -c, default: 0 }
+      - { name: min_fpkm, type: float, flag: -F }
+      - { name: min_tpm, type: float, flag: -T }
+      - { name: keep_retained_introns, type: flag, flag: -i }
