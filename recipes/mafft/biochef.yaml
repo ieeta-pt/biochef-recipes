@@ -25,7 +25,7 @@ build:
     emscripten:
       buildsystem: make
       workDir: core
-      outputDir: out
+      outputDir: core/out
       commands:
         - 'emmake make all CC=emcc CFLAGS="-O2 -Wno-deprecated-non-prototype -Wno-implicit-function-declaration -Wno-int-conversion" LIBS="-lm -sFORCE_FILESYSTEM=1 -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain''] -sALLOW_MEMORY_GROWTH=1 -sSTACK_SIZE=8MB" -j4'
         - 'mkdir -p out'
