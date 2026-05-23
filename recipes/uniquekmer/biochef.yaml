@@ -1,0 +1,63 @@
+apiVersion: v1
+
+id: app.biochef.uniquekmer
+name: UniqueKMER
+description: UniqueKMER — generate per-contig unique k-mer sets from a multi-FASTA. Each genome / contig gets its own k-mer fingerprint suitable for downstream k-mer-based detection or classification. Optionally subtract k-mers that map (within an edit-distance tolerance) to a background reference genome — useful for ensuring the chosen k-mers actually distinguish the target. From the OpenGene group; companion tool to fastv-style pathogen-detection workflows. WASM build is limited to small k (≤12 in practice) because the working hash table allocates 4^k bytes.
+
+version: 0.1.0-bc.1
+homepage: https://github.com/OpenGene/UniqueKMER
+license:
+  spdx: MIT
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/OpenGene/UniqueKMER
+  commit: "8b902e9a82c9ace13d038e684adc06460afeff89"
+  version: "0.1.0"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      buildsystem: make
+      workDir: .
+      outputDir: out
+      commands:
+        # Strip the OpenMP include (no OMP in WASM); the bare `#pragma omp parallel for`
+        # lines remain as ignored comments when -fopenmp is not passed.
+        - "sed -i.bak 's|#include <omp.h>||' src/genomes.cpp"
+        # Drop -lz -lpthread -lomp and wire emcc runtime flags via LIBS.
+        - "sed -i.bak2 's|^LIBS := -lz -lpthread.*$|LIBS := -sUSE_ZLIB=1 -sFORCE_FILESYSTEM=1 -sALLOW_MEMORY_GROWTH=1 -sSTACK_SIZE=8MB -sEXPORTED_RUNTIME_METHODS=[\"FS\",\"callMain\"]|' Makefile"
+        - 'emmake make CXX=em++ CXXFLAGS="-std=c++11 -O2 -I./inc -sUSE_ZLIB=1 -Wno-c++11-narrowing -Wno-narrowing -Wno-format -Wno-source-uses-openmp" -j4'
+        - 'mkdir -p out && mv uniquekmer out/uniquekmer.js && mv uniquekmer.wasm out/uniquekmer.wasm'
+        - "echo 'all:' > Makefile"
+      env: []
+  native:
+    buildsystem: make
+    workDir: .
+    outputDir: .
+
+runtime:
+  modes: [wasm, native, remote]
+
+operations:
+  - id: uniquekmer.generate
+    name: Generate Unique K-mer Sets
+    category: Sequence Analysis
+    bin: uniquekmer
+    description: Generate per-contig unique k-mer sets from a multi-FASTA input. Output is a directory of per-contig k-mer files. Optionally provide a reference genome (-r) to drop k-mers that also occur in the reference within an edit-distance tolerance, ensuring discriminative k-mers.
+    io:
+      inputs:
+        - { name: fasta, types: [FASTA, Multi-FASTA], mode: file, flag: -f }
+        - { name: ref, types: [FASTA, Multi-FASTA], mode: file, flag: -r }
+      outputs:
+        - { name: outdir, types: [TEXT], mode: file, flag: -o, filename: "unique_kmers" }
+    parameters:
+      - { name: kmer_length, type: integer, flag: -k, default: 12 }
+      - { name: spacing, type: integer, flag: -s, default: 0 }
+      - { name: genome_limit, type: integer, flag: -g, default: 0 }
+      - { name: edit_distance, type: integer, flag: -e, default: 3 }
