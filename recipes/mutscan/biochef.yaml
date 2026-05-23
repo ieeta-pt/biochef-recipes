@@ -34,9 +34,13 @@ build:
         - 'mkdir -p out && mv mutscan out/mutscan.js && mv mutscan.wasm out/mutscan.wasm'
         - "echo 'all:' > Makefile"
       env: []
+  native:
+    buildsystem: make
+    workDir: .
+    outputDir: .
 
 runtime:
-  modes: [wasm, remote]
+  modes: [wasm, native, remote]
 
 operations:
   - id: mutscan.scan
@@ -46,8 +50,8 @@ operations:
     description: Scan raw FASTQ reads (single- or paired-end) for matches against a target mutation set. Mutation list can be either a custom CSV or a standard VCF + matching reference FASTA. Output is a per-mutation HTML report plus optional JSON. No alignment step — works directly on the reads.
     io:
       inputs:
-        - { name: read1, types: [FASTQ], mode: file, flag: -1 }
-        - { name: read2, types: [FASTQ], mode: file, flag: -2 }
+        - { name: read1, types: [FASTQ], mode: file, flag: "-1" }
+        - { name: read2, types: [FASTQ], mode: file, flag: "-2" }
         - { name: mutation, types: [VCF, TEXT], mode: file, flag: -m }
         - { name: ref, types: [FASTA, Multi-FASTA], mode: file, flag: -r }
       outputs:
