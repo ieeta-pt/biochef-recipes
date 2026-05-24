@@ -1,0 +1,106 @@
+apiVersion: v1
+
+id: app.biochef.centrifuge
+name: Centrifuge
+description: Centrifuge — fast and space-efficient taxonomic classifier. Builds a BWT/FM-index over reference genomes (similar lineage to HISAT2/Bowtie2) and uses exact-match alignment to classify metagenomic reads. Different design from Kraken2 (which uses k-mer hash tables) — Centrifuge indexes are typically much smaller for the same reference set, useful when memory is tight. Three binaries — centrifuge-build-bin (index construction), centrifuge-class (read classification), centrifuge-inspect-bin (index introspection). In-browser usage requires small reference indexes; full-NCBI indexes are multi-GB and need remote.
+
+version: 1.0.5-bc.1
+homepage: https://github.com/DaehwanKimLab/centrifuge
+license:
+  spdx: GPL-3.0-or-later
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/DaehwanKimLab/centrifuge
+  commit: "ef1b13b076628bc1c0b97c38920373e3ca3f1328"
+  version: "1.0.5"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      buildsystem: make
+      workDir: .
+      outputDir: out
+      commands:
+        # macOS APFS case-insensitivity collides VERSION with libc++'s <version>
+        # header; rename so clang's #include <version> resolves to libc++. On
+        # Linux CI this rename is harmless (filesystem already case-sensitive).
+        - 'mv VERSION VERSION_FILE && sed -i.bak "s|cat VERSION|cat VERSION_FILE|g" Makefile'
+        - 'emmake make centrifuge-build-bin centrifuge-class centrifuge-inspect-bin CXX=em++ CC=emcc RELEASE_FLAGS="-O2 -msimd128 -msse4.2 -std=c++11" EXTRA_FLAGS="-std=c++11 -sUSE_ZLIB=1 -sFORCE_FILESYSTEM=1 -sALLOW_MEMORY_GROWTH=1 -sSTACK_SIZE=8MB" NO_TBB=1 -j4'
+        - 'mkdir -p out'
+        - 'for b in centrifuge-build-bin centrifuge-class centrifuge-inspect-bin; do mv "$b" "out/$b.js" && mv "$b.wasm" "out/$b.wasm"; done'
+        - "echo 'all:' > Makefile"
+      env: []
+
+runtime:
+  modes: [wasm, remote]
+
+operations:
+  - id: centrifuge.classify
+    name: Classify Reads (Centrifuge)
+    category: Sequence Analysis
+    bin: centrifuge-class
+    description: Classify metagenomic reads against a pre-built Centrifuge BWT/FM-index. Supports single-end and paired-end FASTA/FASTQ. Output is a per-read classification table plus a summary report aggregated by taxonomy.
+    io:
+      inputs:
+        - { name: unpaired, types: [FASTQ, FASTA], mode: file, flag: -U }
+        - { name: mate1, types: [FASTQ, FASTA], mode: file, flag: "-1" }
+        - { name: mate2, types: [FASTQ, FASTA], mode: file, flag: "-2" }
+      outputs:
+        - { name: classifications, types: [TEXT], mode: file, flag: -S, filename: "centrifuge_classifications.tsv" }
+        - { name: report, types: [TEXT], mode: file, flag: --report-file, filename: "centrifuge_report.tsv" }
+    parameters:
+      - { name: index_prefix, type: string, flag: -x, required: true }
+      - { name: input_fasta, type: flag, flag: -f }
+      - { name: min_hit_length, type: integer, flag: --min-hitlen, default: 22 }
+      - { name: min_total_length, type: integer, flag: --min-totallen, default: 0 }
+      - { name: max_assignments, type: integer, flag: -k, default: 5 }
+      - { name: host_taxids, type: string, flag: --host-taxids }
+      - { name: exclude_taxids, type: string, flag: --exclude-taxids }
+      - { name: quiet, type: flag, flag: -q }
+      - { name: seed, type: integer, flag: --seed }
+
+  - id: centrifuge.build
+    name: Build Index (Centrifuge)
+    category: Genomic Operations
+    bin: centrifuge-build-bin
+    description: Construct a Centrifuge BWT/FM-index from a reference FASTA plus a taxonomy mapping. Output is a set of `<prefix>.N.cf` files (3 total) used by centrifuge-class. In-browser usage restricted to small reference sets; full-bacterial / NCBI builds need remote.
+    io:
+      inputs:
+        - { name: reference, types: [FASTA, Multi-FASTA], mode: file }
+        - { name: conversion_table, types: [TEXT], mode: file, flag: --conversion-table }
+        - { name: taxonomy_tree, types: [TEXT], mode: file, flag: --taxonomy-tree }
+        - { name: name_table, types: [TEXT], mode: file, flag: --name-table }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: index_prefix, type: string, required: true }
+      - { name: bmax, type: integer, flag: --bmax }
+      - { name: bmaxdivn, type: integer, flag: --bmaxdivn }
+      - { name: ftabchars, type: integer, flag: --ftabchars }
+      - { name: kmer_count, type: integer, flag: --kmer-count }
+      - { name: nodc, type: flag, flag: --nodc }
+      - { name: noref, type: flag, flag: -r }
+
+  - id: centrifuge.inspect
+    name: Inspect Index (Centrifuge)
+    category: Genomic Operations
+    bin: centrifuge-inspect-bin
+    description: Extract metadata, reference sequences, or taxonomy from a pre-built Centrifuge index. Useful for verifying index contents or reconstructing the underlying reference set.
+    io:
+      inputs:
+        - { name: index, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: index_prefix, type: string, required: true }
+      - { name: summary_only, type: flag, flag: -s }
+      - { name: conversion_table, type: flag, flag: --conversion-table }
+      - { name: taxonomy_tree, type: flag, flag: --taxonomy-tree }
+      - { name: name_table, type: flag, flag: --name-table }
+      - { name: size_table, type: flag, flag: --size-table }
