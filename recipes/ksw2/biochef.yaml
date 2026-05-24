@@ -1,0 +1,68 @@
+apiVersion: v1
+
+id: app.biochef.ksw2
+name: ksw2
+description: ksw2 — fast SIMD-vectorized pairwise sequence alignment kernel library. Implements multiple algorithms — global Needleman-Wunsch (gg), banded global with SIMD (gg2_sse), Z-drop extension (extz, extz2_sse), and gap-affine variants (extd, extd2_sse). The same alignment kernels are used inside minimap2 and bwa-mem; the standalone `ksw2-test` CLI exposes them for direct pairwise alignment of a target/query pair.
+
+version: 0.1-bc.1
+homepage: https://github.com/lh3/ksw2
+license:
+  spdx: MIT
+  files: [LICENSE.txt]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/lh3/ksw2
+  commit: "289609bd9e5381a13b16239d0a7703f1ff03f9ca"
+  version: "0.1"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      buildsystem: make
+      workDir: .
+      outputDir: out
+      commands:
+        # sse2=1 disables the upstream's `-march=native` which would emit
+        # host-specific SSE that wasm32 rejects; instead use -msimd128 -msse4.2
+        # so emcc's SSE-to-wasm-SIMD compat headers kick in.
+        - 'emmake make CC=emcc CFLAGS="-O2 -Wall -Wno-unused-function -msimd128 -msse4.2 -sUSE_ZLIB=1" LIBS="-sUSE_ZLIB=1 -sFORCE_FILESYSTEM=1 -sALLOW_MEMORY_GROWTH=1 -sSTACK_SIZE=8MB -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain'']" sse2=1 -j4'
+        - 'mkdir -p out && mv ksw2-test out/ksw2-test.js && mv ksw2-test.wasm out/ksw2-test.wasm'
+        - "echo 'all:' > Makefile"
+      env: []
+  native:
+    buildsystem: make
+    workDir: .
+    outputDir: .
+
+runtime:
+  modes: [wasm, native, remote]
+
+operations:
+  - id: ksw2.align
+    name: Pairwise Align (ksw2)
+    category: Sequence Analysis
+    bin: ksw2-test
+    description: Pairwise align a DNA target and DNA query using one of the ksw2 alignment algorithms. Choose between scalar Needleman-Wunsch (gg), SIMD banded global (gg2_sse), Z-drop extension (extz, extz2_sse), and gap-affine extension (extd, extd2_sse). Output is the alignment score plus optionally the CIGAR/path.
+    io:
+      inputs:
+        - { name: target, types: [FASTA], mode: file }
+        - { name: query, types: [FASTA], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: algorithm, type: string, flag: -t, default: extd }
+      - { name: repeat_count, type: integer, flag: -R, default: 1 }
+      - { name: band_width, type: integer, flag: -w }
+      - { name: zdrop, type: integer, flag: -z, default: -1 }
+      - { name: gap_right_align, type: flag, flag: -r }
+      - { name: score_only, type: flag, flag: -s }
+      - { name: match_score, type: integer, flag: -A, default: 2 }
+      - { name: mismatch_penalty, type: integer, flag: -B, default: 4 }
+      - { name: gap_open, type: string, flag: -O, default: "4,13" }
+      - { name: gap_extension, type: string, flag: -E, default: "2,1" }
+      - { name: all_vs_all, type: flag, flag: -a }
