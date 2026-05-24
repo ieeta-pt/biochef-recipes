@@ -1,0 +1,239 @@
+apiVersion: v1
+
+id: app.biochef.rsem
+name: RSEM
+description: RSEM — alignment-based RNA-seq transcript and gene-level expression estimation. Standard quantification tool — takes BAM alignments from a spliced aligner (HISAT2, STAR, Bowtie2) plus a reference transcriptome, runs an EM algorithm to assign multi-mapping reads probabilistically, and outputs per-transcript TPM/FPKM and per-gene aggregated abundances. WASM build links against the vendored htslib (compression deps disabled; threading neutered) and runs single-threaded.
+
+version: 1.3.3-bc.1
+homepage: https://github.com/deweylab/RSEM
+license:
+  spdx: GPL-3.0-or-later
+  files: [COPYING]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/deweylab/RSEM
+  commit: "e2df2d3aafd4f0c982182e97c9cb2193647178ca"
+  version: "1.3.3"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      buildsystem: make
+      workDir: .
+      outputDir: out
+      commands:
+        # Build the vendored htslib as a static library. Disable bz2/lzma/libcurl
+        # (not available in WASM); zlib comes via the emcc port.
+        - 'cd samtools-1.3/htslib-1.3 && emconfigure ./configure --disable-bz2 --disable-lzma --disable-libcurl 2>&1 | tail -2 && emmake make CC=emcc AR=emar RANLIB=emranlib CFLAGS="-O2 -fvisibility=hidden -sUSE_ZLIB=1 -Wno-unused-function -Wno-unused-but-set-variable" lib-static'
+        # Break the SAMLIBS → samtools dependency — samtools binary build hits
+        # wasm-ld pthread/shared-memory issues we can't satisfy, but RSEM only
+        # actually needs libhts.a (built above), not the samtools wrapper.
+        - "sed -i.bak 's|^\\$(SAMLIBS) : \\$(SAMTOOLS)/samtools|\\$(SAMLIBS) :|' Makefile"
+        # Build all 15 C++ binaries directly (skips the samtools target). The
+        # pthread_kill undefined-symbol is tolerated because RSEM runs single-threaded
+        # in WASM and never actually calls into the thread-pool fast path.
+        - 'emmake make rsem-extract-reference-transcripts rsem-synthesis-reference-transcripts rsem-preref rsem-build-read-index rsem-simulate-reads rsem-parse-alignments rsem-run-em rsem-tbam2gbam rsem-bam2wig rsem-bam2readdepth rsem-get-unique rsem-sam-validator rsem-scan-for-paired-end-reads rsem-run-gibbs rsem-calculate-credibility-intervals CXX=em++ CXXFLAGS="-std=c++17 -O2 -Wall -I. -I./samtools-1.3/htslib-1.3 -sUSE_ZLIB=1 -Wno-unused-function -Wno-deprecated-declarations -Wno-deprecated-non-prototype -Wno-c++11-narrowing -Wno-narrowing" LDLIBS="-sUSE_ZLIB=1 -lm -sUSE_PTHREADS=0 -sERROR_ON_UNDEFINED_SYMBOLS=0 -sFORCE_FILESYSTEM=1 -sALLOW_MEMORY_GROWTH=1 -sSTACK_SIZE=8MB -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain'']" -j4'
+        - 'mkdir -p out'
+        - 'for b in rsem-extract-reference-transcripts rsem-synthesis-reference-transcripts rsem-preref rsem-build-read-index rsem-simulate-reads rsem-parse-alignments rsem-run-em rsem-tbam2gbam rsem-bam2wig rsem-bam2readdepth rsem-get-unique rsem-sam-validator rsem-scan-for-paired-end-reads rsem-run-gibbs rsem-calculate-credibility-intervals; do mv "$b" "out/$b.js" && mv "$b.wasm" "out/$b.wasm"; done'
+        - "echo 'all:' > Makefile"
+      env: []
+
+runtime:
+  modes: [wasm, remote]
+
+operations:
+  - id: rsem.extract.reference.transcripts
+    name: Extract Reference Transcripts (RSEM)
+    category: Genomic Operations
+    bin: rsem-extract-reference-transcripts
+    description: Extract transcript sequences from a reference genome FASTA + GTF annotation. First step in preparing an RSEM reference set — followed by synthesize-reference-transcripts and preref.
+    io:
+      inputs:
+        - { name: reference, types: [FASTA, Multi-FASTA], mode: file }
+        - { name: gtf, types: [GFF], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters: []
+
+  - id: rsem.synthesis.reference.transcripts
+    name: Synthesis Reference Transcripts (RSEM)
+    category: Genomic Operations
+    bin: rsem-synthesis-reference-transcripts
+    description: Synthesize the transcript FASTA + index files RSEM needs from the output of extract-reference-transcripts.
+    io:
+      inputs:
+        - { name: in, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters: []
+
+  - id: rsem.preref
+    name: Build Reference Pre-Index (RSEM)
+    category: Genomic Operations
+    bin: rsem-preref
+    description: Build the RSEM reference pre-index from synthesized transcripts. Final preparation step before alignment + quantification.
+    io:
+      inputs:
+        - { name: in, types: [FASTA, Multi-FASTA], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters: []
+
+  - id: rsem.parse.alignments
+    name: Parse Alignments (RSEM)
+    category: Sequence Analysis
+    bin: rsem-parse-alignments
+    description: Parse BAM alignments from a spliced aligner against the RSEM reference, extracting the per-read multi-mapping structure needed by the EM algorithm.
+    io:
+      inputs:
+        - { name: alignments, types: [BAM, SAM], mode: file }
+        - { name: reference, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters: []
+
+  - id: rsem.run.em
+    name: Run EM (RSEM)
+    category: Sequence Analysis
+    bin: rsem-run-em
+    description: Run RSEM's Expectation-Maximisation algorithm to estimate per-transcript abundance from a parsed alignment file. The core quantification step — outputs TPM/FPKM tables and optionally a posterior BAM with read-assignment probabilities.
+    io:
+      inputs:
+        - { name: in, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: threads, type: integer, flag: -p, default: 1 }
+      - { name: produce_bam, type: flag, flag: -b }
+      - { name: quiet, type: flag, flag: -q }
+      - { name: gibbs_out, type: flag, flag: --gibbs-out }
+      - { name: sampling, type: flag, flag: --sampling }
+      - { name: seed, type: integer, flag: --seed }
+      - { name: append_names, type: flag, flag: --append-names }
+
+  - id: rsem.tbam2gbam
+    name: Transcript-BAM to Genome-BAM (RSEM)
+    category: Format Conversion
+    bin: rsem-tbam2gbam
+    description: Convert a transcript-coordinate BAM (RSEM internal output) to a genome-coordinate BAM via the original reference annotation. Useful for visualization in IGV / JBrowse after RSEM quantification.
+    io:
+      inputs:
+        - { name: transcript_bam, types: [BAM], mode: file }
+        - { name: reference, types: [TEXT], mode: file }
+      outputs:
+        - { name: genome_bam, types: [BAM], mode: file }
+    parameters: []
+
+  - id: rsem.bam2wig
+    name: BAM to Wiggle (RSEM)
+    category: Format Conversion
+    bin: rsem-bam2wig
+    description: Convert a BAM alignment file to wiggle coverage track format for genome-browser visualisation.
+    io:
+      inputs:
+        - { name: bam, types: [BAM], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters: []
+
+  - id: rsem.bam2readdepth
+    name: BAM to Read Depth (RSEM)
+    category: Sequence Analysis
+    bin: rsem-bam2readdepth
+    description: Compute per-position read depth from a BAM file, output as a tab-separated table.
+    io:
+      inputs:
+        - { name: bam, types: [BAM], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters: []
+
+  - id: rsem.get.unique
+    name: Get Unique Alignments (RSEM)
+    category: Sequence Analysis
+    bin: rsem-get-unique
+    description: Filter a BAM file to retain only uniquely-mapped reads (those with a single alignment record).
+    io:
+      inputs:
+        - { name: bam, types: [BAM], mode: file }
+      outputs:
+        - { name: out, types: [BAM], mode: file }
+    parameters: []
+
+  - id: rsem.sam.validator
+    name: SAM Validator (RSEM)
+    category: Sequence Analysis
+    bin: rsem-sam-validator
+    description: Validate a SAM/BAM file conforms to the structural assumptions RSEM makes — useful as a preflight before parse-alignments.
+    io:
+      inputs:
+        - { name: in, types: [SAM, BAM], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters: []
+
+  - id: rsem.scan.paired.end
+    name: Scan For Paired-End Reads (RSEM)
+    category: Sequence Analysis
+    bin: rsem-scan-for-paired-end-reads
+    description: Detect and report which reads in a SAM/BAM file are paired-end. Useful when working with mixed single-end / paired-end alignment inputs.
+    io:
+      inputs:
+        - { name: in, types: [SAM, BAM], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters: []
+
+  - id: rsem.simulate.reads
+    name: Simulate Reads (RSEM)
+    category: Read Simulation
+    bin: rsem-simulate-reads
+    description: Simulate RNA-seq reads from a fitted RSEM model. Useful for generating benchmark datasets with known ground-truth expression levels.
+    io:
+      inputs:
+        - { name: reference, types: [TEXT], mode: file }
+        - { name: model, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [FASTQ], mode: stdout }
+    parameters: []
+
+  - id: rsem.build.read.index
+    name: Build Read Index (RSEM)
+    category: Genomic Operations
+    bin: rsem-build-read-index
+    description: Build an index of read positions used by RSEM's read-sampling and inspection steps.
+    io:
+      inputs:
+        - { name: reads, types: [FASTQ], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters: []
+
+  - id: rsem.run.gibbs
+    name: Run Gibbs Sampler (RSEM)
+    category: Sequence Analysis
+    bin: rsem-run-gibbs
+    description: Bayesian Gibbs sampling for posterior distributions of transcript abundance — alternative to point-estimate EM, gives uncertainty estimates.
+    io:
+      inputs:
+        - { name: in, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters: []
+
+  - id: rsem.calculate.credibility.intervals
+    name: Calculate Credibility Intervals (RSEM)
+    category: Sequence Analysis
+    bin: rsem-calculate-credibility-intervals
+    description: Compute Bayesian credibility intervals around RSEM abundance estimates from Gibbs samples — standard accuracy/uncertainty metric for quantification.
+    io:
+      inputs:
+        - { name: in, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters: []
