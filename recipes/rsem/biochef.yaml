@@ -126,7 +126,7 @@ operations:
         - { name: transcript_bam, types: [BAM], mode: file }
         - { name: reference, types: [TEXT], mode: file }
       outputs:
-        - { name: genome_bam, types: [BAM], mode: file }
+        - { name: genome_bam, types: [BAM], mode: file, filename: "genome.bam" }
     parameters: []
 
   - id: rsem.bam2wig
@@ -162,7 +162,7 @@ operations:
       inputs:
         - { name: bam, types: [BAM], mode: file }
       outputs:
-        - { name: out, types: [BAM], mode: file }
+        - { name: out, types: [BAM], mode: file, filename: "unique.bam" }
     parameters: []
 
   - id: rsem.sam.validator
