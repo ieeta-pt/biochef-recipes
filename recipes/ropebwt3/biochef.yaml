@@ -62,7 +62,7 @@ operations:
     name: Maximal Exact Matches (ropebwt3)
     category: Genomic Operations
     bin: ropebwt3
-    description: Find maximal exact matches (MEMs) between query sequences and a pre-built BWT/FM-index. Output is tab-separated: query name, start, length, occurrence count, matched references.
+    description: Find maximal exact matches (MEMs) between query sequences and a pre-built BWT/FM-index. Output is tab-separated — query name, start, length, occurrence count, matched references.
     io:
       inputs:
         - { name: index, types: [BIN], mode: file }
