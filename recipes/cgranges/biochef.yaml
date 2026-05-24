@@ -1,0 +1,53 @@
+apiVersion: v1
+
+id: app.biochef.cgranges
+name: cgranges
+description: cgranges — fast genomic-interval overlap queries via cache-friendly implicit interval tree (CITree). Ships `bedcov-cr` — a high-performance BED coverage utility that loads one BED into memory and streams a second BED to report overlap counts and base-pair coverage. Much faster than naive iteration when one of the BEDs is large; complementary to bedtools (already in master) for very high-throughput coverage queries.
+
+version: 0.1-bc.1
+homepage: https://github.com/lh3/cgranges
+license:
+  spdx: MIT
+  files: [LICENSE.txt]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/lh3/cgranges
+  commit: "b3d5e2c5b9a0a379f54592ab85f6cff5d58c387e"
+  version: "0.1"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      buildsystem: make
+      workDir: test
+      outputDir: test/out
+      commands:
+        # Single source-pair build — bedcov-cr.c plus cgranges.c (the library is header-only at use, source-compiled here).
+        - 'emcc -O2 -Wall -Wc++-compat -I.. -sUSE_ZLIB=1 bedcov-cr.c ../cgranges.c -sUSE_ZLIB=1 -sFORCE_FILESYSTEM=1 -sALLOW_MEMORY_GROWTH=1 -sSTACK_SIZE=8MB -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain''] -o bedcov-cr'
+        - 'mkdir -p out && mv bedcov-cr out/bedcov-cr.js && mv bedcov-cr.wasm out/bedcov-cr.wasm'
+        - "echo 'all:' > Makefile"
+      env: []
+
+runtime:
+  modes: [wasm, remote]
+
+operations:
+  - id: cgranges.bedcov
+    name: BED Coverage (bedcov-cr)
+    category: Genomic Operations
+    bin: bedcov-cr
+    description: Compute BED-vs-BED interval coverage using a cache-friendly implicit interval tree. Loads the first BED entirely in memory then streams the second BED — outputs each record from the second BED annotated with overlap count and total covered base pairs from the first.
+    io:
+      inputs:
+        - { name: loaded, types: [BED], mode: file }
+        - { name: streamed, types: [BED], mode: file }
+      outputs:
+        - { name: out, types: [BED, TEXT], mode: stdout }
+    parameters:
+      - { name: count_only, type: flag, flag: -c }
+      - { name: containment_only, type: flag, flag: -C }
