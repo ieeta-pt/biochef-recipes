@@ -1,0 +1,85 @@
+apiVersion: v1
+
+id: app.biochef.velvet
+name: Velvet
+description: Velvet — de novo short-read assembler using de Bruijn graphs. Two-stage workflow — velveth hashes input reads at a chosen k-mer length, then velvetg constructs and resolves the assembly graph. Classic assembler from EBI; complements fermi-lite (overlap-based) for browser-scale assembly. Workable for small genomes (viral, plasmid, single-chromosome). MAXKMERLENGTH baked at compile time to 31; for longer k recompile with a different value.
+
+version: 1.2.10-bc.1
+homepage: https://github.com/dzerbino/velvet
+license:
+  spdx: GPL-2.0-or-later
+  files: [LICENSE.txt]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/dzerbino/velvet
+  commit: "5fdda82802f748304bab98c893b84afe49d8e3d7"
+  version: "1.2.10"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      buildsystem: make
+      workDir: .
+      outputDir: out
+      commands:
+        - 'emmake make CC=emcc CFLAGS="-Wall -O2 -sUSE_ZLIB=1" LIBS="-lm -sUSE_ZLIB=1 -sFORCE_FILESYSTEM=1 -sALLOW_MEMORY_GROWTH=1 -sSTACK_SIZE=8MB -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain'']" -j4'
+        - 'mkdir -p out && mv velveth out/velveth.js && mv velveth.wasm out/velveth.wasm && mv velvetg out/velvetg.js && mv velvetg.wasm out/velvetg.wasm'
+        - "echo 'all:' > Makefile"
+      env: []
+  native:
+    buildsystem: make
+    workDir: .
+    outputDir: .
+
+runtime:
+  modes: [wasm, native, remote]
+
+operations:
+  - id: velvet.velveth
+    name: Hash Reads (velveth)
+    category: Genomic Operations
+    bin: velveth
+    description: First stage of velvet assembly — hash input reads at a chosen k-mer length into a `<output_dir>/Roadmaps` file consumed by velvetg. Accepts FASTA / FASTQ (optionally gzipped), single-end or paired-end. The chosen k must be odd and ≤ MAXKMERLENGTH (31 by default in this build).
+    io:
+      inputs:
+        - { name: reads, types: [FASTA, FASTQ], mode: file }
+      outputs:
+        - { name: outdir, types: [TEXT], mode: file, filename: "velvet_out" }
+    parameters:
+      - { name: hash_length, type: integer, required: true }
+      - { name: file_format, type: string, flag: -fasta, default: -fastq }
+      - { name: read_type, type: string, flag: -short, default: -short }
+      - { name: strand_specific, type: flag, flag: -strand_specific }
+      - { name: reuse_sequences, type: flag, flag: -reuse_Sequences }
+      - { name: noHash, type: flag, flag: -noHash }
+
+  - id: velvet.velvetg
+    name: Build Assembly Graph (velvetg)
+    category: Genomic Operations
+    bin: velvetg
+    description: Second stage of velvet assembly — read the Roadmaps file produced by velveth, build the de Bruijn graph, perform error correction and repeat resolution, and emit the final contigs FASTA plus optional AFG / LastGraph diagnostics.
+    io:
+      inputs:
+        - { name: outdir, types: [TEXT], mode: file }
+      outputs:
+        - { name: contigs, types: [FASTA], mode: file, filename: "contigs.fa" }
+    parameters:
+      - { name: cov_cutoff, type: float, flag: -cov_cutoff }
+      - { name: min_contig_lgth, type: integer, flag: -min_contig_lgth }
+      - { name: ins_length, type: integer, flag: -ins_length }
+      - { name: read_trkg, type: string, flag: -read_trkg }
+      - { name: amos_file, type: string, flag: -amos_file }
+      - { name: alignments, type: string, flag: -alignments }
+      - { name: exp_cov, type: string, flag: -exp_cov }
+      - { name: long_cov_cutoff, type: float, flag: -long_cov_cutoff }
+      - { name: max_branch_length, type: integer, flag: -max_branch_length }
+      - { name: max_divergence, type: float, flag: -max_divergence }
+      - { name: max_gap_count, type: integer, flag: -max_gap_count }
+      - { name: min_pair_count, type: integer, flag: -min_pair_count }
+      - { name: scaffolding, type: string, flag: -scaffolding }
+      - { name: unused_reads, type: string, flag: -unused_reads }
