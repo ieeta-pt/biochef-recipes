@@ -1,0 +1,76 @@
+name: Manual Recipe Supply-Chain Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      recipes:
+        description: "Space-separated recipe paths, or 'all'."
+        required: true
+        type: string
+        default: "all"
+      publish:
+        description: "Publish, attest, and verify test-prefixed OCI artifacts."
+        required: true
+        type: boolean
+        default: false
+
+jobs:
+  detect_recipes:
+    runs-on: ubuntu-latest
+    outputs:
+      recipe_paths: ${{ steps.detect.outputs.recipe_paths }}
+      publish_catalog: ${{ steps.detect.outputs.publish_catalog }}
+    steps:
+      - name: Checkout recipes
+        uses: actions/checkout@v4
+
+      - name: Resolve recipe selection
+        id: detect
+        env:
+          SELECTED_RECIPES: ${{ inputs.recipes }}
+          PUBLISH: ${{ inputs.publish }}
+        run: |
+          if [ "$SELECTED_RECIPES" = "all" ]; then
+            FILES=$(find recipes -path "*/biochef.yaml" | sort | paste -sd " " -)
+          else
+            FILES="$SELECTED_RECIPES"
+          fi
+
+          PUBLISH_CATALOG="$PUBLISH"
+
+          if [ -z "$FILES" ]; then
+            echo "No recipes selected"
+            exit 1
+          fi
+
+          for file in $FILES; do
+            if [ ! -f "$file" ]; then
+              echo "Recipe file does not exist: $file"
+              exit 1
+            fi
+          done
+
+          echo "Selected recipe files:"
+          echo "$FILES"
+          echo "recipe_paths=$FILES" >> "$GITHUB_OUTPUT"
+          echo "publish_catalog=$PUBLISH_CATALOG" >> "$GITHUB_OUTPUT"
+
+  test_recipes:
+    needs: detect_recipes
+    permissions:
+      contents: read
+      id-token: write
+    uses: ieeta-pt/biochef-hub/.github/workflows/publish-recipes.yml@sbom-implementation
+    with:
+      registry_url: ${{ vars.REGISTRY_URL }}
+      recipes: ${{ needs.detect_recipes.outputs.recipe_paths }}
+      oras_auth: ${{ vars.ORAS_AUTH_METHOD }}
+      package_prefix: biochef-test-plugins-
+      signing_policy: signing/biochef-signing-policy.test.json
+      publish: ${{ inputs.publish }}
+      publish_catalog: ${{ needs.detect_recipes.outputs.publish_catalog == 'true' }}
+      hub_ref: sbom-implementation
+    secrets:
+      REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+      REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+      BIOCHEF_CATALOG_SIGNING_PRIVATE_JWK: ${{ secrets.BIOCHEF_CATALOG_SIGNING_PRIVATE_JWK }}
