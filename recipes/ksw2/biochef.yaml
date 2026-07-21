@@ -23,17 +23,9 @@ build:
   wasm:
     strategy: emscripten
     emscripten:
-      buildsystem: make
-      workDir: .
-      outputDir: out
-      commands:
-        # sse2=1 disables the upstream's `-march=native` which would emit
-        # host-specific SSE that wasm32 rejects; instead use -msimd128 -msse4.2
-        # so emcc's SSE-to-wasm-SIMD compat headers kick in.
-        - 'emmake make CC=emcc CFLAGS="-O2 -Wall -Wno-unused-function -msimd128 -msse4.2 -sUSE_ZLIB=1" LIBS="-sUSE_ZLIB=1 -sFORCE_FILESYSTEM=1 -sALLOW_MEMORY_GROWTH=1 -sSTACK_SIZE=8MB -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain'']" sse2=1 -j4'
-        - 'mkdir -p out && mv ksw2-test out/ksw2-test.js && mv ksw2-test.wasm out/ksw2-test.wasm'
-        - "echo 'all:' > Makefile"
-      env: []
+      outputDir: .
+      buildScript: build-wasm.sh
+      emscriptenVersion: 4.0.18
   native:
     buildsystem: make
     workDir: .
