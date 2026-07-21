@@ -25,7 +25,7 @@ build:
     biowasm:
       package: gto
     emscripten:
-      emscriptenVersion: 6.0.3
+      emscriptenVersion: 4.0.18
       outputDir: bin
       buildScript: build-wasm.sh
   native:
