@@ -60,6 +60,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
+      packages: write
     uses: ieeta-pt/biochef-hub/.github/workflows/publish-recipes.yml@sbom-implementation
     with:
       registry_url: ${{ vars.REGISTRY_URL }}
