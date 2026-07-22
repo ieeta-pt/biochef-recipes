@@ -1,0 +1,22 @@
+{
+  "schema": "biochef.signing-policy.v1",
+  "registry_prefix": "registry.biochef.app/biochef-test-plugins-",
+  "certificate_identity": "https://github.com/ieeta-pt/biochef-hub/.github/workflows/publish-recipes.yml@refs/heads/sbom-implementation",
+  "certificate_oidc_issuer": "https://token.actions.githubusercontent.com",
+  "slsa_predicate_type": "https://slsa.dev/provenance/v1",
+  "slsa_build_type": "https://biochef.dev/buildtypes/hub-bundle/v1",
+  "allowed_external_parameters": [
+    "hubRef",
+    "hubRepository",
+    "operationId",
+    "package",
+    "recipePath",
+    "registry",
+    "version"
+  ],
+  "expected_external_parameters": {
+    "registry": "registry.biochef.app",
+    "hubRepository": "ieeta-pt/biochef-hub",
+    "hubRef": "sbom-implementation"
+  }
+}

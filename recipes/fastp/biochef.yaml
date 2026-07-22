@@ -16,6 +16,7 @@ source:
   repo: https://github.com/opengene/fastp
   tag: v0.20.1
   version: "0.20.1"
+  commit: "8f0eceae82b1789c6edfd78f640ad601bc0be29c"
 
 status: verified
 
