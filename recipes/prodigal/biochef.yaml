@@ -23,14 +23,8 @@ build:
   wasm:
     strategy: emscripten
     emscripten:
-      buildsystem: make
-      workDir: .
-      outputDir: out
-      commands:
-        - 'emmake make CC=emcc CFLAGS="-O3 -DSUPPORT_GZIP_COMPRESSED -sUSE_ZLIB=1 -Wno-implicit-function-declaration" LFLAGS="-lm -sUSE_ZLIB=1 -sSTACK_SIZE=8MB -sALLOW_MEMORY_GROWTH=1 -sFORCE_FILESYSTEM=1 -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain'']" TARGET=prodigal.js -j4'
-        - 'mkdir -p out && mv prodigal.js prodigal.wasm out/'
-        - "echo 'all:' > Makefile"
-      env: []
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
   native:
     buildsystem: make
     workDir: .
