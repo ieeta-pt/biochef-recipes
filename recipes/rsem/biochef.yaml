@@ -23,25 +23,8 @@ build:
   wasm:
     strategy: emscripten
     emscripten:
-      buildsystem: make
-      workDir: .
-      outputDir: out
-      commands:
-        # Build the vendored htslib as a static library. Disable bz2/lzma/libcurl
-        # (not available in WASM); zlib comes via the emcc port.
-        - 'cd samtools-1.3/htslib-1.3 && emconfigure ./configure --disable-bz2 --disable-lzma --disable-libcurl 2>&1 | tail -2 && emmake make CC=emcc AR=emar RANLIB=emranlib CFLAGS="-O2 -fvisibility=hidden -sUSE_ZLIB=1 -Wno-unused-function -Wno-unused-but-set-variable" lib-static'
-        # Break the SAMLIBS → samtools dependency — samtools binary build hits
-        # wasm-ld pthread/shared-memory issues we can't satisfy, but RSEM only
-        # actually needs libhts.a (built above), not the samtools wrapper.
-        - "sed -i.bak 's|^\\$(SAMLIBS) : \\$(SAMTOOLS)/samtools|\\$(SAMLIBS) :|' Makefile"
-        # Build all 15 C++ binaries directly (skips the samtools target). The
-        # pthread_kill undefined-symbol is tolerated because RSEM runs single-threaded
-        # in WASM and never actually calls into the thread-pool fast path.
-        - 'emmake make rsem-extract-reference-transcripts rsem-synthesis-reference-transcripts rsem-preref rsem-build-read-index rsem-simulate-reads rsem-parse-alignments rsem-run-em rsem-tbam2gbam rsem-bam2wig rsem-bam2readdepth rsem-get-unique rsem-sam-validator rsem-scan-for-paired-end-reads rsem-run-gibbs rsem-calculate-credibility-intervals CXX=em++ CXXFLAGS="-std=c++17 -O2 -Wall -I. -I./samtools-1.3/htslib-1.3 -sUSE_ZLIB=1 -Wno-unused-function -Wno-deprecated-declarations -Wno-deprecated-non-prototype -Wno-c++11-narrowing -Wno-narrowing" LDLIBS="-sUSE_ZLIB=1 -lm -sUSE_PTHREADS=0 -sERROR_ON_UNDEFINED_SYMBOLS=0 -sFORCE_FILESYSTEM=1 -sALLOW_MEMORY_GROWTH=1 -sSTACK_SIZE=8MB -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain'']" -j4'
-        - 'mkdir -p out'
-        - 'for b in rsem-extract-reference-transcripts rsem-synthesis-reference-transcripts rsem-preref rsem-build-read-index rsem-simulate-reads rsem-parse-alignments rsem-run-em rsem-tbam2gbam rsem-bam2wig rsem-bam2readdepth rsem-get-unique rsem-sam-validator rsem-scan-for-paired-end-reads rsem-run-gibbs rsem-calculate-credibility-intervals; do mv "$b" "out/$b.js" && mv "$b.wasm" "out/$b.wasm"; done'
-        - "echo 'all:' > Makefile"
-      env: []
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
 
 runtime:
   modes: [wasm, remote]
