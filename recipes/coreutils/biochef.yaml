@@ -2,7 +2,7 @@ apiVersion: v1
 
 id: app.biochef.coreutils
 name: coreutils
-description: GNU coreutils — basic file, shell and text manipulation utilities (cat, sort, cut, …) usable as workflow primitives.
+description: GNU coreutils — basic file, shell and text manipulation utilities.
 
 version: 8.32-bc.1
 homepage: https://www.gnu.org/software/coreutils/
@@ -26,7 +26,7 @@ build:
       package: coreutils
 
 runtime:
-  modes: [wasm, remote]
+  modes: [wasm]
 
 operations:
   - id: coreutils.cat
@@ -36,7 +36,7 @@ operations:
     description: Concatenate a file (or input) to stdout
     io:
       inputs:
-        - { name: in, types: [TEXT, FASTA, FASTQ, Multi-FASTA, NUM, DNA, RNA, AminoAcids], mode: file }
+        - { name: in, types: [TEXT], mode: file }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
@@ -55,7 +55,7 @@ operations:
     description: Sort lines of text
     io:
       inputs:
-        - { name: in, types: [TEXT, NUM], mode: file }
+        - { name: in, types: [TEXT], mode: file }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
@@ -87,7 +87,7 @@ operations:
     description: Output the first part of a file
     io:
       inputs:
-        - { name: in, types: [TEXT, FASTA, FASTQ, NUM, DNA, RNA, AminoAcids], mode: file }
+        - { name: in, types: [TEXT], mode: file }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
@@ -104,7 +104,7 @@ operations:
     description: Output the last part of a file
     io:
       inputs:
-        - { name: in, types: [TEXT, FASTA, FASTQ, NUM, DNA, RNA, AminoAcids], mode: file }
+        - { name: in, types: [TEXT], mode: file }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
@@ -121,7 +121,7 @@ operations:
     description: Count lines, words, characters and bytes
     io:
       inputs:
-        - { name: in, types: [TEXT, FASTA, FASTQ, NUM, DNA, RNA, AminoAcids], mode: file }
+        - { name: in, types: [TEXT], mode: file }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
@@ -138,7 +138,7 @@ operations:
     description: Extract sections (columns/bytes/chars) from each line
     io:
       inputs:
-        - { name: in, types: [TEXT, NUM], mode: file }
+        - { name: in, types: [TEXT], mode: file }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
@@ -158,8 +158,8 @@ operations:
     description: Merge corresponding lines of two files side by side
     io:
       inputs:
-        - { name: in1, types: [TEXT, NUM], mode: file }
-        - { name: in2, types: [TEXT, NUM], mode: file }
+        - { name: in1, types: [TEXT], mode: file }
+        - { name: in2, types: [TEXT], mode: file }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
@@ -174,7 +174,7 @@ operations:
     description: Translate, squeeze, or delete characters from input
     io:
       inputs:
-        - { name: in, types: [TEXT, FASTA, FASTQ, NUM, DNA, RNA, AminoAcids], mode: stdin }
+        - { name: in, types: [TEXT], mode: stdin }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
@@ -192,7 +192,7 @@ operations:
     description: Filter out adjacent duplicate lines (sort first)
     io:
       inputs:
-        - { name: in, types: [TEXT, NUM], mode: file }
+        - { name: in, types: [TEXT], mode: file }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
@@ -213,8 +213,8 @@ operations:
     description: Compare two sorted files line by line (3-column output)
     io:
       inputs:
-        - { name: in1, types: [TEXT, NUM], mode: file }
-        - { name: in2, types: [TEXT, NUM], mode: file }
+        - { name: in1, types: [TEXT], mode: file }
+        - { name: in2, types: [TEXT], mode: file }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
@@ -233,8 +233,8 @@ operations:
     description: Join two sorted files on a common field
     io:
       inputs:
-        - { name: in1, types: [TEXT, NUM], mode: file }
-        - { name: in2, types: [TEXT, NUM], mode: file }
+        - { name: in1, types: [TEXT], mode: file }
+        - { name: in2, types: [TEXT], mode: file }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
@@ -259,7 +259,7 @@ operations:
     description: Wrap input lines to a fixed width
     io:
       inputs:
-        - { name: in, types: [TEXT, FASTA, NUM, DNA, RNA, AminoAcids], mode: file }
+        - { name: in, types: [TEXT], mode: file }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
@@ -274,7 +274,7 @@ operations:
     description: Randomly shuffle input lines
     io:
       inputs:
-        - { name: in, types: [TEXT, FASTA, FASTQ, NUM, DNA, RNA, AminoAcids], mode: file }
+        - { name: in, types: [TEXT], mode: file }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
