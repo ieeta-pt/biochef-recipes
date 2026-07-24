@@ -26,7 +26,7 @@ build:
       package: ASTER
 
 runtime:
-  modes: [wasm, remote]
+  modes: [wasm]
 
 operations:
   - id: aster.astral
