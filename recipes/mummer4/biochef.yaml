@@ -26,7 +26,7 @@ build:
       package: mummer4
 
 runtime:
-  modes: [wasm, remote]
+  modes: [wasm]
 
 operations:
   - id: mummer4.nucmer
