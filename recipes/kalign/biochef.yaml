@@ -36,7 +36,7 @@ operations:
     description: Multiple sequence alignment using Kalign 3.
     io:
       inputs:
-        - { name: in, types: [Multi-FASTA, FASTA], mode: file, flag: -i }
+        - { name: in, types: [Multi-FASTA], mode: file, flag: -i }
       outputs:
         - { name: out, types: [Multi-FASTA, FASTA], mode: file, flag: -o }
     parameters:
