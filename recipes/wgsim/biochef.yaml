@@ -23,12 +23,9 @@ build:
   wasm:
     strategy: emscripten
     emscripten:
-      buildsystem: make
-      workDir: .
       outputDir: .
-      commands:
-        - "printf 'all: wgsim.js\\nwgsim.js: wgsim.c\\n\\t$(CC) wgsim.c -o wgsim.js $(EM_FLAGS) -lm -O2 -w\\n' > Makefile"
-      env: []
+      buildScript: build-wasm.sh
+      emscriptenVersion: 4.0.18
 
 runtime:
   modes: [wasm, remote]
@@ -43,8 +40,8 @@ operations:
       inputs:
         - { name: ref, types: [FASTA, Multi-FASTA], mode: file }
       outputs:
-        - { name: out1, types: [FASTQ], mode: file, filename: "read1.fq" }
-        - { name: out2, types: [FASTQ], mode: file, filename: "read2.fq" }
+        - { name: out1, types: [FASTQ], mode: file, flag: "", filename: "read1.fq" }
+        - { name: out2, types: [FASTQ], mode: file, flag: "", filename: "read2.fq" }
     parameters:
       - { name: error_rate, type: float, flag: -e }
       - { name: outer_distance, type: integer, flag: -d }
