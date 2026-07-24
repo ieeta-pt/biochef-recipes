@@ -25,14 +25,9 @@ build:
     biowasm:
       package: gto
     emscripten:
-      buildsystem: make
-      workDir: src
+      emscriptenVersion: 4.0.18
       outputDir: bin
-      commands:
-        - make clean
-        - sed -Ei 's/\$\(\s*BIN\s*\)\/([a-zA-Z0-9._-]+)/$(BIN)\/\1.js/g' Makefile
-      env: 
-        - CC="emcc -msimd128 $EM_FLAGS"
+      buildScript: build-wasm.sh
   native:
     buildsystem: make
     workDir: src
