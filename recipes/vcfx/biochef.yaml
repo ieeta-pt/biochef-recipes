@@ -23,22 +23,16 @@ build:
   wasm:
     strategy: emscripten
     emscripten:
-      buildsystem: make
-      workDir: .
       outputDir: build_wasm
-      commands:
-        - 'bash compile_wasm.sh'
-        - 'find build_wasm/src -name "*.js" -exec cp {} build_wasm/ \;'
-        - 'find build_wasm/src -name "*.wasm" -exec cp {} build_wasm/ \;'
-        - "echo 'all:' > Makefile"
-      env: []
+      buildScript: build-wasm.sh
+      emscriptenVersion: 4.0.18
   native:
     buildsystem: make
     workDir: .
     outputDir: bin
 
 runtime:
-  modes: [wasm, native, remote]
+  modes: [wasm, native]
 
 operations:
 
