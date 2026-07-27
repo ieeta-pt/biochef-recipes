@@ -1,0 +1,56 @@
+apiVersion: v1
+
+id: app.biochef.prodigal
+name: Prodigal
+description: Prodigal — Prokaryotic Dynamic Programming Genefinding Algorithm. Fast, accurate ORF prediction for bacterial and archaeal genomes. Single-genome mode for finished genomes, anonymous (meta) mode for metagenomic contigs. Outputs gene coordinates plus optional protein/nucleotide FASTA.
+
+version: 2.6.3-bc.1
+homepage: https://github.com/hyattpd/Prodigal
+license:
+  spdx: GPL-3.0-or-later
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/hyattpd/Prodigal
+  commit: "c1e2d361479cc1b18175ea79ebd8ff10411c46cb"
+  version: "2.6.3"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+  native:
+    buildsystem: make
+    workDir: .
+    outputDir: .
+
+runtime:
+  modes: [wasm, native, remote]
+
+operations:
+  - id: prodigal.predict
+    name: Predict Genes (Prodigal)
+    category: Gene Prediction
+    bin: prodigal
+    description: Predict protein-coding genes in a prokaryotic genome or metagenomic contigs. Outputs gene coordinates as GFF/GBK/SCO/SQN, with optional protein and nucleotide FASTA files for the predicted CDSs.
+    io:
+      inputs:
+        - { name: input, types: [FASTA, Multi-FASTA], mode: file, flag: -i }
+      outputs:
+        - { name: out, types: [TEXT, GFF], mode: stdout }
+        - { name: proteins, types: [FASTA], mode: file, flag: -a, filename: "proteins.faa" }
+        - { name: nucleotides, types: [FASTA], mode: file, flag: -d, filename: "nucleotides.fna" }
+    parameters:
+      - { name: output_format, type: string, flag: -f, default: gff }
+      - { name: mode, type: string, flag: -p, default: single }
+      - { name: translation_table, type: integer, flag: -g, default: 11 }
+      - { name: closed_ends, type: flag, flag: -c }
+      - { name: mask_n_runs, type: flag, flag: -m }
+      - { name: full_motif_scan, type: flag, flag: -n }
+      - { name: quiet, type: flag, flag: -q }
