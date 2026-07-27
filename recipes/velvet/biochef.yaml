@@ -23,21 +23,16 @@ build:
   wasm:
     strategy: emscripten
     emscripten:
-      buildsystem: make
-      workDir: .
       outputDir: out
-      commands:
-        - 'emmake make CC=emcc CFLAGS="-Wall -O2 -sUSE_ZLIB=1" LIBS="-lm -sUSE_ZLIB=1 -sFORCE_FILESYSTEM=1 -sALLOW_MEMORY_GROWTH=1 -sSTACK_SIZE=8MB -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain'']" -j4'
-        - 'mkdir -p out && mv velveth out/velveth.js && mv velveth.wasm out/velveth.wasm && mv velvetg out/velvetg.js && mv velvetg.wasm out/velvetg.wasm'
-        - "echo 'all:' > Makefile"
-      env: []
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
   native:
     buildsystem: make
     workDir: .
     outputDir: .
 
 runtime:
-  modes: [wasm, native, remote]
+  modes: [wasm, native]
 
 operations:
   - id: velvet.velveth
