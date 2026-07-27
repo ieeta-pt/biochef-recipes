@@ -23,18 +23,12 @@ build:
   wasm:
     strategy: emscripten
     emscripten:
-      buildsystem: make
-      workDir: test
-      outputDir: test/out
-      commands:
-        # Single source-pair build — bedcov-cr.c plus cgranges.c (the library is header-only at use, source-compiled here).
-        - 'emcc -O2 -Wall -Wc++-compat -I.. -sUSE_ZLIB=1 bedcov-cr.c ../cgranges.c -sUSE_ZLIB=1 -sFORCE_FILESYSTEM=1 -sALLOW_MEMORY_GROWTH=1 -sSTACK_SIZE=8MB -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain''] -o bedcov-cr'
-        - 'mkdir -p out && mv bedcov-cr out/bedcov-cr.js && mv bedcov-cr.wasm out/bedcov-cr.wasm'
-        - "echo 'all:' > Makefile"
-      env: []
+      outputDir: test
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
 
 runtime:
-  modes: [wasm, remote]
+  modes: [wasm]
 
 operations:
   - id: cgranges.bedcov
