@@ -23,17 +23,12 @@ build:
   wasm:
     strategy: emscripten
     emscripten:
-      buildsystem: make
-      workDir: .
       outputDir: out
-      commands:
-        - 'em++ -O2 -std=c++11 -Iedlib/include -sFORCE_FILESYSTEM=1 -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain''] -sALLOW_MEMORY_GROWTH=1 -o edlib-aligner.js edlib/src/edlib.cpp apps/aligner/aligner.cpp'
-        - 'mkdir -p out && mv edlib-aligner.js edlib-aligner.wasm out/'
-        - "echo 'all:' > Makefile"
-      env: []
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
 
 runtime:
-  modes: [wasm, remote]
+  modes: [wasm]
 
 operations:
   - id: edlib.align
