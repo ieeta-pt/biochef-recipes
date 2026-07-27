@@ -23,22 +23,12 @@ build:
   wasm:
     strategy: emscripten
     emscripten:
-      buildsystem: make
-      workDir: .
-      outputDir: out
-      commands:
-        # macOS APFS case-insensitivity collides VERSION with libc++'s <version>
-        # header; rename so clang's #include <version> resolves to libc++. On
-        # Linux CI this rename is harmless (filesystem already case-sensitive).
-        - 'mv VERSION VERSION_FILE && sed -i.bak "s|cat VERSION|cat VERSION_FILE|g" Makefile'
-        - 'emmake make centrifuge-build-bin centrifuge-class centrifuge-inspect-bin CXX=em++ CC=emcc RELEASE_FLAGS="-O2 -msimd128 -msse4.2 -std=c++11" EXTRA_FLAGS="-std=c++11 -sUSE_ZLIB=1 -sFORCE_FILESYSTEM=1 -sALLOW_MEMORY_GROWTH=1 -sSTACK_SIZE=8MB" NO_TBB=1 -j4'
-        - 'mkdir -p out'
-        - 'for b in centrifuge-build-bin centrifuge-class centrifuge-inspect-bin; do mv "$b" "out/$b.js" && mv "$b.wasm" "out/$b.wasm"; done'
-        - "echo 'all:' > Makefile"
-      env: []
+      outputDir: .
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
 
 runtime:
-  modes: [wasm, remote]
+  modes: [wasm]
 
 operations:
   - id: centrifuge.classify
