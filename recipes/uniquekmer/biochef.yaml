@@ -23,26 +23,16 @@ build:
   wasm:
     strategy: emscripten
     emscripten:
-      buildsystem: make
-      workDir: .
       outputDir: out
-      commands:
-        # Strip the OpenMP include (no OMP in WASM); the bare `#pragma omp parallel for`
-        # lines remain as ignored comments when -fopenmp is not passed.
-        - "sed -i.bak 's|#include <omp.h>||' src/genomes.cpp"
-        # Drop -lz -lpthread -lomp and wire emcc runtime flags via LIBS.
-        - "sed -i.bak2 's|^LIBS := -lz -lpthread.*$|LIBS := -sUSE_ZLIB=1 -sFORCE_FILESYSTEM=1 -sALLOW_MEMORY_GROWTH=1 -sSTACK_SIZE=8MB -sEXPORTED_RUNTIME_METHODS=[\"FS\",\"callMain\"]|' Makefile"
-        - 'emmake make CXX=em++ CXXFLAGS="-std=c++11 -O2 -I./inc -sUSE_ZLIB=1 -Wno-c++11-narrowing -Wno-narrowing -Wno-format -Wno-source-uses-openmp" -j4'
-        - 'mkdir -p out && mv uniquekmer out/uniquekmer.js && mv uniquekmer.wasm out/uniquekmer.wasm'
-        - "echo 'all:' > Makefile"
-      env: []
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
   native:
     buildsystem: make
     workDir: .
     outputDir: .
 
 runtime:
-  modes: [wasm, native, remote]
+  modes: [wasm, native]
 
 operations:
   - id: uniquekmer.generate
