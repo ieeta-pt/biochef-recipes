@@ -1,0 +1,62 @@
+apiVersion: v1
+
+id: app.biochef.samblaster
+name: samblaster
+description: samblaster — fast duplicate marking and structural-variant read extraction for SAM files. Used as a streaming post-process on aligner output (e.g. between bwa mem and samtools view) to flag PCR/optical duplicates, and optionally to extract discordant pairs, split reads, and unmapped/clipped reads in one pass.
+
+version: 0.1.26-bc.1
+homepage: https://github.com/GregoryFaust/samblaster
+license:
+  spdx: MIT
+  files: [LICENSE.txt]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/GregoryFaust/samblaster
+  commit: "b642639117eafedc760d8b84c0d2c4872b0da084"
+  version: "0.1.26"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      outputDir: out
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+  native:
+    buildsystem: make
+    workDir: .
+    outputDir: .
+
+runtime:
+  modes: [wasm, native]
+
+operations:
+  - id: samblaster.markdup
+    name: Mark Duplicates (samblaster)
+    category: Genomic Operations
+    bin: samblaster
+    description: Read SAM from stdin, mark PCR/optical duplicates with FLAG 0x400, write annotated SAM to stdout. Input must be grouped by read ID (output of bwa/bowtie2 without name-sort works directly).
+    io:
+      inputs:
+        - { name: in, types: [SAM], mode: stdin }
+      outputs:
+        - { name: out, types: [SAM], mode: stdout }
+    parameters:
+      - { name: discordants_file, type: string, flag: -d }
+      - { name: splitters_file, type: string, flag: -s }
+      - { name: unmapped_clipped_file, type: string, flag: -u }
+      - { name: acceptDupMarks, type: flag, flag: -a }
+      - { name: excludeDups, type: flag, flag: -e }
+      - { name: removeDups, type: flag, flag: -r }
+      - { name: ignoreUnmated, type: flag, flag: --ignoreUnmated }
+      - { name: minClipped_for_split, type: integer, flag: --minClippedSize }
+      - { name: minNonOverlap_for_split, type: integer, flag: --minNonOverlap }
+      - { name: maxSplitCount, type: integer, flag: --maxSplitCount }
+      - { name: maxUnmappedBases, type: integer, flag: --maxUnmappedBases }
+      - { name: minIndelSize, type: integer, flag: --minIndelSize }
+      - { name: maxFragmentSize, type: integer, flag: --maxFragmentSize }
+      - { name: bwa_M_mode, type: flag, flag: -M }
