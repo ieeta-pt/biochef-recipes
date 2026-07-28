@@ -23,15 +23,10 @@ build:
   wasm:
     strategy: emscripten
     emscripten:
-      buildsystem: make
-      workDir: src
       outputDir: src/out
-      commands:
-        - 'emcc -O2 -I. -DPACKAGE_VERSION=''"4.10.0"'' -DTARGET_NAME=''"wasm32"'' -fno-align-functions -fno-align-loops -sFORCE_FILESYSTEM=1 -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain''] -sALLOW_MEMORY_GROWTH=1 trf.c -o trf.js'
-        - 'mkdir -p out && mv trf.js trf.wasm out/'
-        - "echo 'all:' > Makefile"
-      env: []
-
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+      
 runtime:
   modes: [wasm, remote]
 
