@@ -23,14 +23,9 @@ build:
   wasm:
     strategy: emscripten
     emscripten:
-      buildsystem: make
-      workDir: .
       outputDir: build/bin
-      commands:
-        - 'mkdir -p build && cd build && emcmake cmake -Dspoa_use_simde=ON -Dspoa_optimize_for_native=OFF -Dspoa_build_executable=ON -Dspoa_build_tests=OFF -DCMAKE_EXE_LINKER_FLAGS="-sFORCE_FILESYSTEM=1 -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain''] -sALLOW_MEMORY_GROWTH=1" ..'
-        - 'cd build && emmake make -j4 spoa_exe'
-        - "echo 'all:' > Makefile"
-      env: []
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
 
 runtime:
   modes: [wasm, remote]
