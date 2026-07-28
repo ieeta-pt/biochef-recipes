@@ -23,23 +23,15 @@ build:
   wasm:
     strategy: emscripten
     emscripten:
-      buildsystem: make
-      workDir: .
       outputDir: out
-      commands:
-        - 'git clone --depth 1 https://github.com/simd-everywhere/simde simde-vendor'
-        - "sed -i.bak 's|auto const \\* next_level = std::find|auto const next_level = std::find|; s|std::distance(taxonomic_fields\\.data(), next_level)|std::distance(taxonomic_fields.begin(), next_level)|' src/tax.cc"
-        - 'emconfigure ./configure --disable-bzip2 --disable-pdfman'
-        - 'emmake make -j4 CXXFLAGS="-O2 -I../simde-vendor -msimd128 -msse4.2 -sUSE_ZLIB=1 -Wno-c++11-narrowing -Wno-narrowing" LDFLAGS="-sUSE_ZLIB=1 -sALLOW_MEMORY_GROWTH=1 -sFORCE_FILESYSTEM=1 -sSTACK_SIZE=8MB -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain'']"'
-        - 'mkdir -p out && mv bin/vsearch out/vsearch.js && mv bin/vsearch.wasm out/vsearch.wasm'
-        - "echo 'all:' > Makefile"
-      env: []
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
 
 runtime:
   modes: [wasm, remote]
 
 operations:
-  - id: vsearch.cluster_fast
+  - id: vsearch.cluster.fast
     name: Cluster Fast (VSEARCH)
     category: Sequence Analysis
     bin: vsearch
@@ -57,7 +49,7 @@ operations:
       - { name: sizeout, type: flag, flag: --sizeout }
       - { name: minseqlength, type: integer, flag: --minseqlength }
 
-  - id: vsearch.derep_fulllength
+  - id: vsearch.derep.fulllength
     name: Dereplicate Full Length (VSEARCH)
     category: Sequence Analysis
     bin: vsearch
@@ -75,7 +67,7 @@ operations:
       - { name: minuniquesize, type: integer, flag: --minuniquesize }
       - { name: minseqlength, type: integer, flag: --minseqlength }
 
-  - id: vsearch.uchime_denovo
+  - id: vsearch.uchime.denovo
     name: Chimera Detection De Novo (VSEARCH)
     category: Sequence Analysis
     bin: vsearch
@@ -91,7 +83,7 @@ operations:
       - { name: mindiv, type: float, flag: --mindiv }
       - { name: minh, type: float, flag: --minh }
 
-  - id: vsearch.usearch_global
+  - id: vsearch.usearch.global
     name: Global Pairwise Search (VSEARCH)
     category: Sequence Analysis
     bin: vsearch
@@ -124,7 +116,7 @@ operations:
       - { name: sintax_cutoff, type: float, flag: --sintax_cutoff, default: 0.8 }
       - { name: strand, type: string, flag: --strand, default: both }
 
-  - id: vsearch.fastq_mergepairs
+  - id: vsearch.fastq.mergepairs
     name: Merge Paired-End FASTQ (VSEARCH)
     category: Sequence Analysis
     bin: vsearch
@@ -141,7 +133,7 @@ operations:
       - { name: fastq_maxdiffs, type: integer, flag: --fastq_maxdiffs, default: 10 }
       - { name: fastq_allowmergestagger, type: flag, flag: --fastq_allowmergestagger }
 
-  - id: vsearch.fastq_filter
+  - id: vsearch.fastq.filter
     name: FASTQ Quality Filter (VSEARCH)
     category: Sequence Analysis
     bin: vsearch
@@ -159,7 +151,7 @@ operations:
       - { name: fastq_maxlen, type: integer, flag: --fastq_maxlen }
       - { name: fastq_maxns, type: integer, flag: --fastq_maxns }
 
-  - id: vsearch.fastq_stats
+  - id: vsearch.fastq.stats
     name: FASTQ Quality Statistics (VSEARCH)
     category: Sequence Analysis
     bin: vsearch
