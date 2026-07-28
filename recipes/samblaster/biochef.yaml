@@ -23,23 +23,16 @@ build:
   wasm:
     strategy: emscripten
     emscripten:
-      buildsystem: make
-      workDir: .
       outputDir: out
-      commands:
-        - 'sed -i.bak "s|^\\*/\$|*/\n#include <sys/time.h>\n#include <sys/resource.h>|" samblaster.cpp'
-        - 'emmake make CPP=em++ -j4'
-        - 'em++ -O3 -sFORCE_FILESYSTEM=1 -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain''] -sALLOW_MEMORY_GROWTH=1 samblaster.o sbhash.o -o samblaster.js'
-        - 'mkdir -p out && mv samblaster.js samblaster.wasm out/'
-        - "echo 'all:' > Makefile.stub && mv Makefile.stub Makefile"
-      env: []
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
   native:
     buildsystem: make
     workDir: .
     outputDir: .
 
 runtime:
-  modes: [wasm, native, remote]
+  modes: [wasm, native]
 
 operations:
   - id: samblaster.markdup
@@ -53,7 +46,6 @@ operations:
       outputs:
         - { name: out, types: [SAM], mode: stdout }
     parameters:
-      - { name: input_file, type: string, flag: -i }
       - { name: discordants_file, type: string, flag: -d }
       - { name: splitters_file, type: string, flag: -s }
       - { name: unmapped_clipped_file, type: string, flag: -u }
