@@ -1,0 +1,65 @@
+apiVersion: v1
+
+id: app.biochef.lastz
+name: lastz
+description: lastz — pairwise DNA sequence aligner. Designed for comparing large genomic sequences against each other; the workhorse behind UCSC chain/net alignments. Outputs alignments in many formats (SAM, MAF, LAV, BLASTZ, PAF, etc).
+
+version: 1.4.58-bc.1
+homepage: https://www.bx.psu.edu/~rsharris/lastz/
+license:
+  spdx: MIT
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/lastz/lastz
+  commit: "9125319ecc21a58a0c2bdbfd8ea46e1414ea6673"
+  version: "1.04.58"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      outputDir: src
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+  native:
+    buildsystem: make
+    workDir: .
+    outputDir: src
+
+runtime:
+  modes: [wasm, native, remote]
+
+operations:
+  - id: lastz.align
+    name: Align (lastz)
+    category: Genomic Operations
+    bin: lastz
+    description: Align two DNA sequences with lastz. Target and query are passed positionally. Output format defaults to general (TSV), but can be SAM, MAF, BLASTZ, AXT, etc.
+    io:
+      inputs:
+        - { name: target, types: [FASTA, Multi-FASTA], mode: file }
+        - { name: query, types: [FASTA, Multi-FASTA], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: format, type: string, flag: "--format=" }
+      - { name: ambiguous, type: string, flag: "--ambiguous=" }
+      - { name: gapped, type: flag, flag: --gapped }
+      - { name: nogapped, type: flag, flag: --nogapped }
+      - { name: seed, type: string, flag: "--seed=" }
+      - { name: step, type: integer, flag: "--step=" }
+      - { name: hspthresh, type: integer, flag: "--hspthresh=" }
+      - { name: gappedthresh, type: integer, flag: "--gappedthresh=" }
+      - { name: identity_min, type: float, flag: "--identity=" }
+      - { name: continuity_min, type: float, flag: "--continuity=" }
+      - { name: coverage_min, type: float, flag: "--coverage=" }
+      - { name: strand, type: string, flag: "--strand=" }
+      - { name: chain, type: flag, flag: --chain }
+      - { name: reverse, type: flag, flag: --reverse }
+      - { name: self, type: flag, flag: --self }
+      - { name: notransition, type: flag, flag: --notransition }
