@@ -23,15 +23,9 @@ build:
   wasm:
     strategy: emscripten
     emscripten:
-      buildsystem: make
-      workDir: .
       outputDir: out
-      commands:
-        - 'emconfigure ./configure'
-        - 'emmake make -j4 CXXFLAGS="-O2 -sFORCE_FILESYSTEM=1 -sALLOW_MEMORY_GROWTH=1 -sSTACK_SIZE=8MB -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain'']"'
-        - 'mkdir -p out && mv src/pbsim out/pbsim.js && mv src/pbsim.wasm out/pbsim.wasm'
-        - "echo 'all:' > Makefile"
-      env: []
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
 
 runtime:
   modes: [wasm, remote]
