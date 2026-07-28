@@ -23,20 +23,9 @@ build:
   wasm:
     strategy: emscripten
     emscripten:
-      buildsystem: make
-      workDir: .
       outputDir: out
-      commands:
-        - 'emmake make CC=em++ openmp=no zlib=no -j4'
-        - 'em++ -DNO_OPENMP -O2 -sFORCE_FILESYSTEM=1 -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain''] -sALLOW_MEMORY_GROWTH=1 cdhit.o cdhit-common.o cdhit-utility.o -o cd-hit.js'
-        - 'em++ -DNO_OPENMP -O2 -sFORCE_FILESYSTEM=1 -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain''] -sALLOW_MEMORY_GROWTH=1 cdhit-est.o cdhit-common.o cdhit-utility.o -o cd-hit-est.js'
-        - 'em++ -DNO_OPENMP -O2 -sFORCE_FILESYSTEM=1 -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain''] -sALLOW_MEMORY_GROWTH=1 cdhit-2d.o cdhit-common.o cdhit-utility.o -o cd-hit-2d.js'
-        - 'em++ -DNO_OPENMP -O2 -sFORCE_FILESYSTEM=1 -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain''] -sALLOW_MEMORY_GROWTH=1 cdhit-est-2d.o cdhit-common.o cdhit-utility.o -o cd-hit-est-2d.js'
-        - 'em++ -DNO_OPENMP -O2 -sFORCE_FILESYSTEM=1 -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain''] -sALLOW_MEMORY_GROWTH=1 cdhit-div.o cdhit-common.o cdhit-utility.o -o cd-hit-div.js'
-        - 'em++ -DNO_OPENMP -O2 -sFORCE_FILESYSTEM=1 -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain''] -sALLOW_MEMORY_GROWTH=1 cdhit-454.o cdhit-common.o cdhit-utility.o -o cd-hit-454.js'
-        - 'mkdir -p out && mv cd-hit.js cd-hit.wasm cd-hit-est.js cd-hit-est.wasm cd-hit-2d.js cd-hit-2d.wasm cd-hit-est-2d.js cd-hit-est-2d.wasm cd-hit-div.js cd-hit-div.wasm cd-hit-454.js cd-hit-454.wasm out/'
-        - "echo 'all:' > Makefile.stub && mv Makefile.stub Makefile"
-      env: []
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
 
 runtime:
   modes: [wasm, remote]
