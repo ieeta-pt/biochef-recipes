@@ -1,0 +1,53 @@
+apiVersion: v1
+
+id: app.biochef.ssw
+name: ssw
+description: SSW (Striped Smith-Waterman) — SIMD-parallel implementation of the Smith-Waterman local-alignment algorithm. ~50x faster than a naive Smith-Waterman; returns score, alignment location, and CIGAR. Useful for genome and protein pairwise alignment.
+
+version: 1.2.4-bc.1
+homepage: https://github.com/mengyao/Complete-Striped-Smith-Waterman-Library
+license:
+  spdx: MIT
+  files: [LICENSE.txt]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/mengyao/Complete-Striped-Smith-Waterman-Library
+  tag: "v1.2.4"
+  version: "1.2.4"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: biowasm
+    biowasm:
+      package: ssw
+
+runtime:
+  modes: [wasm]
+
+operations:
+  - id: ssw.align
+    name: Align (SSW)
+    category: Genomic Operations
+    bin: ssw
+    description: Local pairwise alignment between a target and query sequence (DNA or protein) using a SIMD-accelerated Smith-Waterman. Outputs alignment score, location, and optionally CIGAR or SAM.
+    io:
+      inputs:
+        - { name: target, types: [FASTA, Multi-FASTA], mode: file }
+        - { name: query, types: [FASTA, Multi-FASTA, FASTQ], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: match, type: integer, flag: -m, default: 2 }
+      - { name: mismatch, type: integer, flag: -x, default: 2 }
+      - { name: gap_open, type: integer, flag: -o, default: 3 }
+      - { name: gap_extend, type: integer, flag: -e, default: 1 }
+      - { name: protein, type: flag, flag: -p }
+      - { name: cigar, type: flag, flag: -c }
+      - { name: min_score, type: integer, flag: -f }
+      - { name: reverse_complement, type: flag, flag: -r }
+      - { name: sam_output, type: flag, flag: -s }
+      - { name: sam_header, type: flag, flag: -h }

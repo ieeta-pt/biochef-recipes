@@ -1,0 +1,53 @@
+apiVersion: v1
+
+id: app.biochef.fermi-lite
+name: fermi-lite
+description: fermi-lite — lightweight de novo short-read assembler. Designed for small genomes and amplicons (viral, plasmid, bacterial regions, targeted captures). Lightweight enough for in-browser use. Combines BFC k-mer error correction with overlap-based unitig assembly. Multi-threading must be kept at -t 1 in the WASM runtime (browser has no shared-memory pthreads).
+
+version: 0.1-bc.1
+homepage: https://github.com/lh3/fermi-lite
+license:
+  spdx: MIT
+  files: [LICENSE.txt]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/lh3/fermi-lite
+  commit: "85f159e5a2e15a4c4fb41cdfce91ba0c9b68d2e1"
+  version: "0.1"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      outputDir: out
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+
+runtime:
+  modes: [wasm, remote]
+
+operations:
+  - id: fermilite.assemble
+    name: De Novo Assemble (fermi-lite)
+    category: Genomic Operations
+    bin: fml-asm
+    description: Assemble short reads (typically Illumina) de novo into contigs. Pipeline is BFC k-mer error correction → overlap graph → unitig assembly → bubble popping. Output is FASTA contigs by default, or a GFA assembly graph with -g.
+    io:
+      inputs:
+        - { name: in, types: [FASTQ], mode: file }
+      outputs:
+        - { name: out, types: [FASTA, Multi-FASTA], mode: stdout }
+    parameters:
+      - { name: kmer_ec, type: integer, flag: -e, default: 0 }
+      - { name: thresholds, type: string, flag: -c, default: "4,8" }
+      - { name: min_overlap, type: integer, flag: -l, default: 33 }
+      - { name: overlap_ratio, type: float, flag: -r, default: 0.7 }
+      - { name: threads, type: integer, flag: -t, default: 1 }
+      - { name: bubble_threshold, type: integer, flag: -d, default: 50 }
+      - { name: haploid, type: flag, flag: -A }
+      - { name: no_aggressive_trim, type: flag, flag: -O }
+      - { name: gfa_output, type: flag, flag: -g }

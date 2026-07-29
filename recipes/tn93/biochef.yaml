@@ -1,0 +1,56 @@
+apiVersion: v1
+
+id: app.biochef.tn93
+name: tn93
+description: TN93 — compute Tamura-Nei 1993 pairwise distances between aligned nucleotide sequences. Used in viral phylogenetics and HIV transmission cluster analysis. Produces CSV output of pairwise distances suitable for downstream clustering tools.
+
+version: 1.0.16-bc.1
+homepage: https://github.com/veg/tn93
+license:
+  spdx: MIT
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/veg/tn93
+  tag: "v1.0.16"
+  version: "1.0.16"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      outputDir: build
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+
+runtime:
+  modes: [wasm, remote]
+
+operations:
+  - id: tn93.distance
+    name: Distance (TN93)
+    category: Sequence Analysis
+    bin: tn93
+    description: Compute Tamura-Nei 93 pairwise distances between aligned nucleotide sequences. Outputs CSV (ID1, ID2, Distance) for pairs below the threshold.
+    io:
+      inputs:
+        - { name: in, types: [FASTA, Multi-FASTA], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: file, flag: -o }
+    parameters:
+      - { name: threshold, type: float, flag: -t, default: 0.015 }
+      - { name: min_threshold, type: float, flag: -w }
+      - { name: ambig_handling, type: string, flag: -a }
+      - { name: gap_fraction, type: float, flag: -g }
+      - { name: min_overlap, type: integer, flag: -l }
+      - { name: format, type: string, flag: -f }
+      - { name: second_fasta, type: string, flag: -s }
+      - { name: bootstrap, type: flag, flag: -b }
+      - { name: report_zero, type: flag, flag: "-0" }
+      - { name: hamming_skip, type: flag, flag: -H }
+      - { name: count_only, type: flag, flag: -c }
+      - { name: quiet, type: flag, flag: -q }

@@ -1,0 +1,343 @@
+apiVersion: v1
+
+id: app.biochef.coreutils
+name: coreutils
+description: GNU coreutils — basic file, shell and text manipulation utilities.
+
+version: 8.32-bc.1
+homepage: https://www.gnu.org/software/coreutils/
+license:
+  spdx: GPL-3.0-or-later
+  files: [COPYING]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://git.savannah.gnu.org/git/coreutils.git
+  tag: "v8.32"
+  version: "8.32"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: biowasm
+    biowasm:
+      package: coreutils
+
+runtime:
+  modes: [wasm]
+
+operations:
+  - id: coreutils.cat
+    name: Cat (coreutils)
+    category: Text Processing
+    bin: cat
+    description: Concatenate a file (or input) to stdout
+    io:
+      inputs:
+        - { name: in, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: number_lines, type: flag, flag: -n }
+      - { name: number_nonblank, type: flag, flag: -b }
+      - { name: show_ends, type: flag, flag: -E }
+      - { name: show_tabs, type: flag, flag: -T }
+      - { name: show_nonprinting, type: flag, flag: -v }
+      - { name: show_all, type: flag, flag: -A }
+      - { name: squeeze_blank, type: flag, flag: -s }
+
+  - id: coreutils.sort
+    name: Sort (coreutils)
+    category: Text Processing
+    bin: sort
+    description: Sort lines of text
+    io:
+      inputs:
+        - { name: in, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: reverse, type: flag, flag: -r }
+      - { name: numeric, type: flag, flag: -n }
+      - { name: human_numeric, type: flag, flag: -h }
+      - { name: general_numeric, type: flag, flag: -g }
+      - { name: version_sort, type: flag, flag: -V }
+      - { name: month_sort, type: flag, flag: -M }
+      - { name: random_sort, type: flag, flag: -R }
+      - { name: unique, type: flag, flag: -u }
+      - { name: stable, type: flag, flag: -s }
+      - { name: case_fold, type: flag, flag: -f }
+      - { name: ignore_blanks, type: flag, flag: -b }
+      - { name: dictionary_order, type: flag, flag: -d }
+      - { name: ignore_nonprinting, type: flag, flag: -i }
+      - { name: check_sorted, type: flag, flag: -c }
+      - { name: merge_sorted, type: flag, flag: -m }
+      - { name: zero_terminated, type: flag, flag: -z }
+      - { name: key_pos, type: string, flag: -k }
+      - { name: field_separator, type: string, flag: -t }
+      - { name: buffer_size, type: string, flag: -S }
+      - { name: parallel, type: integer, flag: --parallel }
+
+  - id: coreutils.head
+    name: Head (coreutils)
+    category: Text Processing
+    bin: head
+    description: Output the first part of a file
+    io:
+      inputs:
+        - { name: in, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: lines, type: string, flag: -n }
+      - { name: bytes, type: string, flag: -c }
+      - { name: quiet, type: flag, flag: -q }
+      - { name: verbose, type: flag, flag: -v }
+      - { name: zero_terminated, type: flag, flag: -z }
+
+  - id: coreutils.tail
+    name: Tail (coreutils)
+    category: Text Processing
+    bin: tail
+    description: Output the last part of a file
+    io:
+      inputs:
+        - { name: in, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: lines, type: string, flag: -n }
+      - { name: bytes, type: string, flag: -c }
+      - { name: quiet, type: flag, flag: -q }
+      - { name: verbose, type: flag, flag: -v }
+      - { name: zero_terminated, type: flag, flag: -z }
+
+  - id: coreutils.wc
+    name: Wc (coreutils)
+    category: Information and Analysis
+    bin: wc
+    description: Count lines, words, characters and bytes
+    io:
+      inputs:
+        - { name: in, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: lines, type: flag, flag: -l }
+      - { name: words, type: flag, flag: -w }
+      - { name: bytes, type: flag, flag: -c }
+      - { name: chars, type: flag, flag: -m }
+      - { name: max_line_length, type: flag, flag: -L }
+
+  - id: coreutils.cut
+    name: Cut (coreutils)
+    category: Text Processing
+    bin: cut
+    description: Extract sections (columns/bytes/chars) from each line
+    io:
+      inputs:
+        - { name: in, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: bytes, type: string, flag: -b }
+      - { name: chars, type: string, flag: -c }
+      - { name: fields, type: string, flag: -f }
+      - { name: delimiter, type: string, flag: -d }
+      - { name: complement, type: flag, flag: --complement }
+      - { name: only_delimited, type: flag, flag: -s }
+      - { name: zero_terminated, type: flag, flag: -z }
+      - { name: output_delimiter, type: string, flag: --output-delimiter }
+
+  - id: coreutils.paste
+    name: Paste (coreutils)
+    category: Text Processing
+    bin: paste
+    description: Merge corresponding lines of two files side by side
+    io:
+      inputs:
+        - { name: in1, types: [TEXT], mode: file }
+        - { name: in2, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: delimiters, type: string, flag: -d }
+      - { name: serial, type: flag, flag: -s }
+      - { name: zero_terminated, type: flag, flag: -z }
+
+  - id: coreutils.tr
+    name: Tr (coreutils)
+    category: Text Processing
+    bin: tr
+    description: Translate, squeeze, or delete characters from input
+    io:
+      inputs:
+        - { name: in, types: [TEXT], mode: stdin }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: complement, type: flag, flag: -c }
+      - { name: delete, type: flag, flag: -d }
+      - { name: squeeze_repeats, type: flag, flag: -s }
+      - { name: truncate_set1, type: flag, flag: -t }
+      - { name: set1, type: string, required: true }
+      - { name: set2, type: string }
+
+  - id: coreutils.uniq
+    name: Uniq (coreutils)
+    category: Text Processing
+    bin: uniq
+    description: Filter out adjacent duplicate lines (sort first)
+    io:
+      inputs:
+        - { name: in, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: count, type: flag, flag: -c }
+      - { name: only_duplicates, type: flag, flag: -d }
+      - { name: all_duplicates, type: flag, flag: -D }
+      - { name: only_unique, type: flag, flag: -u }
+      - { name: ignore_case, type: flag, flag: -i }
+      - { name: skip_fields, type: integer, flag: -f }
+      - { name: skip_chars, type: integer, flag: -s }
+      - { name: check_chars, type: integer, flag: -w }
+      - { name: zero_terminated, type: flag, flag: -z }
+
+  - id: coreutils.comm
+    name: Comm (coreutils)
+    category: Text Processing
+    bin: comm
+    description: Compare two sorted files line by line (3-column output)
+    io:
+      inputs:
+        - { name: in1, types: [TEXT], mode: file }
+        - { name: in2, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: suppress_col1, type: flag, flag: "-1" }
+      - { name: suppress_col2, type: flag, flag: "-2" }
+      - { name: suppress_col3, type: flag, flag: "-3" }
+      - { name: total, type: flag, flag: --total }
+      - { name: nocheck_order, type: flag, flag: --nocheck-order }
+      - { name: check_order, type: flag, flag: --check-order }
+      - { name: zero_terminated, type: flag, flag: -z }
+
+  - id: coreutils.join
+    name: Join (coreutils)
+    category: Text Processing
+    bin: join
+    description: Join two sorted files on a common field
+    io:
+      inputs:
+        - { name: in1, types: [TEXT], mode: file }
+        - { name: in2, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: field1, type: integer, flag: "-1" }
+      - { name: field2, type: integer, flag: "-2" }
+      - { name: join_field, type: integer, flag: -j }
+      - { name: separator, type: string, flag: -t }
+      - { name: ignore_case, type: flag, flag: -i }
+      - { name: empty, type: string, flag: -e }
+      - { name: format, type: string, flag: -o }
+      - { name: unpairable_left, type: integer, flag: -a }
+      - { name: suppress_paired, type: integer, flag: -v }
+      - { name: header, type: flag, flag: --header }
+      - { name: nocheck_order, type: flag, flag: --nocheck-order }
+      - { name: check_order, type: flag, flag: --check-order }
+      - { name: zero_terminated, type: flag, flag: -z }
+
+  - id: coreutils.fold
+    name: Fold (coreutils)
+    category: Text Processing
+    bin: fold
+    description: Wrap input lines to a fixed width
+    io:
+      inputs:
+        - { name: in, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: bytes, type: flag, flag: -b }
+      - { name: spaces, type: flag, flag: -s }
+      - { name: width, type: integer, flag: -w }
+
+  - id: coreutils.shuf
+    name: Shuf (coreutils)
+    category: Text Processing
+    bin: shuf
+    description: Randomly shuffle input lines
+    io:
+      inputs:
+        - { name: in, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: head_count, type: integer, flag: -n }
+      - { name: with_replacement, type: flag, flag: -r }
+      - { name: random_source, type: string, flag: --random-source }
+      - { name: zero_terminated, type: flag, flag: -z }
+
+  - id: coreutils.basename
+    name: Basename (coreutils)
+    category: Text Processing
+    bin: basename
+    description: Strip directory and optionally suffix from a filename (Tools-page op — no input)
+    io:
+      inputs: []
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: zero_terminated, type: flag, flag: -z }
+      - { name: suffix, type: string, flag: -s }
+      - { name: path, type: string, required: true }
+
+  - id: coreutils.dirname
+    name: Dirname (coreutils)
+    category: Text Processing
+    bin: dirname
+    description: Strip last component from a path (Tools-page op — no input)
+    io:
+      inputs: []
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: zero_terminated, type: flag, flag: -z }
+      - { name: path, type: string, required: true }
+
+  - id: coreutils.seq
+    name: Seq (coreutils)
+    category: Mathematical Operations
+    bin: seq
+    description: Generate a sequence of numbers (Tools-page op — no input)
+    io:
+      inputs: []
+      outputs:
+        - { name: out, types: [NUM], mode: stdout }
+    parameters:
+      - { name: format, type: string, flag: -f }
+      - { name: separator, type: string, flag: -s }
+      - { name: equal_width, type: flag, flag: -w }
+      - { name: first, type: string }
+      - { name: increment, type: string }
+      - { name: last, type: string, required: true }
+
+  - id: coreutils.echo
+    name: Echo (coreutils)
+    category: Text Processing
+    bin: echo
+    description: Display a line of text (Tools-page op — no input)
+    io:
+      inputs: []
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: no_newline, type: flag, flag: -n }
+      - { name: enable_escapes, type: flag, flag: -e }
+      - { name: disable_escapes, type: flag, flag: -E }
+      - { name: text, type: string, required: true }
