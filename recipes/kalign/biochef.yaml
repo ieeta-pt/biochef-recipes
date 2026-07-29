@@ -8,8 +8,7 @@ version: 3.3.1-bc.1
 homepage: https://github.com/TimoLassmann/kalign
 license:
   spdx: GPL-3.0-or-later
-  files: [LICENSE]
-  evidence_files: [src/alphabet.c]
+  files: [COPYING]
 maintainers:
   - name: Biochef
 
