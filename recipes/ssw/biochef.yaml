@@ -16,6 +16,7 @@ source:
   repo: https://github.com/mengyao/Complete-Striped-Smith-Waterman-Library
   tag: "v1.2.4"
   version: "1.2.4"
+  commit: "714460dfad01381d0a576fbb865219dedfc51ce3"
 
 status: experimental
 

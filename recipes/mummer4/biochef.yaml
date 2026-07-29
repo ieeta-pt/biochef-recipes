@@ -16,6 +16,7 @@ source:
   repo: https://github.com/mummer4/mummer
   tag: "v4.0.0rc1"
   version: "4.0.0rc1"
+  commit: "c276df9e6a1d69492c4a6e615987a191b93990c0"
 
 status: experimental
 

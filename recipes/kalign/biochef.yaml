@@ -16,6 +16,7 @@ source:
   repo: https://github.com/TimoLassmann/kalign
   tag: "v3.3.1"
   version: "3.3.1"
+  commit: "1d0bfe30d42c1d970f003c09cbf2b43ce9d3871e"
 
 status: experimental
 

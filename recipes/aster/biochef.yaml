@@ -16,6 +16,7 @@ source:
   repo: https://github.com/chaoszhang/ASTER
   tag: "v1.23"
   version: "1.23"
+  commit: "d68b56d81f009ee805d2a3919251b5823e3b9684"
 
 status: experimental
 
