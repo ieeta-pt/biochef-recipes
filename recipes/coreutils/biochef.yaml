@@ -16,7 +16,7 @@ source:
   repo: https://github.com/coreutils/coreutils
   tag: "v8.32"
   version: "8.32"
-  commit: "d24638b8f6e3d4b037195b568bf4d3e37575a268"
+  commit: "8d13292a73ecf1f265f77731d3ace29866e3d616"
 
 status: experimental
 

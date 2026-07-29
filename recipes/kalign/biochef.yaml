@@ -9,6 +9,7 @@ homepage: https://github.com/TimoLassmann/kalign
 license:
   spdx: GPL-3.0-or-later
   files: [LICENSE]
+  evidence_files: [src/alphabet.c]
 maintainers:
   - name: Biochef
 
