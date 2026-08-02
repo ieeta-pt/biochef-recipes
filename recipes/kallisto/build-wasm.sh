@@ -1,6 +1,13 @@
+set -eo pipefail
+
 ROOT="$PWD"
 
 rm -rf build
+
+# bifrost calls find_package(ZLIB REQUIRED), which only resolves once the
+# emscripten zlib port has been materialised into the sysroot. On a fresh
+# runner nothing has triggered that yet, so build it up front.
+embuilder build zlib
 
 sed -i.bak 's|-mno-avx2||g' ext/bifrost/CMakeLists.txt
 
@@ -21,7 +28,7 @@ mkdir -p build && cd build
 
 emcmake cmake .. -DUSE_HDF5=OFF -DUSE_BAM=OFF -DENABLE_AVX2=OFF -DCOMPILATION_ARCH=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_CXX_FLAGS="-O2 -sUSE_ZLIB=1 -Wno-c++11-narrowing -Wno-c++11-narrowing-const-reference -Wno-narrowing -Wno-shift-count-overflow" -DCMAKE_EXE_LINKER_FLAGS="$EM_FLAGS -sSTACK_SIZE=8MB"
 
-emmake make kallisto -j2
+emmake make kallisto -j4
 
 cd "$ROOT"
 
