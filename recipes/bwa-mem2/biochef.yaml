@@ -1,0 +1,68 @@
+apiVersion: v1
+
+id: app.biochef.bwa-mem2
+name: bwa-mem2
+description: BWA-MEM2 — the next generation of BWA-MEM, ~2x faster on Intel/AMD CPUs with AVX2/AVX-512. Same algorithm and SAM output as `bwa mem`, but tuned with SIMD-heavy inner loops. Browser/WASM is not supported (the SIMD path has no scalar fallback); use the bwa recipe for browser pipelines.
+
+version: 2.2.1-bc.1
+homepage: https://github.com/bwa-mem2/bwa-mem2
+license:
+  spdx: MIT
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/bwa-mem2/bwa-mem2
+  tag: "v2.2.1"
+  version: "2.2.1"
+
+status: experimental
+
+build:
+  native:
+    buildsystem: make
+    workDir: .
+    outputDir: .
+
+runtime:
+  modes: [native, remote]
+
+operations:
+  - id: bwamem2.index
+    name: Index (bwa-mem2)
+    category: Genomic Operations
+    bin: bwa-mem2
+    description: Build the bwa-mem2 FM-index from a reference FASTA. Produces sidecar files (.0123, .amb, .ann, .bwt.2bit.64, .pac) required by bwa-mem2 mem. The bwa-mem2 index format is not compatible with the original bwa index.
+    io:
+      inputs:
+        - { name: reference, types: [FASTA, Multi-FASTA], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: index, required: true, hidden: true }
+      - { name: prefix, type: string, flag: -p }
+
+  - id: bwamem2.mem
+    name: Mem (bwa-mem2)
+    category: Genomic Operations
+    bin: bwa-mem2
+    description: BWA-MEM algorithm for short and long reads (70bp+). Produces SAM alignments. Drop-in replacement for `bwa mem` with the same alignment behaviour and a 1.3-3.1x speedup on AVX2/AVX-512 hardware. Requires a bwa-mem2 index (run bwa-mem2.index first).
+    io:
+      inputs:
+        - { name: reference, types: [FASTA, Multi-FASTA], mode: file }
+        - { name: reads, types: [FASTQ, FASTA], mode: file }
+      outputs:
+        - { name: out, types: [SAM], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: mem, required: true, hidden: true }
+      - { name: threads, type: integer, flag: -t, default: 1 }
+      - { name: min_seed_len, type: integer, flag: -k }
+      - { name: band_width, type: integer, flag: -w }
+      - { name: read_group, type: string, flag: -R }
+      - { name: paired, type: flag, flag: -p }
+      - { name: all_alignments, type: flag, flag: -a }
+      - { name: min_score, type: integer, flag: -T }
+      - { name: output_secondary, type: flag, flag: -M }
+      - { name: seed_batch_size, type: integer, flag: -K }
+      - { name: verbose, type: integer, flag: -v }
