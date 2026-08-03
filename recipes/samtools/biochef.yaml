@@ -369,3 +369,67 @@ operations:
       - { name: cutoff, type: float, flag: -C }
       - { name: homopoly_fix, type: flag, flag: -p }
       - { name: config, type: string, flag: -X }
+
+  - id: samtools.calmd
+    name: Calmd (samtools)
+    category: Genomic Operations
+    bin: samtools
+    description: Recalculate the MD and NM tags against a reference, which several downstream consumers expect. Takes the alignment first and the reference FASTA second. Output is SAM text.
+    io:
+      inputs:
+        - { name: in, types: [BAM, CRAM, SAM], mode: file }
+        - { name: fasta_ref, types: [FASTA], mode: file }
+      outputs:
+        - { name: out, types: [SAM], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: calmd, required: true, hidden: true }
+      - { name: identical_as_equals, type: flag, flag: -e }
+      - { name: modify_quality, type: flag, flag: -A }
+      - { name: compute_BQ, type: flag, flag: -r }
+      - { name: extended_BAQ, type: flag, flag: -E }
+      - { name: quiet, type: flag, flag: -Q }
+      - { name: no_pg, type: flag, flag: --no-PG }
+
+  - id: samtools.ampliconclip
+    name: Ampliconclip (samtools)
+    category: Genomic Operations
+    bin: samtools
+    description: Clip amplicon primers from read alignments using a BED file of primer regions. Clipping is soft and on the 5' end by default.
+    io:
+      inputs:
+        - { name: in, types: [BAM, CRAM, SAM], mode: file }
+        - { name: bed, types: [BED], mode: file, flag: -b }
+      outputs:
+        - { name: out, types: [BAM, CRAM, SAM], mode: file, flag: -o }
+    parameters:
+      - { name: command, type: string, default: ampliconclip, required: true, hidden: true }
+      - { name: output_format, type: string, flag: -O }
+      - { name: soft_clip, type: flag, flag: --soft-clip }
+      - { name: hard_clip, type: flag, flag: --hard-clip }
+      - { name: both_ends, type: flag, flag: --both-ends }
+      - { name: use_strand, type: flag, flag: --strand }
+      - { name: clipped_only, type: flag, flag: --clipped }
+      - { name: mark_fail, type: flag, flag: --fail }
+      - { name: filter_len, type: integer, flag: --filter-len }
+      - { name: fail_len, type: integer, flag: --fail-len }
+      - { name: unmap_len, type: integer, flag: --unmap-len }
+      - { name: no_excluded, type: flag, flag: --no-excluded }
+      - { name: original_tag, type: flag, flag: --original }
+      - { name: keep_tag, type: flag, flag: --keep-tag }
+      - { name: tolerance, type: integer, flag: --tolerance }
+      - { name: no_pg, type: flag, flag: --no-PG }
+
+  - id: samtools.head
+    name: Head (samtools)
+    category: Information and Analysis
+    bin: samtools
+    description: Print the header and optionally the first few alignment records. Unlike View with header-only, this can show both the header and a record sample in one step.
+    io:
+      inputs:
+        - { name: in, types: [BAM, CRAM, SAM], mode: file }
+      outputs:
+        - { name: out, types: [SAM], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: head, required: true, hidden: true }
+      - { name: headers, type: integer, flag: -h }
+      - { name: records, type: integer, flag: -n }
