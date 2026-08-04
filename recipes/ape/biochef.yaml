@@ -42,7 +42,7 @@ operations:
       inputs:
         - { name: tree, types: [TEXT], mode: file, flag: --tree }
       outputs:
-        - { name: summary, types: [TEXT], mode: file, flag: --out, filename: summary.tsv }
+        - { name: summary, types: [TEXT], mode: file, flag: --out }
     parameters: []
 
   - id: ape.reroot
@@ -54,7 +54,7 @@ operations:
       inputs:
         - { name: tree, types: [TEXT], mode: file, flag: --tree }
       outputs:
-        - { name: rerooted, types: [TEXT], mode: file, flag: --out, filename: rerooted.nwk }
+        - { name: rerooted, types: [TEXT], mode: file, flag: --out }
     parameters:
       - { name: outgroup, type: string, flag: --outgroup, required: true }
 
@@ -67,6 +67,6 @@ operations:
       inputs:
         - { name: tree, types: [TEXT], mode: file, flag: --tree }
       outputs:
-        - { name: distances, types: [TEXT], mode: file, flag: --out, filename: distances.tsv }
+        - { name: distances, types: [TEXT], mode: file, flag: --out }
     parameters:
       - { name: upper_only, type: flag, flag: --upper-only }

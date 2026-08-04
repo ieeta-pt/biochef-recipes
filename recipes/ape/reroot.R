@@ -25,6 +25,9 @@ suppressPackageStartupMessages(library(ape))
 outgroup <- arg("--outgroup")
 tree <- read.tree(arg("--tree"))
 if (is.null(tree)) stop("could not read a tree from the input")
+if (inherits(tree, "multiPhylo")) {
+  stop("the input holds ", length(tree), " trees; this operation takes exactly one")
+}
 
 if (!outgroup %in% tree$tip.label) {
   stop("outgroup '", outgroup, "' is not a tip in this tree")
