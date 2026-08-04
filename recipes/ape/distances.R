@@ -25,6 +25,14 @@ if (inherits(tree, "multiPhylo")) {
   stop("the input holds ", length(tree), " trees; this operation takes exactly one")
 }
 
+# Without branch lengths cophenetic.phylo() silently counts nodes instead of
+# summing lengths and returns that as a distance matrix. summary.R reports NA
+# for the same tree; the two operations should not disagree about whether the
+# input can be answered.
+if (is.null(tree$edge.length)) {
+  stop("this tree has no branch lengths, so patristic distances are undefined")
+}
+
 d <- cophenetic.phylo(tree)
 if ("--upper-only" %in% argv) d[lower.tri(d)] <- NA
 
