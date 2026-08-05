@@ -29,8 +29,12 @@ if (inherits(tree, "multiPhylo")) {
 # summing lengths and returns that as a distance matrix. summary.R reports NA
 # for the same tree; the two operations should not disagree about whether the
 # input can be answered.
-if (is.null(tree$edge.length)) {
-  stop("this tree has no branch lengths, so patristic distances are undefined")
+# Newick permits a length on some edges and not others, in which case ape fills
+# the rest with NA rather than dropping the vector, so is.null() alone does not
+# catch it and the undefined cells would be written as empty strings --
+# indistinguishable from the blanks --upper-only produces.
+if (is.null(tree$edge.length) || anyNA(tree$edge.length)) {
+  stop("this tree is missing branch lengths, so patristic distances are undefined")
 }
 
 d <- cophenetic.phylo(tree)

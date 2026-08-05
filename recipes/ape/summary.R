@@ -33,7 +33,10 @@ if (inherits(tree, "multiPhylo")) {
 # then undefined: is.ultrametric() errors outright, while sum() and
 # node.depth.edgelength() quietly return zero, which would be reported as fact.
 # Report NA for those rows instead and still emit the topology ones.
-has_lengths <- !is.null(tree$edge.length)
+# As in distances.R: a partially annotated tree keeps an edge.length vector
+# containing NA, which is.null() does not catch and which makes is.ultrametric()
+# fail with "NA/NaN/Inf in foreign function call".
+has_lengths <- !is.null(tree$edge.length) && !anyNA(tree$edge.length)
 
 writeLines(c(
   paste("tips", Ntip(tree), sep = "\t"),
