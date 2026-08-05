@@ -33,5 +33,15 @@ if (!outgroup %in% tree$tip.label) {
   stop("outgroup '", outgroup, "' is not a tip in this tree")
 }
 
+# Newick permits a length on some edges and not others, and ape then fills the
+# rest with NA. root() carries those NAs into the arithmetic that splits the new
+# root edge and writes NaN, which is not in the Newick grammar, while reporting
+# success -- so the damage is only noticed by whatever consumes the tree next,
+# which then blames its own input. summary.R and distances.R guard the same case.
+if (!is.null(tree$edge.length) && anyNA(tree$edge.length)) {
+  stop("this tree has branch lengths on only some edges, so rerooting would ",
+       "produce undefined lengths")
+}
+
 write.tree(root(tree, outgroup = outgroup, resolve.root = TRUE), file = arg("--out"))
 cat("rerooted on", outgroup, "\n")

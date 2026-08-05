@@ -53,14 +53,28 @@ if ("--upper-only" %in% argv) d[lower.tri(d)] <- NA
 # Built in memory and written once. A connection held open across the loop
 # would need on.exit() to close reliably, and on.exit() has no function frame
 # to attach to at the top level of a sourced script.
-cell <- function(x) {
-  if (is.na(x)) "" else format(x, trim = TRUE, scientific = FALSE, digits = 15)
-}
+# A tip label may legally contain a tab, and Newick quoting keeps it in the
+# label, which would shift that row's columns and give a file whose rows are
+# not all the same width. Separators are replaced rather than the label
+# rejected, since the label is the user's data.
+safe_label <- function(x) gsub("[\t\r\n]", " ", x)
 
-rows <- paste(c("", colnames(d)), collapse = "\t")
+# Formatted in a single call over the whole matrix. Doing it per value is
+# around two hundred times slower and dominates the operation at a few hundred
+# tips -- cophenetic.phylo itself takes milliseconds -- and nothing on this path
+# has a timeout or, over webR's PostMessage channel, an interrupt. Doing it per
+# row is what the per-value version was written to avoid: format() picks one
+# representation per call, so the same distance could appear two ways in one
+# file. One call over everything is fast and gives every cell the same
+# representation. sprintf("%.15g") is not an alternative: it emits scientific
+# notation below 1e-4.
+cells <- format(d, trim = TRUE, scientific = FALSE, digits = 15)
+cells[is.na(d)] <- ""
+
+labels <- safe_label(rownames(d))
+rows <- paste(c("", safe_label(colnames(d))), collapse = "\t")
 for (i in seq_len(nrow(d))) {
-  values <- vapply(d[i, ], cell, character(1))
-  rows <- c(rows, paste(c(rownames(d)[i], values), collapse = "\t"))
+  rows <- c(rows, paste(c(labels[i], cells[i, ]), collapse = "\t"))
 }
 writeLines(rows, arg("--out"))
 
