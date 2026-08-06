@@ -58,7 +58,8 @@ jobs:
   test_recipes:
     needs: detect_recipes
     permissions:
-      contents: read
+      actions: read
+      contents: write
       id-token: write
       packages: write
     uses: ieeta-pt/biochef-hub/.github/workflows/publish-recipes.yml@sbom-implementation
