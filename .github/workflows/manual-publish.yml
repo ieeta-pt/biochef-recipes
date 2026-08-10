@@ -1,4 +1,4 @@
-name: Manual Recipe Supply-Chain Test
+name: Manual Recipe under the test prefix
 
 on:
   workflow_dispatch:
@@ -67,11 +67,10 @@ jobs:
       registry_url: ${{ vars.REGISTRY_URL }}
       recipes: ${{ needs.detect_recipes.outputs.recipe_paths }}
       oras_auth: ${{ vars.ORAS_AUTH_METHOD }}
-      package_prefix: biochef-test-plugins-
+      package_prefix: biochef-port-plugins-
       signing_policy: signing/biochef-signing-policy.test.json
       publish: ${{ inputs.publish }}
       publish_catalog: ${{ needs.detect_recipes.outputs.publish_catalog == 'true' }}
-      hub_ref: sbom-implementation
     secrets:
       REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
       REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}

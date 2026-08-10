@@ -1,12 +1,12 @@
 {
   "schema": "biochef.signing-policy.v1",
-  "registry_prefix": "registry.biochef.app/biochef-port-plugins-",
-  "certificate_identity": "https://github.com/ieeta-pt/biochef-hub/.github/workflows/publish-recipes.yml@refs/heads/sbom-implementation",
+  "registry_prefix": "registry.biochef.app/biochef-plugins-",
+  "certificate_identity": "https://github.com/ieeta-pt/biochef-hub/.github/workflows/publish-recipes.yml@refs/heads/master",
   "certificate_oidc_issuer": "https://token.actions.githubusercontent.com",
   "slsa_builder_id": "https://github.com/slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@refs/tags/v2.1.0",
   "slsa_predicate_type": "https://slsa.dev/provenance/v0.2",
   "slsa_build_type": "https://github.com/slsa-framework/slsa-github-generator/generic@v1",
   "slsa_source_repository": "github.com/ieeta-pt/biochef-recipes",
-  "slsa_source_ref": "refs/heads/sbom-recipe-evidence",
-  "slsa_source_workflow": "ieeta-pt/biochef-recipes/.github/workflows/manual-publish.yml@refs/heads/sbom-recipe-evidence"
+  "slsa_source_ref": "refs/heads/master",
+  "slsa_source_workflow": "ieeta-pt/biochef-recipes/.github/workflows/upload.yml@refs/heads/master"
 }
