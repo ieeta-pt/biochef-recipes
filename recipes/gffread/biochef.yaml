@@ -16,6 +16,7 @@ source:
   repo: https://github.com/gpertea/gffread
   tag: "v0.12.7"
   version: "0.12.7"
+  commit: "5647f076f616c583ea32fd19629d549d70fc43ea"
 
 status: experimental
 

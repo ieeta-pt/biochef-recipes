@@ -16,6 +16,7 @@ source:
   repo: https://github.com/samtools/samtools
   tag: "1.21"
   version: "1.21"
+  commit: "ec8bf989bd852cf46901b3e1a7d06d6fa10a79ff"
 
 status: experimental
 

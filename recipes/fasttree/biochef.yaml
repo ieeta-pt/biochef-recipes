@@ -7,14 +7,15 @@ description: Approximately-maximum-likelihood phylogenetic trees from large alig
 version: 2.1.11-bc.1
 homepage: http://www.microbesonline.org/fasttree/
 license:
-  spdx: GPL-3.0-only
-  files: [LICENSE]
+  spdx: GPL-2.0-or-later
+  evidence_files: [FastTree-2.1.11.c]
 maintainers:
   - name: Biochef
 
 source:
-  repo: https://github.com/morgannprice/fasttree
+  url: http://www.microbesonline.org/fasttree/FastTree-2.1.11.c
   version: "2.1.11"
+  sha256: "7752465d47fd3bb8d38a240f521118295b84b78979742ac07d37f7200e9445c4"
 
 status: experimental
 

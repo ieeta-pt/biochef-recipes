@@ -16,6 +16,7 @@ source:
   repo: https://github.com/lh3/seqtk
   tag: v1.4
   version: "1.4"
+  commit: "ae7defa8bead3ef77d241f12194dc66acdd40fca"
 
 status: experimental
 

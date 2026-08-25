@@ -16,6 +16,7 @@ source:
   repo: https://github.com/lh3/minimap2
   tag: "v2.22"
   version: "2.22"
+  commit: "7358a1ead1adfa89a2d3d0e72ffddd05732f9850"
 
 status: experimental
 

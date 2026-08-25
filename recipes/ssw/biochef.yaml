@@ -7,15 +7,16 @@ description: SSW (Striped Smith-Waterman) — SIMD-parallel implementation of th
 version: 1.2.4-bc.1
 homepage: https://github.com/mengyao/Complete-Striped-Smith-Waterman-Library
 license:
-  spdx: MIT
-  files: [LICENSE.txt]
+  spdx: MIT AND BSD-2-Clause
+  files: [README.md]
+  evidence_files: [src/ssw.c]
 maintainers:
   - name: Biochef
 
 source:
   repo: https://github.com/mengyao/Complete-Striped-Smith-Waterman-Library
-  tag: "v1.2.4"
   version: "1.2.4"
+  commit: "ad452ea8b3fff0d8abe085d2ccb20e866260721c"
 
 status: experimental
 

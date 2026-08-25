@@ -16,6 +16,7 @@ source:
   repo: https://github.com/epi2me-labs/modbam2bed
   tag: "v0.9.5"
   version: "0.9.5"
+  commit: "a3bee2388da5cfa566f80e086baa36ad40677119"
 
 status: experimental
 

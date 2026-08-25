@@ -14,8 +14,9 @@ maintainers:
 
 source:
   repo: https://github.com/rcedgar/muscle
-  tag: "v5.1"
+  tag: "5.1.0"
   version: "5.1.0"
+  commit: "6c601163998616bb88991931e443c645858e162c"
 
 status: experimental
 

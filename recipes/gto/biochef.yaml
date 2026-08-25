@@ -16,6 +16,7 @@ source:
   repo: https://github.com/WildBunnie/gto
   version: "1.6.3"
   tag: v1.6.3
+  commit: "e30d665ffceb96944f00149ff9275da16a7abd2c"
 
 status: verified
 

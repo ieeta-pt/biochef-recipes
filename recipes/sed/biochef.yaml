@@ -9,6 +9,7 @@ homepage: https://www.gnu.org/software/sed/
 license:
   spdx: GPL-3.0-or-later
   files: [COPYING]
+  evidence_files: [sed/sed.c]
 maintainers:
   - name: Biochef
 
@@ -16,6 +17,7 @@ source:
   repo: https://git.savannah.gnu.org/git/sed.git
   tag: "v4.8"
   version: "4.8"
+  commit: "62059985637cfafd41d8a8a2a7a63566daf59405"
 
 status: experimental
 
