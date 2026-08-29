@@ -1,0 +1,51 @@
+apiVersion: v1
+
+id: app.biochef.cawlign
+name: cawlign
+description: Codon-aware pairwise aligner — maps query sequences to a reference (default HIV-1 HXB2 pol) in nucleotide, protein, or codon space. Handles out-of-frame events, flexible scoring matrices. Standalone C++ port of `bealign` from the BioExt package, part of the HIV-TRACE pipeline. Useful for viral, comparative, and codon-level genomics workflows.
+
+version: 0.1.4-bc.1
+homepage: https://github.com/veg/cawlign
+license:
+  spdx: MIT
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/veg/cawlign
+  commit: "00d068f18a2fa716297cf4554cdef00c09846d3c"
+  version: "0.1.4"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: biowasm
+    biowasm:
+      package: cawlign
+
+runtime:
+  modes: [wasm, remote]
+
+operations:
+  - id: cawlign.align
+    name: Codon-Aware Align (cawlign)
+    category: Sequence Analysis
+    bin: cawlign
+    description: Align query sequences to a reference in nucleotide, protein, or codon space. Output is a FASTA alignment (default — refmap mode, drops insertions relative to reference) or a pairwise alignment set (pairwise mode). Reference defaults to HIV-1 HXB2 pol if not specified.
+    io:
+      inputs:
+        - { name: in, types: [FASTA, Multi-FASTA], mode: stdin }
+        - { name: reference, types: [FASTA], mode: file, flag: -r }
+        - { name: scoring, types: [TEXT], mode: file, flag: -s }
+      outputs:
+        - { name: out, types: [FASTA, Multi-FASTA], mode: file, flag: -o, filename: "cawlign.fasta" }
+    parameters:
+      - { name: datatype, type: string, flag: -t, default: nucleotide }
+      - { name: alignment_mode, type: string, flag: -l, default: trim }
+      - { name: output_format, type: string, flag: -f, default: refmap }
+      - { name: space, type: string, flag: -S, default: quadratic }
+      - { name: no_affine, type: flag, flag: -a }
+      - { name: write_reference, type: flag, flag: -I }
+      - { name: quiet, type: flag, flag: -q }
