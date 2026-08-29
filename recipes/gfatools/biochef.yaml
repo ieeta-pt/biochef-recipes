@@ -1,0 +1,107 @@
+apiVersion: v1
+
+id: app.biochef.gfatools
+name: gfatools
+description: gfatools — utilities for the Graphical Fragment Assembly (GFA) format and reference GFA (rGFA). Statistics, format conversion (GFA to FASTA/BED), bubble detection, and miniasm-style graph transformations for pangenomics and assembly workflows.
+
+version: 0.1.296-bc.1
+homepage: https://github.com/lh3/gfatools
+license:
+  spdx: MIT
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/lh3/gfatools
+  commit: "39c54d5dfe4678d4cfb75b37bd27d4fb21f4de72"
+  version: "r296"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      outputDir: out
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+  native:
+    buildsystem: make
+    workDir: .
+    outputDir: .
+
+runtime:
+  modes: [wasm, native]
+
+operations:
+  - id: gfatools.view
+    name: View (gfatools)
+    category: Sequence Analysis
+    bin: gfatools
+    description: Read a GFA file and emit it back (filtered or transformed).
+    io:
+      inputs:
+        - { name: in, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: view, required: true, hidden: true }
+      - { name: subgraph_radius, type: integer, flag: -r }
+      - { name: keep_seg, type: string, flag: -l }
+      - { name: drop_seg, type: string, flag: -R }
+      - { name: keep_links, type: flag, flag: -d }
+
+  - id: gfatools.stat
+    name: Stat (gfatools)
+    category: Sequence Analysis
+    bin: gfatools
+    description: Print statistics about a GFA file (segments, links, total length, degree distribution).
+    io:
+      inputs:
+        - { name: in, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: stat, required: true, hidden: true }
+      - { name: with_rgfa, type: flag, flag: -r }
+
+  - id: gfatools.gfa2fa
+    name: GFA to FASTA (gfatools)
+    category: Format Conversion
+    bin: gfatools
+    description: Convert GFA segments to a FASTA file.
+    io:
+      inputs:
+        - { name: in, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [FASTA, Multi-FASTA], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: gfa2fa, required: true, hidden: true }
+      - { name: stable, type: flag, flag: -s }
+
+  - id: gfatools.gfa2bed
+    name: GFA to BED (gfatools)
+    category: Format Conversion
+    bin: gfatools
+    description: Convert rGFA (reference GFA) annotations to BED format. Requires rGFA-formatted input with rank tags.
+    io:
+      inputs:
+        - { name: in, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [BED], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: gfa2bed, required: true, hidden: true }
+
+  - id: gfatools.bubble
+    name: Bubble (gfatools)
+    category: Sequence Analysis
+    bin: gfatools
+    description: Detect bubble-like regions in a GFA graph (experimental). Emits one bubble per line.
+    io:
+      inputs:
+        - { name: in, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: bubble, required: true, hidden: true }
