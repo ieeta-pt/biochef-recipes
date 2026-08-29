@@ -1,0 +1,86 @@
+apiVersion: v1
+
+id: app.biochef.minigraph
+name: minigraph
+description: minigraph — sequence-to-graph alignment and graph generation for pangenomes. Aligns FASTA queries to a graph genome (GFA), and can build a graph by progressively integrating new sequences. Complement to minimap2 (linear references) and gfatools (graph manipulation).
+
+version: 0.21.606-bc.1
+homepage: https://github.com/lh3/minigraph
+license:
+  spdx: MIT
+  files: [LICENSE.txt]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/lh3/minigraph
+  commit: "2f569ebe3071fcb242f1bf0eabbb917941b47239"
+  version: "0.21-r606"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      buildsystem: make
+      workDir: .
+      outputDir: out
+      commands:
+        - 'sed -i.bak "s|^void kt_pipeline|#ifdef __EMSCRIPTEN__\nvoid kt_pipeline(int n_threads, void *(*func)(void*, int, void*), void *shared_data, int n_steps)\n{\n\t(void)n_threads;\n\tfor (;;) {\n\t\tvoid *data = func(shared_data, 0, 0);\n\t\tif (data == 0) return;\n\t\tint step;\n\t\tfor (step = 1; step < n_steps; ++step)\n\t\t\tdata = func(shared_data, step, data);\n\t}\n}\n#else\nvoid kt_pipeline|" kthread.c'
+        - 'echo "#endif" >> kthread.c'
+        - 'emmake make CC=emcc CFLAGS="-O2 -sUSE_ZLIB=1 -msse4 -msimd128 -Wno-implicit-function-declaration -Wno-unused-function" LIBS="-lz -lm" -j4'
+        - 'emcc -O2 -sUSE_ZLIB=1 -msse4 -msimd128 -sFORCE_FILESYSTEM=1 -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain''] -sALLOW_MEMORY_GROWTH=1 -sINITIAL_MEMORY=64MB kalloc.o kthread.o algo.o sys.o gfa-base.o gfa-io.o gfa-aug.o gfa-bbl.o gfa-ed.o sketch.o misc.o bseq.o options.o shortk.o miniwfa.o index.o lchain.o gchain1.o galign.o gcmisc.o map-algo.o cal_cov.o format.o gmap.o ggsimple.o ggen.o asm-call.o main.o -o minigraph.js -lz -lm'
+        - 'mkdir -p out && mv minigraph.js minigraph.wasm out/'
+        - "echo 'all:' > Makefile.stub && mv Makefile.stub Makefile"
+      env: []
+  native:
+    buildsystem: make
+    workDir: .
+    outputDir: .
+
+runtime:
+  modes: [wasm, native, remote]
+
+operations:
+  - id: minigraph.align
+    name: Align (minigraph)
+    category: Genomic Operations
+    bin: minigraph
+    description: Align queries to a graph genome (GFA). Outputs GAF (Graph Alignment Format). With --vc on a GFA reference and a FASTA assembly, infers variant calls in VCF form.
+    io:
+      inputs:
+        - { name: graph, types: [TEXT], mode: file }
+        - { name: query, types: [FASTA, Multi-FASTA, FASTQ], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: file, flag: -o }
+    parameters:
+      - { name: kmer_length, type: integer, flag: -k, default: 17 }
+      - { name: window_size, type: integer, flag: -w }
+      - { name: base_alignment, type: flag, flag: -c }
+      - { name: preset, type: string, flag: -x }
+      - { name: threads, type: integer, flag: -t, default: 1 }
+      - { name: max_fragment, type: integer, flag: -F }
+      - { name: chain_min_score, type: string, flag: -m }
+      - { name: divergence, type: float, flag: -j }
+      - { name: bandwidth, type: string, flag: -r }
+      - { name: min_minimizers, type: string, flag: -n }
+      - { name: output_format, type: string, flag: -S }
+
+  - id: minigraph.ggen
+    name: Generate Graph (minigraph)
+    category: Genomic Operations
+    bin: minigraph
+    description: Build or extend a graph genome by progressively integrating new sequences into a reference GFA.
+    io:
+      inputs:
+        - { name: graph, types: [TEXT], mode: file }
+        - { name: sequences, types: [FASTA, Multi-FASTA], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: file, flag: -o }
+    parameters:
+      - { name: graph_gen, type: string, flag: --ggen, default: "simple" }
+      - { name: kmer_length, type: integer, flag: -k }
+      - { name: threads, type: integer, flag: -t, default: 1 }
+      - { name: preset, type: string, flag: -x }
+      - { name: bandwidth, type: string, flag: -r }
