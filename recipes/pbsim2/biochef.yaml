@@ -1,0 +1,64 @@
+apiVersion: v1
+
+id: app.biochef.pbsim2
+name: PBSIM2
+description: PBSIM2 — long-read sequencing simulator for PacBio and Oxford Nanopore reads. Generates reads from a reference FASTA using an HMM-based error model (insertion/deletion/substitution) or by resampling an existing FASTQ. Pre-trained HMM models for P4C2/P5C3/P6C4 (PacBio) and R94/R95/R103 (ONT) ship with the upstream source.
+
+version: 2.0.1-bc.1
+homepage: https://github.com/yukiteruono/pbsim2
+license:
+  spdx: GPL-2.0-or-later
+  files: [COPYING]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/yukiteruono/pbsim2
+  commit: "eeb5a19420534a0f672c81db2670117e62a9ee38"
+  version: "2.0.1"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      buildsystem: make
+      workDir: .
+      outputDir: out
+      commands:
+        - 'emconfigure ./configure'
+        - 'emmake make -j4 CXXFLAGS="-O2 -sFORCE_FILESYSTEM=1 -sALLOW_MEMORY_GROWTH=1 -sSTACK_SIZE=8MB -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain'']"'
+        - 'mkdir -p out && mv src/pbsim out/pbsim.js && mv src/pbsim.wasm out/pbsim.wasm'
+        - "echo 'all:' > Makefile"
+      env: []
+
+runtime:
+  modes: [wasm, remote]
+
+operations:
+  - id: pbsim2.simulate
+    name: Simulate Long Reads (PBSIM2)
+    category: Read Simulation
+    bin: pbsim
+    description: Simulate PacBio or Oxford Nanopore long reads from a reference FASTA. Either provide a pre-trained HMM model file (--hmm_model) for model-based simulation, or a FASTQ file (--sample-fastq) for sampling-based simulation.
+    io:
+      inputs:
+        - { name: reference, types: [FASTA, Multi-FASTA], mode: file }
+        - { name: hmm_model, types: [TEXT], mode: file, flag: --hmm_model }
+        - { name: sample_fastq, types: [FASTQ], mode: file, flag: --sample-fastq }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: prefix, type: string, flag: --prefix, default: sd }
+      - { name: id_prefix, type: string, flag: --id-prefix, default: S }
+      - { name: depth, type: float, flag: --depth, default: 20.0 }
+      - { name: length_min, type: integer, flag: --length-min, default: 100 }
+      - { name: length_max, type: integer, flag: --length-max, default: 1000000 }
+      - { name: length_mean, type: float, flag: --length-mean }
+      - { name: length_sd, type: float, flag: --length-sd }
+      - { name: accuracy_min, type: float, flag: --accuracy-min }
+      - { name: accuracy_max, type: float, flag: --accuracy-max }
+      - { name: accuracy_mean, type: float, flag: --accuracy-mean }
+      - { name: difference_ratio, type: string, flag: --difference-ratio, default: "6:50:54" }
+      - { name: seed, type: integer, flag: --seed }
