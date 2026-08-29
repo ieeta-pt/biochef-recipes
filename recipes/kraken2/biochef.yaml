@@ -1,0 +1,144 @@
+apiVersion: v1
+
+id: app.biochef.kraken2
+name: Kraken2
+description: Kraken2 — taxonomic sequence classification using exact-match k-mers against a reference database. Standard tool for metagenomic read classification. In a browser, only small custom databases fit in memory (the standard Kraken2 database is 50+ GB) — use `remote` mode for production-scale classification. Exposes the underlying C++ binaries directly since the canonical `kraken2`/`kraken2-build` wrappers are Perl scripts the WASM runtime cannot execute.
+
+version: 2.17.1-bc.1
+homepage: https://github.com/DerrickWood/kraken2
+license:
+  spdx: MIT
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/DerrickWood/kraken2
+  tag: "v2.17.1"
+  version: "2.17.1"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      buildsystem: make
+      workDir: src
+      outputDir: out
+      commands:
+        - "sed -i.bak 's|-lz -pthread|-lz|g' Makefile"
+        - 'emmake make CXX=em++ KRAKEN2_SKIP_FOPENMP="" CXXFLAGS="-Wall -std=c++11 -O2 -fPIC -DLINEAR_PROBING -sUSE_ZLIB=1 -Wno-narrowing -Wno-c++11-narrowing" LDFLAGS="-sUSE_ZLIB=1 -sALLOW_MEMORY_GROWTH=1 -sFORCE_FILESYSTEM=1 -sSTACK_SIZE=8MB -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain'']" -j4 estimate_capacity build_db classify dump_table lookup_accession_numbers k2mask'
+        - 'mkdir -p out'
+        - 'for b in classify build_db estimate_capacity dump_table lookup_accession_numbers k2mask; do mv "$b" "out/$b.js" && mv "$b.wasm" "out/$b.wasm"; done'
+        - "echo 'all:' > Makefile"
+      env: []
+
+runtime:
+  modes: [wasm, remote]
+
+operations:
+  - id: kraken2.classify
+    name: Classify Reads (Kraken2)
+    category: Sequence Analysis
+    bin: classify
+    description: Classify FASTA/FASTQ reads against a pre-built Kraken2 database. Reports per-read taxonomic assignment. Requires a Kraken2 index (-H), taxonomy (-t), and options file (-o), all produced by build_db.
+    io:
+      inputs:
+        - { name: reads, types: [FASTA, FASTQ, Multi-FASTA], mode: file }
+        - { name: index, types: [TEXT], mode: file, flag: -H }
+        - { name: taxonomy, types: [TEXT], mode: file, flag: -t }
+        - { name: options_file, types: [TEXT], mode: file, flag: -o }
+      outputs:
+        - { name: report, types: [TEXT], mode: file, flag: -R, filename: "kraken2_report.txt" }
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: quick, type: flag, flag: -q }
+      - { name: use_mmap, type: flag, flag: -M }
+      - { name: confidence_threshold, type: float, flag: -T, default: 0 }
+      - { name: minimum_hit_groups, type: integer, flag: -g }
+      - { name: minimum_quality, type: integer, flag: -Q }
+      - { name: print_scientific_name, type: flag, flag: -K }
+      - { name: paired, type: flag, flag: -P }
+
+  - id: kraken2.build.db
+    name: Build Database (Kraken2)
+    category: Sequence Analysis
+    bin: build_db
+    description: Build a Kraken2 hash database from a set of reference FASTA sequences. Output is a binary hash table plus accompanying taxonomy and options files used by classify. In-browser builds are limited by memory — use small custom databases only.
+    io:
+      inputs:
+        - { name: reference, types: [FASTA, Multi-FASTA], mode: file }
+        - { name: taxonomy_tree, types: [TEXT], mode: file, flag: -t }
+        - { name: taxonomy_names, types: [TEXT], mode: file, flag: -n }
+        - { name: id_to_taxon, types: [TEXT], mode: file, flag: -m }
+      outputs:
+        - { name: index, types: [TEXT], mode: file, flag: -H, filename: "hash.k2d" }
+        - { name: options, types: [TEXT], mode: file, flag: -o, filename: "opts.k2d" }
+        - { name: taxonomy_out, types: [TEXT], mode: file, flag: -T, filename: "taxo.k2d" }
+    parameters:
+      - { name: kmer_length, type: integer, flag: -k, default: 35 }
+      - { name: minimizer_length, type: integer, flag: -l, default: 31 }
+      - { name: spaces, type: integer, flag: -s, default: 7 }
+      - { name: capacity, type: integer, flag: -c }
+      - { name: load_factor, type: float, flag: -L, default: 0.7 }
+      - { name: protein, type: flag, flag: -X }
+
+  - id: kraken2.estimate.capacity
+    name: Estimate Database Size (Kraken2)
+    category: Sequence Analysis
+    bin: estimate_capacity
+    description: Estimate the hash-table size required to build a Kraken2 database from a given reference set. Run before build_db to allocate the right -c value and avoid mid-build resize failures.
+    io:
+      inputs:
+        - { name: reference, types: [FASTA, Multi-FASTA], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: kmer_length, type: integer, flag: -k, default: 35 }
+      - { name: minimizer_length, type: integer, flag: -l, default: 31 }
+      - { name: spaces, type: integer, flag: -s, default: 7 }
+
+  - id: kraken2.dump.table
+    name: Dump Database (Kraken2)
+    category: Sequence Analysis
+    bin: dump_table
+    description: Dump a built Kraken2 hash database to a human-readable text format. Useful for inspecting database contents or extracting k-mer/taxon mappings for downstream analysis.
+    io:
+      inputs:
+        - { name: index, types: [TEXT], mode: file, flag: -H }
+        - { name: taxonomy, types: [TEXT], mode: file, flag: -t }
+        - { name: options_file, types: [TEXT], mode: file, flag: -o }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: use_mmap, type: flag, flag: -M }
+      - { name: skip_counts, type: flag, flag: -s }
+
+  - id: kraken2.lookup.accession
+    name: Lookup Accession to TaxID (Kraken2)
+    category: Format Conversion
+    bin: lookup_accession_numbers
+    description: Map sequence accession IDs to NCBI taxonomy IDs. Reads a list of accessions and an accession-to-taxid mapping file (from NCBI), outputs the taxonomy assignments. Used by build_db when constructing a custom database.
+    io:
+      inputs:
+        - { name: accessions, types: [TEXT], mode: file }
+        - { name: mapping, types: [TEXT], mode: file, flag: -L }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters: []
+
+  - id: kraken2.k2mask
+    name: Low-Complexity Mask (Kraken2)
+    category: Sequence Analysis
+    bin: k2mask
+    description: Mask low-complexity regions in a FASTA file using a Kraken2-aware variant of DUST. Output sequences have low-complexity regions replaced with N (default) or lowercased.
+    io:
+      inputs:
+        - { name: in, types: [FASTA, Multi-FASTA], mode: file }
+      outputs:
+        - { name: out, types: [FASTA, Multi-FASTA], mode: stdout }
+    parameters:
+      - { name: lowercase, type: flag, flag: -i }
+      - { name: window_size, type: integer, flag: -w }
+      - { name: threshold, type: integer, flag: -t }
