@@ -1,0 +1,102 @@
+apiVersion: v1
+
+id: app.biochef.kallisto
+name: kallisto
+description: kallisto — alignment-free RNA-seq quantification using pseudoalignment to a transcriptome index. Much faster than alignment-based quantifiers like RSEM and STAR+RSEM, with comparable accuracy. Builds a kallisto index from a transcript FASTA, then runs pseudoalignment + EM to estimate TPM/FPKM per transcript. Pachter lab. WASM build skips HDF5 (no h5 output, plaintext only) and HTSLIB (no BAM output) — both off by default. Single-threaded in WASM.
+
+version: 0.52.0-bc.1
+homepage: https://github.com/pachterlab/kallisto
+license:
+  spdx: BSD-2-Clause
+  files: [license.txt]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/pachterlab/kallisto
+  commit: "4e9f29cf3b021260415430c057a22469ca081391"
+  version: "0.52.0"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      outputDir: out
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+runtime:
+  modes: [wasm, remote]
+
+operations:
+  - id: kallisto.index
+    name: Build Index (kallisto)
+    category: Genomic Operations
+    bin: kallisto
+    description: Build a kallisto pseudoalignment index from a reference transcriptome FASTA. The index is binary (.idx); pass it to kallisto.quant for quantification.
+    io:
+      inputs:
+        - { name: reference, types: [FASTA, Multi-FASTA], mode: file }
+      outputs:
+        - { name: index, types: [BIN], mode: file, flag: -i, filename: "transcripts.idx" }
+    parameters:
+      - { name: subcommand, type: string, default: index, required: true, hidden: true }
+      - { name: kmer_size, type: integer, flag: -k, default: 31 }
+      - { name: distinguish, type: flag, flag: --distinguish }
+      - { name: make_unique, type: flag, flag: --make-unique }
+
+  - id: kallisto.quant
+    name: Quantify Transcripts (kallisto)
+    category: Sequence Analysis
+    bin: kallisto
+    description: Pseudoalign paired- or single-end reads against a pre-built kallisto index and estimate per-transcript abundance via EM. Output is a directory with abundance.tsv (TPM/EFL/est_counts/eff_length per transcript) plus a run-info JSON.
+    io:
+      inputs:
+        - { name: index, types: [BIN], mode: file, flag: -i }
+        - { name: read1, types: [FASTQ], mode: file }
+        - { name: read2, types: [FASTQ], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: file, flag: -o, filename: "kallisto_out" }
+    parameters:
+      - { name: subcommand, type: string, default: quant, required: true, hidden: true }
+      - { name: single_end, type: flag, flag: --single }
+      - { name: fragment_length, type: float, flag: -l }
+      - { name: fragment_sd, type: float, flag: -s }
+      - { name: bootstrap_samples, type: integer, flag: -b, default: 0 }
+      - { name: seed, type: integer, flag: --seed }
+      - { name: plaintext, type: flag, flag: --plaintext }
+      - { name: pseudobam, type: flag, flag: --pseudobam }
+      - { name: bias, type: flag, flag: --bias }
+      - { name: fr_stranded, type: flag, flag: --fr-stranded }
+      - { name: rf_stranded, type: flag, flag: --rf-stranded }
+
+  - id: kallisto.inspect
+    name: Inspect Index (kallisto)
+    category: Genomic Operations
+    bin: kallisto
+    description: Print metadata about a built kallisto index — k-mer length, number of transcripts, total k-mers, etc. Quick sanity check after index construction.
+    io:
+      inputs:
+        - { name: index, types: [BIN], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: subcommand, type: string, default: inspect, required: true, hidden: true }
+
+  - id: kallisto.bus
+    name: BUS File (kallisto)
+    category: Sequence Analysis
+    bin: kallisto
+    description: Generate BUS (Barcode, UMI, Set) records for single-cell RNA-seq data. Output feeds into the bustools downstream pipeline (count, sort, correct) for scRNA-seq analysis.
+    io:
+      inputs:
+        - { name: index, types: [BIN], mode: file, flag: -i }
+        - { name: read1, types: [FASTQ], mode: file }
+        - { name: read2, types: [FASTQ], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: file, flag: -o, filename: "bus_out" }
+    parameters:
+      - { name: subcommand, type: string, default: bus, required: true, hidden: true }
+      - { name: technology, type: string, flag: -x, default: "10xv3" }
+      - { name: list_techs, type: flag, flag: --list }
