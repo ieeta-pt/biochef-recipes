@@ -1,0 +1,65 @@
+apiVersion: v1
+
+id: app.biochef.filtlong
+name: Filtlong
+description: Filtlong — quality filtering for long reads (Nanopore, PacBio). Reads FASTQ, scores each read by length and per-base quality, and outputs only the best subset by a chosen target (total bases, percentage of input, length threshold, mean-quality threshold). Optional reference- or short-read-guided quality assessment via k-mer match rate. Standard preprocessing step before long-read assembly (Flye, hifiasm) or polishing.
+
+version: 0.2.1-bc.1
+homepage: https://github.com/rrwick/Filtlong
+license:
+  spdx: GPL-3.0-or-later
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/rrwick/Filtlong
+  commit: "83893671ed26a271880973e87dfd3f3088ea9c09"
+  version: "0.2.1"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      buildsystem: make
+      workDir: .
+      outputDir: out
+      commands:
+        - 'emmake make CXX=em++ CXXFLAGS="-Wall -Wextra -pedantic -O2 -sUSE_ZLIB=1" LIB="-sUSE_ZLIB=1 -sFORCE_FILESYSTEM=1 -sALLOW_MEMORY_GROWTH=1 -sSTACK_SIZE=8MB -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain'']" -j4'
+        - 'mkdir -p out && mv bin/filtlong out/filtlong.js && mv bin/filtlong.wasm out/filtlong.wasm'
+        - "echo 'all:' > Makefile"
+      env: []
+
+runtime:
+  modes: [wasm, remote]
+
+operations:
+  - id: filtlong.filter
+    name: Filter Long Reads (Filtlong)
+    category: Sequence Analysis
+    bin: filtlong
+    description: Quality-filter a long-read FASTQ. Scores each read by length and per-base quality, then keeps the best subset by either total bases (-t), percentage (-p), or simple length/quality thresholds. Optional external reference (-a / -1 / -2) lets Filtlong use a higher-accuracy assembly or short-read set to refine its quality estimates.
+    io:
+      inputs:
+        - { name: in, types: [FASTQ], mode: file }
+        - { name: assembly, types: [FASTA, Multi-FASTA], mode: file, flag: -a }
+        - { name: illumina_1, types: [FASTQ], mode: file, flag: "-1" }
+        - { name: illumina_2, types: [FASTQ], mode: file, flag: "-2" }
+      outputs:
+        - { name: out, types: [FASTQ], mode: stdout }
+    parameters:
+      - { name: target_bases, type: integer, flag: -t }
+      - { name: keep_percent, type: float, flag: -p }
+      - { name: min_length, type: integer, flag: --min_length }
+      - { name: max_length, type: integer, flag: --max_length }
+      - { name: min_mean_q, type: float, flag: --min_mean_q }
+      - { name: min_window_q, type: float, flag: --min_window_q }
+      - { name: length_weight, type: float, flag: --length_weight, default: 1 }
+      - { name: mean_q_weight, type: float, flag: --mean_q_weight, default: 1 }
+      - { name: window_q_weight, type: float, flag: --window_q_weight, default: 1 }
+      - { name: window_size, type: integer, flag: --window_size, default: 250 }
+      - { name: trim, type: flag, flag: --trim }
+      - { name: split, type: integer, flag: --split }
+      - { name: verbose, type: flag, flag: --verbose }
