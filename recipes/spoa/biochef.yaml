@@ -1,0 +1,68 @@
+apiVersion: v1
+
+id: app.biochef.spoa
+name: spoa
+description: SPOA — SIMD-accelerated Partial Order Alignment. Builds a partial-order graph from a set of input sequences and reports either the consensus or the multiple-sequence alignment. Commonly used inside long-read consensus and error-correction pipelines (medaka, racon).
+
+version: 4.1.4-bc.1
+homepage: https://github.com/rvaser/spoa
+license:
+  spdx: MIT
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/rvaser/spoa
+  commit: "167bdcc41a25e397cbd4487b6338989266d815d8"
+  version: "4.1.4"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      outputDir: build/bin
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+
+runtime:
+  modes: [wasm, remote]
+
+operations:
+  - id: spoa.consensus
+    name: Consensus (SPOA)
+    category: Sequence Analysis
+    bin: spoa
+    description: Build a partial-order graph from a set of input sequences and emit the consensus.
+    io:
+      inputs:
+        - { name: in, types: [FASTA, Multi-FASTA, FASTQ], mode: file }
+      outputs:
+        - { name: out, types: [FASTA], mode: stdout }
+    parameters:
+      - { name: match_score, type: integer, flag: -m, default: 5 }
+      - { name: mismatch_score, type: integer, flag: -n, default: -4 }
+      - { name: gap_open, type: integer, flag: -g, default: -8 }
+      - { name: gap_extend, type: integer, flag: -e, default: -6 }
+      - { name: alignment_algorithm, type: integer, flag: -l }
+      - { name: dot_graph, type: string, flag: -d }
+
+  - id: spoa.msa
+    name: MSA (SPOA)
+    category: Sequence Analysis
+    bin: spoa
+    description: Emit a multiple-sequence alignment from a partial-order graph instead of just the consensus.
+    io:
+      inputs:
+        - { name: in, types: [FASTA, Multi-FASTA, FASTQ], mode: file }
+      outputs:
+        - { name: out, types: [Multi-FASTA], mode: stdout }
+    parameters:
+      - { name: result, type: integer, flag: -r, default: 1, hidden: true }
+      - { name: match_score, type: integer, flag: -m, default: 5 }
+      - { name: mismatch_score, type: integer, flag: -n, default: -4 }
+      - { name: gap_open, type: integer, flag: -g, default: -8 }
+      - { name: gap_extend, type: integer, flag: -e, default: -6 }
+      - { name: alignment_algorithm, type: integer, flag: -l }
