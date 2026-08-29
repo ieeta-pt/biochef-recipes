@@ -1,0 +1,109 @@
+apiVersion: v1
+
+id: app.biochef.htslib
+name: htslib
+description: HTSlib utilities — bgzip (BGZF compression), tabix (indexing tab-delimited files), htsfile (identify file format).
+
+version: 1.21-bc.1
+homepage: https://github.com/samtools/htslib
+license:
+  spdx: MIT
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/samtools/htslib
+  tag: "1.21"
+  version: "1.21"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: biowasm
+    biowasm:
+      package: htslib
+
+runtime:
+  modes: [wasm, remote]
+
+operations:
+  - id: htslib.bgzip
+    name: BGZip (compress)
+    category: Format Conversion
+    bin: bgzip
+    description: BGZF-compress text data (VCF/BED/GFF/SAM/TEXT) — stream to stdout
+    io:
+      inputs:
+        - { name: in, types: [TEXT, VCF, BED, GFF, SAM], mode: file }
+      outputs:
+        - { name: out, types: [BIN], mode: stdout }
+    parameters:
+      - { name: stdout, type: flag, flag: -c, required: true, hidden: true }
+      - { name: keep_input, type: flag, flag: -k }
+      - { name: force, type: flag, flag: -f }
+      - { name: index, type: flag, flag: -i }
+      - { name: index_name, type: string, flag: -I }
+      - { name: compress_level, type: integer, flag: -l }
+      - { name: binary, type: flag, flag: --binary }
+      - { name: threads, type: integer, flag: --threads, default: 1 }
+
+  - id: htslib.bgzip.decompress
+    name: BGZip (decompress)
+    category: Format Conversion
+    bin: bgzip
+    description: Decompress a BGZF file to stdout
+    io:
+      inputs:
+        - { name: in, types: [BIN], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: decompress, type: flag, flag: -d, required: true, hidden: true }
+      - { name: stdout, type: flag, flag: -c, required: true, hidden: true }
+      - { name: keep_input, type: flag, flag: -k }
+      - { name: force, type: flag, flag: -f }
+      - { name: offset, type: integer, flag: -b }
+      - { name: size, type: integer, flag: -s }
+      - { name: test_integrity, type: flag, flag: -t }
+      - { name: threads, type: integer, flag: --threads, default: 1 }
+
+  - id: htslib.tabix.index
+    name: Tabix Index
+    category: Genomic Operations
+    bin: tabix
+    description: Index a bgzipped tab-delimited file (writes a .tbi sibling by default)
+    io:
+      inputs:
+        - { name: in, types: [BIN], mode: file }
+      outputs:
+        - { name: out, types: [BIN], mode: file, filename: "in.txt.tbi" }
+    parameters:
+      - { name: preset, type: string, flag: -p }
+      - { name: zero_based, type: flag, flag: "-0" }
+      - { name: sequence_col, type: integer, flag: -s }
+      - { name: begin_col, type: integer, flag: -b }
+      - { name: end_col, type: integer, flag: -e }
+      - { name: comment_char, type: string, flag: -c }
+      - { name: skip_lines, type: integer, flag: -S }
+      - { name: csi, type: flag, flag: -C }
+      - { name: min_shift, type: integer, flag: -m }
+      - { name: force, type: flag, flag: -f }
+      - { name: threads, type: integer, flag: --threads, default: 1 }
+
+  - id: htslib.htsfile
+    name: HTS File (identify)
+    category: Information and Analysis
+    bin: htsfile
+    description: Identify the format of an HTS-related file (FASTA/SAM/BAM/CRAM/VCF/BCF/…)
+    io:
+      inputs:
+        - { name: in, types: [TEXT, BIN, FASTA, FASTQ, VCF, BCF, SAM, BAM, CRAM, BED, GFF], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: view, type: flag, flag: -c }
+      - { name: header_only, type: flag, flag: -h }
+      - { name: no_header, type: flag, flag: -H }
+      - { name: verbose, type: flag, flag: -v }
