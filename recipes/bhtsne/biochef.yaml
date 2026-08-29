@@ -1,0 +1,46 @@
+apiVersion: v1
+
+id: app.biochef.bhtsne
+name: bhtsne
+description: Barnes-Hut t-SNE — non-linear dimensionality reduction for high-dimensional embeddings (e.g. scRNA-seq expression matrices, k-mer signatures, MSA profiles). Fast O(n log n) approximation of full t-SNE. Input is a binary `.snd` matrix; output is the 2D/3D embedding as a tab-separated table.
+
+version: 2016.08.22-bc.1
+homepage: https://github.com/lh3/bhtsne
+license:
+  spdx: BSD-4-Clause
+  files: [LICENSE.txt]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/lh3/bhtsne
+  commit: "1a62a5d3842944d832837b5522143cf892908f53"
+  version: "2016.08.22"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: biowasm
+    biowasm:
+      package: bhtsne
+
+runtime:
+  modes: [wasm]
+
+operations:
+  - id: bhtsne.embed
+    name: t-SNE Embedding (bhtsne)
+    category: Sequence Analysis
+    bin: bhtsne
+    description: Compute a Barnes-Hut t-SNE embedding from a binary `.snd` input matrix. Output is a tab-separated table with one row per sample (first column = row name, remaining columns = embedded coordinates).
+    io:
+      inputs:
+        - { name: in, types: [BIN_TODO], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: out_dim, type: integer, flag: -d, default: 2 }
+      - { name: theta, type: float, flag: -e, default: 0.5 }
+      - { name: perplexity, type: float, flag: -p, default: 50.0 }
+      - { name: seed, type: integer, flag: -s, default: 11 }
