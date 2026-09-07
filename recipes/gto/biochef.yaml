@@ -30,9 +30,8 @@ build:
       outputDir: bin
       buildScript: build-wasm.sh
   native:
-    buildsystem: make
-    workDir: src
     outputDir: bin
+    buildScript: build-native.sh
 
 runtime:
   modes: [wasm, native]
