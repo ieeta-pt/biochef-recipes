@@ -24,9 +24,11 @@ build:
     strategy: biowasm
     biowasm:
       package: fasttree
+  native:
+    buildScript: build-native.sh
 
 runtime:
-  modes: [wasm, remote]
+  modes: [wasm, native]
 
 operations:
   - id: fasttree.build

@@ -25,9 +25,11 @@ build:
     strategy: biowasm
     biowasm:
       package: samtools
+  native:
+    buildScript: build-native.sh
 
 runtime:
-  modes: [wasm, remote]
+  modes: [wasm, native]
 
 operations:
   - id: samtools.view

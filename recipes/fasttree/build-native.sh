@@ -1,0 +1,1 @@
+gcc FastTree-2.1.11.c -o fasttree

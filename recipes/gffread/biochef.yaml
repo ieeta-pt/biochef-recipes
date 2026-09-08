@@ -25,9 +25,11 @@ build:
     strategy: biowasm
     biowasm:
       package: gffread
+  native:
+    buildScript: build-native.sh
 
 runtime:
-  modes: [wasm, remote]
+  modes: [wasm, native]
 
 operations:
   - id: gffread.convert

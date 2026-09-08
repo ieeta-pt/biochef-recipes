@@ -25,9 +25,12 @@ build:
     strategy: biowasm
     biowasm:
       package: muscle
+  native:
+    buildScript: build-native.sh
+    outputDir: src/Linux
 
 runtime:
-  modes: [wasm, remote]
+  modes: [wasm, native]
 
 operations:
   - id: muscle.align
