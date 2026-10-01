@@ -32,6 +32,7 @@ build:
   native:
     outputDir: bin
     buildScript: build-native.sh
+    buildTools: [make]
 
 runtime:
   modes: [wasm, native]
