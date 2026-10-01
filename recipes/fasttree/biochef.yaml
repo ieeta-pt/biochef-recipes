@@ -13,7 +13,7 @@ maintainers:
   - name: Biochef
 
 source:
-  url: http://www.microbesonline.org/fasttree/FastTree-2.1.11.c
+  url: https://raw.githubusercontent.com/biowasm/biowasm/bcad3232544f9d16744bf3b66c27a75cad9b9971/tools/fasttree/src/FastTree-2.1.11.c
   version: "2.1.11"
   sha256: "7752465d47fd3bb8d38a240f521118295b84b78979742ac07d37f7200e9445c4"
 
