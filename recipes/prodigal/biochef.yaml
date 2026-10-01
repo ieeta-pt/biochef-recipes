@@ -27,6 +27,7 @@ build:
       buildScript: build-wasm.sh
   native:
     buildScript: build-native.sh
+    buildTools: [make]
 
 runtime:
   modes: [wasm, native, remote]
