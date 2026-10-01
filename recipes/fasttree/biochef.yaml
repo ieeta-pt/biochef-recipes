@@ -26,6 +26,7 @@ build:
       package: fasttree
   native:
     buildScript: build-native.sh
+    buildTools: [gcc]
 
 runtime:
   modes: [wasm, native]

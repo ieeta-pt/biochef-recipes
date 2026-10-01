@@ -27,6 +27,7 @@ build:
       package: minimap2
   native:
     buildScript: build-native.sh
+    buildTools: [make]
 
 runtime:
   modes: [wasm, native]

@@ -27,6 +27,7 @@ build:
       package: gffread
   native:
     buildScript: build-native.sh
+    buildTools: [make]
 
 runtime:
   modes: [wasm, native]

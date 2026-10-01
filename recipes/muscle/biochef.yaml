@@ -27,6 +27,7 @@ build:
       package: muscle
   native:
     buildScript: build-native.sh
+    buildTools: [make]
     outputDir: src/Linux
 
 runtime:
