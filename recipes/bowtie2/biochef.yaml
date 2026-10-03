@@ -1,0 +1,187 @@
+apiVersion: v1
+
+id: app.biochef.bowtie2
+name: bowtie2
+description: Fast gapped-read aligner for short reads. Note&#58; biowasm ships only the aligner&#59; the index must be built externally (bowtie2-build) and provided via the runtime filesystem.
+
+version: 2.4.2-bc.1
+homepage: https://github.com/BenLangmead/bowtie2
+license:
+  spdx: GPL-3.0-or-later
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/BenLangmead/bowtie2
+  tag: "v2.4.2"
+  version: "2.4.2"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: biowasm
+    biowasm:
+      package: bowtie2
+
+runtime:
+  modes: [wasm, remote]
+
+operations:
+  - id: bowtie2.align.se
+    name: Align Single-End (bowtie2)
+    category: Genomic Operations
+    bin: bowtie2-align-s
+    description: Align unpaired (single-end) reads to a pre-built bowtie2 index
+    io:
+      inputs:
+        - { name: reads, types: [FASTQ, FASTA], mode: file, flag: -U }
+      outputs:
+        - { name: out, types: [SAM], mode: stdout }
+    parameters:
+      - { name: index_prefix, type: string, flag: -x, required: true }
+      - { name: input_fasta, type: flag, flag: -f }
+      - { name: input_qseq, type: flag, flag: --qseq }
+      - { name: input_raw, type: flag, flag: -r }
+      - { name: skip_reads, type: integer, flag: -s }
+      - { name: max_reads, type: integer, flag: -u }
+      - { name: trim_5p, type: integer, flag: "-5" }
+      - { name: trim_3p, type: integer, flag: "-3" }
+      - { name: trim_to, type: string, flag: --trim-to }
+      - { name: phred33, type: flag, flag: --phred33 }
+      - { name: phred64, type: flag, flag: --phred64 }
+      - { name: int_quals, type: flag, flag: --int-quals }
+      - { name: very_fast, type: flag, flag: --very-fast }
+      - { name: fast, type: flag, flag: --fast }
+      - { name: sensitive, type: flag, flag: --sensitive }
+      - { name: very_sensitive, type: flag, flag: --very-sensitive }
+      - { name: very_fast_local, type: flag, flag: --very-fast-local }
+      - { name: fast_local, type: flag, flag: --fast-local }
+      - { name: sensitive_local, type: flag, flag: --sensitive-local }
+      - { name: very_sensitive_local, type: flag, flag: --very-sensitive-local }
+      - { name: local, type: flag, flag: --local }
+      - { name: end_to_end, type: flag, flag: --end-to-end }
+      - { name: mismatches_seed, type: integer, flag: -N }
+      - { name: seed_length, type: integer, flag: -L }
+      - { name: seed_interval, type: string, flag: -i }
+      - { name: n_ceil, type: string, flag: --n-ceil }
+      - { name: dpad, type: integer, flag: --dpad }
+      - { name: gbar, type: integer, flag: --gbar }
+      - { name: ignore_quals, type: flag, flag: --ignore-quals }
+      - { name: nofw, type: flag, flag: --nofw }
+      - { name: norc, type: flag, flag: --norc }
+      - { name: no_1mm_upfront, type: flag, flag: --no-1mm-upfront }
+      - { name: extension_attempts, type: integer, flag: -D }
+      - { name: reseed_attempts, type: integer, flag: -R }
+      - { name: ma, type: integer, flag: --ma }
+      - { name: mp, type: string, flag: --mp }
+      - { name: np, type: integer, flag: --np }
+      - { name: rdg, type: string, flag: --rdg }
+      - { name: rfg, type: string, flag: --rfg }
+      - { name: score_min, type: string, flag: --score-min }
+      - { name: report_k, type: integer, flag: -k }
+      - { name: report_all, type: flag, flag: -a }
+      - { name: no_unal, type: flag, flag: --no-unal }
+      - { name: no_head, type: flag, flag: --no-head }
+      - { name: no_sq, type: flag, flag: --no-sq }
+      - { name: rg_id, type: string, flag: --rg-id }
+      - { name: rg, type: string, flag: --rg }
+      - { name: omit_sec_seq, type: flag, flag: --omit-sec-seq }
+      - { name: soft_clipped_unmapped_tlen, type: flag, flag: --soft-clipped-unmapped-tlen }
+      - { name: sam_no_qname_trunc, type: flag, flag: --sam-no-qname-trunc }
+      - { name: sam_append_comment, type: flag, flag: --sam-append-comment }
+      - { name: xeq, type: flag, flag: --xeq }
+      - { name: reorder, type: flag, flag: --reorder }
+      - { name: mm, type: flag, flag: --mm }
+      - { name: quiet, type: flag, flag: --quiet }
+      - { name: non_deterministic, type: flag, flag: --non-deterministic }
+      - { name: preserve_tags, type: flag, flag: --preserve-tags }
+      - { name: qc_filter, type: flag, flag: --qc-filter }
+      - { name: met_stderr, type: flag, flag: --met-stderr }
+      - { name: seed, type: integer, flag: --seed }
+      - { name: threads, type: integer, flag: -p, default: 1 }
+
+  - id: bowtie2.align.pe
+    name: Align Paired-End (bowtie2)
+    category: Genomic Operations
+    bin: bowtie2-align-s
+    description: Align paired-end reads to a pre-built bowtie2 index
+    io:
+      inputs:
+        - { name: mate1, types: [FASTQ, FASTA], mode: file, flag: "-1" }
+        - { name: mate2, types: [FASTQ, FASTA], mode: file, flag: "-2" }
+      outputs:
+        - { name: out, types: [SAM], mode: stdout }
+    parameters:
+      - { name: index_prefix, type: string, flag: -x, required: true }
+      - { name: input_fasta, type: flag, flag: -f }
+      - { name: input_qseq, type: flag, flag: --qseq }
+      - { name: input_raw, type: flag, flag: -r }
+      - { name: skip_reads, type: integer, flag: -s }
+      - { name: max_reads, type: integer, flag: -u }
+      - { name: trim_5p, type: integer, flag: "-5" }
+      - { name: trim_3p, type: integer, flag: "-3" }
+      - { name: trim_to, type: string, flag: --trim-to }
+      - { name: phred33, type: flag, flag: --phred33 }
+      - { name: phred64, type: flag, flag: --phred64 }
+      - { name: int_quals, type: flag, flag: --int-quals }
+      - { name: very_fast, type: flag, flag: --very-fast }
+      - { name: fast, type: flag, flag: --fast }
+      - { name: sensitive, type: flag, flag: --sensitive }
+      - { name: very_sensitive, type: flag, flag: --very-sensitive }
+      - { name: very_fast_local, type: flag, flag: --very-fast-local }
+      - { name: fast_local, type: flag, flag: --fast-local }
+      - { name: sensitive_local, type: flag, flag: --sensitive-local }
+      - { name: very_sensitive_local, type: flag, flag: --very-sensitive-local }
+      - { name: local, type: flag, flag: --local }
+      - { name: end_to_end, type: flag, flag: --end-to-end }
+      - { name: mismatches_seed, type: integer, flag: -N }
+      - { name: seed_length, type: integer, flag: -L }
+      - { name: seed_interval, type: string, flag: -i }
+      - { name: n_ceil, type: string, flag: --n-ceil }
+      - { name: dpad, type: integer, flag: --dpad }
+      - { name: gbar, type: integer, flag: --gbar }
+      - { name: ignore_quals, type: flag, flag: --ignore-quals }
+      - { name: nofw, type: flag, flag: --nofw }
+      - { name: norc, type: flag, flag: --norc }
+      - { name: no_1mm_upfront, type: flag, flag: --no-1mm-upfront }
+      - { name: extension_attempts, type: integer, flag: -D }
+      - { name: reseed_attempts, type: integer, flag: -R }
+      - { name: ma, type: integer, flag: --ma }
+      - { name: mp, type: string, flag: --mp }
+      - { name: np, type: integer, flag: --np }
+      - { name: rdg, type: string, flag: --rdg }
+      - { name: rfg, type: string, flag: --rfg }
+      - { name: score_min, type: string, flag: --score-min }
+      - { name: min_fragment_len, type: integer, flag: -I }
+      - { name: max_fragment_len, type: integer, flag: -X }
+      - { name: fr, type: flag, flag: --fr }
+      - { name: rf, type: flag, flag: --rf }
+      - { name: ff, type: flag, flag: --ff }
+      - { name: no_mixed, type: flag, flag: --no-mixed }
+      - { name: no_discordant, type: flag, flag: --no-discordant }
+      - { name: dovetail, type: flag, flag: --dovetail }
+      - { name: no_contain, type: flag, flag: --no-contain }
+      - { name: no_overlap, type: flag, flag: --no-overlap }
+      - { name: report_k, type: integer, flag: -k }
+      - { name: report_all, type: flag, flag: -a }
+      - { name: no_unal, type: flag, flag: --no-unal }
+      - { name: no_head, type: flag, flag: --no-head }
+      - { name: no_sq, type: flag, flag: --no-sq }
+      - { name: rg_id, type: string, flag: --rg-id }
+      - { name: rg, type: string, flag: --rg }
+      - { name: omit_sec_seq, type: flag, flag: --omit-sec-seq }
+      - { name: soft_clipped_unmapped_tlen, type: flag, flag: --soft-clipped-unmapped-tlen }
+      - { name: sam_no_qname_trunc, type: flag, flag: --sam-no-qname-trunc }
+      - { name: sam_append_comment, type: flag, flag: --sam-append-comment }
+      - { name: xeq, type: flag, flag: --xeq }
+      - { name: reorder, type: flag, flag: --reorder }
+      - { name: mm, type: flag, flag: --mm }
+      - { name: quiet, type: flag, flag: --quiet }
+      - { name: non_deterministic, type: flag, flag: --non-deterministic }
+      - { name: preserve_tags, type: flag, flag: --preserve-tags }
+      - { name: qc_filter, type: flag, flag: --qc-filter }
+      - { name: met_stderr, type: flag, flag: --met-stderr }
+      - { name: seed, type: integer, flag: --seed }
+      - { name: threads, type: integer, flag: -p, default: 1 }
