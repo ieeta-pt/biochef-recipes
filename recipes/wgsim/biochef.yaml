@@ -1,0 +1,57 @@
+apiVersion: v1
+
+id: app.biochef.wgsim
+name: wgsim
+description: Whole-genome simulation of NGS reads from a reference FASTA, with configurable error rate, indels and substitutions.
+
+version: 0.3.1-bc.1
+homepage: https://github.com/lh3/wgsim
+license:
+  spdx: MIT
+  files: [wgsim.c]  # MIT license is embedded in the source file header
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/lh3/wgsim
+  commit: "a12da3375ff3b51a5594d4b6fa35591173ecc229"
+  version: "0.3.1"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      outputDir: .
+      buildScript: build-wasm.sh
+      emscriptenVersion: 4.0.18
+
+runtime:
+  modes: [wasm, remote]
+
+operations:
+  - id: wgsim.simulate
+    name: Simulate (wgsim)
+    category: Genomic Operations
+    bin: wgsim
+    description: Simulate paired-end short reads from a reference FASTA
+    io:
+      inputs:
+        - { name: ref, types: [FASTA, Multi-FASTA], mode: file }
+      outputs:
+        - { name: out1, types: [FASTQ], mode: file, flag: "", filename: "read1.fq" }
+        - { name: out2, types: [FASTQ], mode: file, flag: "", filename: "read2.fq" }
+    parameters:
+      - { name: error_rate, type: float, flag: -e }
+      - { name: outer_distance, type: integer, flag: -d }
+      - { name: std_dev, type: integer, flag: -s }
+      - { name: num_pairs, type: integer, flag: -N }
+      - { name: read1_length, type: integer, flag: "-1" }
+      - { name: read2_length, type: integer, flag: "-2" }
+      - { name: mutation_rate, type: float, flag: -r }
+      - { name: indel_fraction, type: float, flag: -R }
+      - { name: indel_extend_prob, type: float, flag: -X }
+      - { name: seed, type: integer, flag: -S }
+      - { name: max_ambiguous_frac, type: float, flag: -A }
+      - { name: haplotype, type: flag, flag: -h }
