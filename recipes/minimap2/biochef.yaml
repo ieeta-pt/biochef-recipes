@@ -25,9 +25,12 @@ build:
     strategy: biowasm
     biowasm:
       package: minimap2
+  native:
+    buildScript: build-native.sh
+    buildTools: [make]
 
 runtime:
-  modes: [wasm, remote]
+  modes: [wasm, native]
 
 operations:
   - id: minimap2.align
