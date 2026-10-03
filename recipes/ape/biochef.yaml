@@ -1,0 +1,72 @@
+apiVersion: v1
+
+id: app.biochef.ape
+name: ape
+description: ape — Analyses of Phylogenetics and Evolution. Reads and writes Newick trees and computes over them - summary statistics, outgroup rerooting, and patristic (tip-to-tip) distance matrices. This is an R recipe - each operation is an R script run under webR rather than a compiled binary.
+
+version: 5.8.1-bc.1
+homepage: https://cran.r-project.org/package=ape
+license:
+  spdx: GPL-2.0-or-later
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/emmanuelparadis/ape
+  tag: "v5.8-1"
+  version: "5.8.1"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: r
+    r:
+      packages: ["ape"]
+      # ape links against Rcpp and imports nlme and lattice, none of which are
+      # base packages, so its dependencies have to be built too.
+      dependencies: "NA"
+      webrVersion: "0.6.0"
+
+runtime:
+  modes: [wasm]
+
+operations:
+  - id: ape.summary
+    name: Summarise tree (ape)
+    category: Genomic Operations
+    bin: summary.R
+    description: Reports summary statistics for a phylogenetic tree - number of tips and internal nodes, whether it is rooted, ultrametric and binary, total branch length, and the maximum root-to-tip distance. Output is a two-column TSV of name and value.
+    io:
+      inputs:
+        - { name: tree, types: [TEXT], mode: file, flag: --tree }
+      outputs:
+        - { name: summary, types: [TEXT], mode: file, flag: --out }
+    parameters: []
+
+  - id: ape.reroot
+    name: Reroot tree (ape)
+    category: Genomic Operations
+    bin: reroot.R
+    description: Reroots a phylogenetic tree on an outgroup, which must be one of the tip labels present in the tree. Midpoint rooting is not offered - it is not part of ape.
+    io:
+      inputs:
+        - { name: tree, types: [TEXT], mode: file, flag: --tree }
+      outputs:
+        - { name: rerooted, types: [TEXT], mode: file, flag: --out }
+    parameters:
+      - { name: outgroup, type: string, flag: --outgroup, required: true }
+
+  - id: ape.distances
+    name: Patristic distances (ape)
+    category: Genomic Operations
+    bin: distances.R
+    description: Computes the patristic distance matrix of a tree, the sum of branch lengths along the path between each pair of tips, and writes it as a labelled TSV.
+    io:
+      inputs:
+        - { name: tree, types: [TEXT], mode: file, flag: --tree }
+      outputs:
+        - { name: distances, types: [TEXT], mode: file, flag: --out }
+    parameters:
+      - { name: upper_only, type: flag, flag: --upper-only }
