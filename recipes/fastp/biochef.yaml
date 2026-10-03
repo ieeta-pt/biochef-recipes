@@ -26,9 +26,8 @@ build:
     biowasm:
       package: fastp
   native:
-    buildsystem: make
-    workDir: .
-    outputDir: .
+    buildScript: build-native.sh
+    buildTools: [make]
 
 runtime:
   modes: [wasm, native]

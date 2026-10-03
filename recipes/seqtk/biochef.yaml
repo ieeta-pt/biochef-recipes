@@ -26,7 +26,8 @@ build:
     biowasm:
       package: seqtk
   native:
-    buildsystem: make
+    buildScript: build-native.sh
+    buildTools: [make]
     
 runtime:
   modes: [wasm, native]

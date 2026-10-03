@@ -27,10 +27,10 @@ build:
       emscriptenVersion: 4.0.18
       buildScript: build-wasm.sh
   native:
-    buildsystem: make
-    workDir: .
     outputDir: src
-
+    buildScript: build-native.sh
+    buildTools: [make]
+    
 runtime:
   modes: [wasm, native, remote]
 
