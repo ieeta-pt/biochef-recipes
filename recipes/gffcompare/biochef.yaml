@@ -1,0 +1,86 @@
+apiVersion: v1
+
+id: app.biochef.gffcompare
+name: GffCompare
+description: GffCompare — classification, matching, and comparison of GFF/GTF transcript files against a reference annotation. Standard downstream tool after StringTie / Cufflinks / scallop — answers "how do my assembled transcripts compare to the reference annotation" (which are novel? which match perfectly? which are intron-chain variants?). Also clusters and tracks transcripts across multiple samples for differential expression workflows. Ships with `trmap` — a sister tool for transcript-to-reference overlap classification on a per-transcript basis.
+
+version: 0.12.10-bc.1
+homepage: https://github.com/gpertea/gffcompare
+license:
+  spdx: MIT
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/gpertea/gffcompare
+  commit: "29512d2a354442e92aa5503a549a8ad28ac246a2"
+  version: "0.12.10"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      buildsystem: make
+      workDir: .
+      outputDir: out
+      commands:
+        - 'emmake make release CXX=em++ LINKER=em++ LDFLAGS="-sFORCE_FILESYSTEM=1 -sALLOW_MEMORY_GROWTH=1 -sSTACK_SIZE=8MB -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain'']" -j4'
+        - 'mkdir -p out && mv gffcompare out/gffcompare.js && mv gffcompare.wasm out/gffcompare.wasm && mv trmap out/trmap.js && mv trmap.wasm out/trmap.wasm'
+        - "echo 'all:' > Makefile"
+      env: []
+  native:
+    buildsystem: make
+    workDir: .
+    outputDir: .
+
+runtime:
+  modes: [wasm, native, remote]
+
+operations:
+  - id: gffcompare.compare
+    name: Compare Transcripts (GffCompare)
+    category: Genomic Operations
+    bin: gffcompare
+    description: Compare one or more GTF/GFF transcript assemblies against a reference annotation. Produces per-transcript classification codes (=, c, j, e, o, p, etc. — see gffcompare docs) and summary statistics (sensitivity / precision at the base, exon, intron, intron-chain, transcript, and locus levels). Multi-sample input also produces a cross-sample tracking file plus a merged non-redundant transcript GTF.
+    io:
+      inputs:
+        - { name: in, types: [GFF], mode: file }
+        - { name: reference, types: [GFF], mode: file, flag: -r }
+        - { name: input_list, types: [TEXT], mode: file, flag: -i }
+        - { name: seq_path, types: [FASTA, Multi-FASTA], mode: file, flag: -s }
+      outputs:
+        - { name: out, types: [TEXT], mode: file, flag: -o, filename: "gffcmp" }
+    parameters:
+      - { name: prefix, type: string, flag: -p }
+      - { name: discard_single_exon_reftxs, type: flag, flag: -R }
+      - { name: discard_single_exon_querytxs, type: flag, flag: -Q }
+      - { name: precision_recall, type: flag, flag: -T }
+      - { name: verbose, type: flag, flag: -V }
+      - { name: debug, type: flag, flag: -D }
+      - { name: chr_stats, type: flag, flag: -C }
+      - { name: keep_attrs, type: flag, flag: -K }
+      - { name: keep_dup_introns, type: flag, flag: -X }
+      - { name: max_dist, type: integer, flag: -d }
+      - { name: min_overlap, type: float, flag: -F }
+
+  - id: gffcompare.trmap
+    name: Transcript Overlap Map (trmap)
+    category: Genomic Operations
+    bin: trmap
+    description: Per-transcript overlap classification — for each query transcript, report which reference transcripts overlap and the classification code (same as gffcompare codes). Lighter-weight than full gffcompare when you only need per-record overlap classification rather than summary stats and clustering.
+    io:
+      inputs:
+        - { name: reference, types: [GFF], mode: file }
+        - { name: query, types: [GFF], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: file, flag: -o, filename: "trmap.tsv" }
+    parameters:
+      - { name: codes_filter, type: string, flag: -c }
+      - { name: tab_output, type: flag, flag: -T }
+      - { name: json_output, type: flag, flag: -J }
+      - { name: short_output, type: flag, flag: -S }
+      - { name: self_compare, type: flag, flag: --self }
+      - { name: best_only, type: flag, flag: -B }
