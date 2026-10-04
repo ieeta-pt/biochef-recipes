@@ -1,0 +1,164 @@
+apiVersion: v1
+
+id: app.biochef.vsearch
+name: VSEARCH
+description: VSEARCH — versatile open-source tool for processing metagenomic amplicon and similar sequence data. Covers dereplication, clustering, chimera detection, pairwise alignment, all-vs-all search, taxonomic classification (SINTAX), FASTQ statistics/filtering/merging, and many other common operations on FASTA/FASTQ files. Drop-in for many USEARCH workflows.
+
+version: 2.31.0-bc.1
+homepage: https://github.com/torognes/vsearch
+license:
+  spdx: GPL-3.0-or-later
+  files: [LICENSE.txt]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/torognes/vsearch
+  tag: "v2.31.0"
+  version: "2.31.0"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      outputDir: out
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+
+runtime:
+  modes: [wasm, remote]
+
+operations:
+  - id: vsearch.cluster.fast
+    name: Cluster Fast (VSEARCH)
+    category: Sequence Analysis
+    bin: vsearch
+    description: Greedy clustering of sequences by identity threshold. Sequences are sorted by length and the first sequence of each cluster becomes its centroid. Faster than --cluster_size or --cluster_smallmem for many inputs.
+    io:
+      inputs:
+        - { name: in, types: [FASTA, Multi-FASTA], mode: file, flag: --cluster_fast }
+      outputs:
+        - { name: centroids, types: [FASTA], mode: file, flag: --centroids, filename: "centroids.fasta" }
+        - { name: uc, types: [TEXT], mode: file, flag: --uc, filename: "clusters.uc" }
+    parameters:
+      - { name: id, type: float, flag: --id, default: 0.97 }
+      - { name: strand, type: string, flag: --strand, default: plus }
+      - { name: sizein, type: flag, flag: --sizein }
+      - { name: sizeout, type: flag, flag: --sizeout }
+      - { name: minseqlength, type: integer, flag: --minseqlength }
+
+  - id: vsearch.derep.fulllength
+    name: Dereplicate Full Length (VSEARCH)
+    category: Sequence Analysis
+    bin: vsearch
+    description: Remove identical sequences from a FASTA/FASTQ file. Output contains only unique sequences, with size annotations indicating original abundance.
+    io:
+      inputs:
+        - { name: in, types: [FASTA, Multi-FASTA, FASTQ], mode: file, flag: --derep_fulllength }
+      outputs:
+        - { name: output, types: [FASTA], mode: file, flag: --output, filename: "dereplicated.fasta" }
+        - { name: uc, types: [TEXT], mode: file, flag: --uc, filename: "derep.uc" }
+    parameters:
+      - { name: strand, type: string, flag: --strand, default: plus }
+      - { name: sizein, type: flag, flag: --sizein }
+      - { name: sizeout, type: flag, flag: --sizeout }
+      - { name: minuniquesize, type: integer, flag: --minuniquesize }
+      - { name: minseqlength, type: integer, flag: --minseqlength }
+
+  - id: vsearch.uchime.denovo
+    name: Chimera Detection De Novo (VSEARCH)
+    category: Sequence Analysis
+    bin: vsearch
+    description: Detect chimeric sequences using the UCHIME de novo algorithm. Input is typically a dereplicated FASTA with abundance information; output separates chimeras from non-chimeras.
+    io:
+      inputs:
+        - { name: in, types: [FASTA, Multi-FASTA], mode: file, flag: --uchime_denovo }
+      outputs:
+        - { name: nonchimeras, types: [FASTA], mode: file, flag: --nonchimeras, filename: "nonchimeras.fasta" }
+        - { name: chimeras, types: [FASTA], mode: file, flag: --chimeras, filename: "chimeras.fasta" }
+    parameters:
+      - { name: sizein, type: flag, flag: --sizein }
+      - { name: mindiv, type: float, flag: --mindiv }
+      - { name: minh, type: float, flag: --minh }
+
+  - id: vsearch.usearch.global
+    name: Global Pairwise Search (VSEARCH)
+    category: Sequence Analysis
+    bin: vsearch
+    description: Global pairwise alignment search of a query set against a database. Reports hits above an identity threshold. Functionally equivalent to USEARCH's usearch_global.
+    io:
+      inputs:
+        - { name: query, types: [FASTA, Multi-FASTA], mode: file, flag: --usearch_global }
+        - { name: db, types: [FASTA, Multi-FASTA], mode: file, flag: --db }
+      outputs:
+        - { name: blast6out, types: [TEXT], mode: file, flag: --blast6out, filename: "hits.b6" }
+    parameters:
+      - { name: id, type: float, flag: --id, default: 0.97 }
+      - { name: strand, type: string, flag: --strand, default: plus }
+      - { name: top_hits_only, type: flag, flag: --top_hits_only }
+      - { name: maxaccepts, type: integer, flag: --maxaccepts }
+      - { name: maxrejects, type: integer, flag: --maxrejects }
+
+  - id: vsearch.sintax
+    name: Taxonomic Classification SINTAX (VSEARCH)
+    category: Sequence Analysis
+    bin: vsearch
+    description: SINTAX algorithm for taxonomic classification of marker-gene sequences against a reference database with taxonomy annotations. Reports a confidence score per taxonomic rank.
+    io:
+      inputs:
+        - { name: query, types: [FASTA, Multi-FASTA], mode: file, flag: --sintax }
+        - { name: db, types: [FASTA, Multi-FASTA], mode: file, flag: --db }
+      outputs:
+        - { name: tabbedout, types: [TEXT], mode: file, flag: --tabbedout, filename: "sintax.tsv" }
+    parameters:
+      - { name: sintax_cutoff, type: float, flag: --sintax_cutoff, default: 0.8 }
+      - { name: strand, type: string, flag: --strand, default: both }
+
+  - id: vsearch.fastq.mergepairs
+    name: Merge Paired-End FASTQ (VSEARCH)
+    category: Sequence Analysis
+    bin: vsearch
+    description: Merge overlapping paired-end Illumina FASTQ reads into a single consensus sequence per pair. Trims read-through adapter and applies quality-aware base calling at overlap positions.
+    io:
+      inputs:
+        - { name: forward, types: [FASTQ], mode: file, flag: --fastq_mergepairs }
+        - { name: reverse, types: [FASTQ], mode: file, flag: --reverse }
+      outputs:
+        - { name: fastqout, types: [FASTQ], mode: file, flag: --fastqout, filename: "merged.fastq" }
+        - { name: fastaout, types: [FASTA], mode: file, flag: --fastaout, filename: "merged.fasta" }
+    parameters:
+      - { name: fastq_minovlen, type: integer, flag: --fastq_minovlen, default: 10 }
+      - { name: fastq_maxdiffs, type: integer, flag: --fastq_maxdiffs, default: 10 }
+      - { name: fastq_allowmergestagger, type: flag, flag: --fastq_allowmergestagger }
+
+  - id: vsearch.fastq.filter
+    name: FASTQ Quality Filter (VSEARCH)
+    category: Sequence Analysis
+    bin: vsearch
+    description: Filter reads from a FASTQ file by expected error rate, length, ambiguous bases, and other criteria. Output is a filtered FASTQ or FASTA.
+    io:
+      inputs:
+        - { name: in, types: [FASTQ], mode: file, flag: --fastq_filter }
+      outputs:
+        - { name: fastqout, types: [FASTQ], mode: file, flag: --fastqout, filename: "filtered.fastq" }
+        - { name: fastaout, types: [FASTA], mode: file, flag: --fastaout, filename: "filtered.fasta" }
+    parameters:
+      - { name: fastq_maxee, type: float, flag: --fastq_maxee }
+      - { name: fastq_truncqual, type: integer, flag: --fastq_truncqual }
+      - { name: fastq_minlen, type: integer, flag: --fastq_minlen }
+      - { name: fastq_maxlen, type: integer, flag: --fastq_maxlen }
+      - { name: fastq_maxns, type: integer, flag: --fastq_maxns }
+
+  - id: vsearch.fastq.stats
+    name: FASTQ Quality Statistics (VSEARCH)
+    category: Sequence Analysis
+    bin: vsearch
+    description: Compute per-position quality and length statistics for a FASTQ file. Useful for inspecting Illumina/IonTorrent read quality before downstream processing.
+    io:
+      inputs:
+        - { name: in, types: [FASTQ], mode: file, flag: --fastq_stats }
+      outputs:
+        - { name: log, types: [TEXT], mode: file, flag: --log, filename: "fastq_stats.log" }
+    parameters: []
