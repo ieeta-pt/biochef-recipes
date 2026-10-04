@@ -1,0 +1,170 @@
+apiVersion: v1
+
+id: app.biochef.mafft
+name: MAFFT
+description: MAFFT — multiple sequence alignment toolkit. Upstream ships a bash wrapper (`mafft --auto/--linsi/...`) that orchestrates ~30 small C binaries; the wrapper does not run in WASM. This recipe exposes the underlying binaries directly as biochef operations so they can be composed in workflows. Suggested chains — FFT-NS-2 (fast) — dndfast7 → disttbfast → tbfast. L-INS-i (accurate) — pairlocalalign → tbfast → dvtditr.
+
+version: 7.471-bc.1
+homepage: https://mafft.cbrc.jp/alignment/software/
+license:
+  spdx: BSD-3-Clause
+  files: [license]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/GSLBiotech/mafft
+  tag: "7.471-without-extensions-msvc"
+  version: "7.471"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      outputDir: core/out
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+
+runtime:
+  modes: [wasm]
+
+operations:
+  - id: mafft.pairlocalalign
+    name: Pairwise Local Alignment (MAFFT)
+    category: Sequence Analysis
+    bin: pairlocalalign
+    description: Computes pairwise local alignments between all input sequences. This is the first stage of MAFFT's L-INS-i / E-INS-i / G-INS-i strategies; its output feeds into tbfast for tree-based progressive alignment.
+    io:
+      inputs:
+        - { name: in, types: [FASTA, Multi-FASTA], mode: file, flag: -i }
+      outputs:
+        - { name: out, types: [FASTA, Multi-FASTA], mode: stdout }
+    parameters:
+      - { name: scoring_matrix, type: integer, flag: -b }
+      - { name: gap_open_penalty, type: float, flag: -f }
+      - { name: gap_extension, type: float, flag: -g }
+      - { name: kimura_correction, type: integer, flag: -k }
+
+  - id: mafft.tbfast
+    name: Tree-Based Progressive Alignment (MAFFT)
+    category: Sequence Analysis
+    bin: tbfast
+    description: Progressive multiple sequence alignment guided by a precomputed guide tree. Workhorse of MAFFT's FFT-NS-2 and *-INS-i strategies. Typically run after dndfast7 (for distance/tree) or after pairlocalalign.
+    io:
+      inputs:
+        - { name: in, types: [FASTA, Multi-FASTA], mode: file, flag: -i }
+      outputs:
+        - { name: out, types: [FASTA, Multi-FASTA], mode: stdout }
+    parameters:
+      - { name: scoring_matrix, type: integer, flag: -b }
+      - { name: gap_open_penalty, type: float, flag: -f }
+      - { name: gap_extension, type: float, flag: -g }
+      - { name: iterate, type: integer, flag: -I }
+
+  - id: mafft.disttbfast
+    name: Distance + Progressive Alignment (MAFFT)
+    category: Sequence Analysis
+    bin: disttbfast
+    description: Combined distance computation and progressive alignment in one binary. This is MAFFT's FFT-NS-2 strategy in a single call — fastest path for large input sets where iterative refinement is not needed.
+    io:
+      inputs:
+        - { name: in, types: [FASTA, Multi-FASTA], mode: file, flag: -i }
+      outputs:
+        - { name: out, types: [FASTA, Multi-FASTA], mode: stdout }
+    parameters:
+      - { name: scoring_matrix, type: integer, flag: -b }
+      - { name: gap_open_penalty, type: float, flag: -f }
+      - { name: gap_extension, type: float, flag: -g }
+
+  - id: mafft.dvtditr
+    name: Iterative Refinement (MAFFT)
+    category: Sequence Analysis
+    bin: dvtditr
+    description: Iterative refinement of an existing multiple sequence alignment by splitting and re-aligning subgroups. Applied after tbfast to give the final alignment in MAFFT's *-INS-i strategies.
+    io:
+      inputs:
+        - { name: in, types: [FASTA, Multi-FASTA], mode: file, flag: -i }
+      outputs:
+        - { name: out, types: [FASTA, Multi-FASTA], mode: stdout }
+    parameters:
+      - { name: iterations, type: integer, flag: -I, default: 2 }
+      - { name: scoring_matrix, type: integer, flag: -b }
+
+  - id: mafft.splittbfast
+    name: Split-Based Progressive Alignment (MAFFT)
+    category: Sequence Analysis
+    bin: splittbfast
+    description: Split-based progressive alignment for very large input sets that do not fit in memory for the regular tbfast path.
+    io:
+      inputs:
+        - { name: in, types: [FASTA, Multi-FASTA], mode: file, flag: -i }
+      outputs:
+        - { name: out, types: [FASTA, Multi-FASTA], mode: stdout }
+    parameters:
+      - { name: split_size, type: integer, flag: -X }
+
+  - id: mafft.profile
+    name: Profile-Profile Alignment (MAFFT)
+    category: Sequence Analysis
+    bin: mafft-profile
+    description: Aligns one multiple sequence alignment to another (group-to-group). Both inputs must already be aligned. Useful for merging two MSAs without realigning from scratch.
+    io:
+      inputs:
+        - { name: in1, types: [FASTA, Multi-FASTA], mode: file }
+        - { name: in2, types: [FASTA, Multi-FASTA], mode: file }
+      outputs:
+        - { name: out, types: [FASTA, Multi-FASTA], mode: stdout }
+    parameters: []
+
+  - id: mafft.distance
+    name: Distance Matrix (MAFFT)
+    category: Sequence Analysis
+    bin: mafft-distance
+    description: Compute a pairwise distance matrix between input sequences. Output is the matrix used as input by MAFFT's tree construction.
+    io:
+      inputs:
+        - { name: in, types: [FASTA, Multi-FASTA], mode: file, flag: -i }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: alphabet_size, type: integer, flag: -a }
+
+  - id: mafft.addsingle
+    name: Add Sequences to Alignment (MAFFT)
+    category: Sequence Analysis
+    bin: addsingle
+    description: Add new sequences to an existing multiple sequence alignment without realigning the original columns. Used by MAFFT's --add and --addfragments modes.
+    io:
+      inputs:
+        - { name: existing_alignment, types: [FASTA, Multi-FASTA], mode: file, flag: -i }
+        - { name: new_sequences, types: [FASTA, Multi-FASTA], mode: file, flag: -I }
+      outputs:
+        - { name: out, types: [FASTA, Multi-FASTA], mode: stdout }
+    parameters:
+      - { name: keep_length, type: flag, flag: -K }
+
+  - id: mafft.dndfast7
+    name: Fast Distance Tree (MAFFT)
+    category: Sequence Analysis
+    bin: dndfast7
+    description: Build a guide tree from input sequences using a fast k-tuple distance estimate. Used as the first step in MAFFT's FFT-NS-2 strategy before tbfast.
+    io:
+      inputs:
+        - { name: in, types: [FASTA, Multi-FASTA], mode: file, flag: -i }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters: []
+
+  - id: mafft.f2cl
+    name: FASTA to CLUSTAL (MAFFT)
+    category: Format Conversion
+    bin: f2cl
+    description: Convert a FASTA-format multiple sequence alignment to CLUSTAL format. Useful for downstream tools that require CLUSTAL input.
+    io:
+      inputs:
+        - { name: in, types: [FASTA, Multi-FASTA], mode: file, flag: -i }
+      outputs:
+        - { name: out, types: [CLUSTAL], mode: stdout }
+    parameters: []
