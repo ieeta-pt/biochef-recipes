@@ -1,0 +1,231 @@
+apiVersion: v1
+
+id: app.biochef.newick-utils
+name: newick-utils
+description: Command-line tools for manipulating phylogenetic trees in Newick format. Reroot, prune, extract clades, strip branch lengths, measure distances, and render trees as ASCII art or SVG.
+
+version: 1.6-bc.1
+homepage: https://github.com/tjunier/newick_utils
+license:
+  spdx: BSD-3-Clause
+  files: [COPYING]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/tjunier/newick_utils
+  commit: "da121155a977197cab9fbb15953ca1b40b11eb87"
+  version: "1.6"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      outputDir: out
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+
+runtime:
+  modes: [wasm, remote]
+
+operations:
+  - id: newickutils.display.svg
+    name: Draw Tree as SVG (newick-utils)
+    category: Information and Analysis
+    bin: nw_display
+    description: Render a phylogenetic tree as a scalable SVG image, either as a standard rectangular cladogram or as a radial tree.
+    io:
+      inputs:
+        - { name: in, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [SVG], mode: stdout }
+    parameters:
+      - { name: svg, type: flag, flag: -s, required: true, hidden: true }
+      - { name: radial, type: flag, flag: -r }
+      - { name: width, type: integer, flag: -w }
+      - { name: leaf_spacing, type: integer, flag: -v }
+      - { name: branch_label_style, type: string, flag: -b }
+      - { name: leaf_label_style, type: string, flag: -l }
+      - { name: inner_label_style, type: string, flag: -i }
+      - { name: node_style, type: string, flag: -d }
+      - { name: suppress_scale_bar, type: flag, flag: -S }
+      - { name: scale_unit, type: string, flag: -u }
+      - { name: label_rotation, type: float, flag: -a }
+      - { name: root_length, type: integer, flag: -R }
+      - { name: depth_zero, type: flag, flag: -t }
+
+  - id: newickutils.display
+    name: Draw Tree as Text (newick-utils)
+    category: Information and Analysis
+    bin: nw_display
+    description: Render a phylogenetic tree as ASCII art, with an optional scale bar.
+    io:
+      inputs:
+        - { name: in, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: width, type: integer, flag: -w }
+      - { name: graph_style, type: string, flag: -e }
+      - { name: suppress_scale_bar, type: flag, flag: -S }
+      - { name: scale_unit, type: string, flag: -u }
+      - { name: depth_zero, type: flag, flag: -t }
+
+  - id: newickutils.reroot
+    name: Reroot (newick-utils)
+    category: Genomic Operations
+    bin: nw_reroot
+    description: Reroot a tree on the outgroup formed by the labels given as arguments, or deroot it entirely.
+    io:
+      inputs:
+        - { name: in, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: deroot, type: flag, flag: -d }
+      - { name: lax, type: flag, flag: -l }
+      - { name: inner_labels_are_support, type: flag, flag: -s }
+
+  - id: newickutils.prune
+    name: Prune (newick-utils)
+    category: Genomic Operations
+    bin: nw_prune
+    description: Remove the named nodes from a tree, or with reverse enabled keep only those nodes.
+    io:
+      inputs:
+        - { name: in, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: reverse, type: flag, flag: -v }
+
+  - id: newickutils.topology
+    name: Topology (newick-utils)
+    category: Genomic Operations
+    bin: nw_topology
+    description: Strip branch lengths to leave the tree topology alone, optionally discarding labels as well.
+    io:
+      inputs:
+        - { name: in, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: keep_branch_lengths, type: flag, flag: -b }
+      - { name: discard_inner_labels, type: flag, flag: -I }
+      - { name: discard_leaf_labels, type: flag, flag: -L }
+
+  - id: newickutils.clade
+    name: Extract Clade (newick-utils)
+    category: Genomic Operations
+    bin: nw_clade
+    description: Extract the smallest clade containing all the labels given as arguments.
+    io:
+      inputs:
+        - { name: in, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: context_levels, type: integer, flag: -c }
+      - { name: monophyletic_only, type: flag, flag: -m }
+      - { name: siblings, type: flag, flag: -s }
+      - { name: label_regexp, type: string, flag: -r }
+
+  - id: newickutils.labels
+    name: List Labels (newick-utils)
+    category: Information and Analysis
+    bin: nw_labels
+    description: List the node labels of a tree, one per line or tab separated.
+    io:
+      inputs:
+        - { name: in, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: no_inner_labels, type: flag, flag: -I }
+      - { name: no_leaf_labels, type: flag, flag: -L }
+      - { name: root_only, type: flag, flag: -r }
+      - { name: tab_separated, type: flag, flag: -t }
+
+  - id: newickutils.distance
+    name: Distances (newick-utils)
+    category: Information and Analysis
+    bin: nw_distance
+    description: Report distances between nodes, as a list or as a matrix, measured from the root, the parent, or the last common ancestor.
+    io:
+      inputs:
+        - { name: in, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: mode, type: string, flag: -m }
+      - { name: selection, type: string, flag: -s }
+      - { name: show_labels, type: flag, flag: -n }
+      - { name: triangular, type: flag, flag: -t }
+
+  - id: newickutils.stats
+    name: Tree Statistics (newick-utils)
+    category: Information and Analysis
+    bin: nw_stats
+    description: Report summary statistics for a tree, including node and leaf counts and whether it is a cladogram or a phylogram.
+    io:
+      inputs:
+        - { name: in, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: format, type: string, flag: -f }
+
+  - id: newickutils.order
+    name: Order (newick-utils)
+    category: Genomic Operations
+    bin: nw_order
+    description: Order the children of each node by a chosen criterion, which makes two trees with the same topology directly comparable.
+    io:
+      inputs:
+        - { name: in, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: criterion, type: string, flag: -c }
+
+  - id: newickutils.indent
+    name: Indent (newick-utils)
+    category: Format Conversion
+    bin: nw_indent
+    description: Reformat a tree across multiple indented lines so it can be read, or with compact enabled collapse it back onto one line.
+    io:
+      inputs:
+        - { name: in, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: compact, type: flag, flag: -c }
+      - { name: indent_text, type: string, flag: -t }
+
+  - id: newickutils.condense
+    name: Condense (newick-utils)
+    category: Genomic Operations
+    bin: nw_condense
+    description: Collapse clades whose leaves all share a label into a single node.
+    io:
+      inputs:
+        - { name: in, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: unicify_labels, type: flag, flag: -u }
+
+  - id: newickutils.trim
+    name: Trim (newick-utils)
+    category: Genomic Operations
+    bin: nw_trim
+    description: Cut the tree at a given depth, measured as a distance from the root or as a number of ancestors.
+    io:
+      inputs:
+        - { name: in, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: depth_in_ancestors, type: flag, flag: -a }
