@@ -1,0 +1,90 @@
+apiVersion: v1
+
+id: app.biochef.miniasm
+name: miniasm
+description: miniasm — very fast OLC-style long-read de novo assembler that produces an unpolished GFA assembly graph from a precomputed PAF overlap file (typically from minimap2). Skips error correction entirely — the resulting contigs have per-base accuracy equal to the raw read accuracy. Standard pipeline — minimap2 → miniasm → racon (already in PR) for polishing. Ships `minidot` — a small companion that renders PAF-format pairwise alignments as a dotplot in EPS.
+
+version: 0.3-bc.1
+homepage: https://github.com/lh3/miniasm
+license:
+  spdx: MIT
+  files: [LICENSE.txt]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/lh3/miniasm
+  commit: "2cd690de1e6af3e0438b7df0a99dd3e3b27ad6f9"
+  version: "0.3"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      buildsystem: make
+      workDir: .
+      outputDir: out
+      commands:
+        # kdq.h uses size_t for 58+6-bit bitfields; size_t is 32-bit on wasm32
+        # and can't hold them. Repromote the field-pair to uint64_t and split
+        # count/mask back out as size_t (same fix used in abPOA, vt etc).
+        - "sed -i.bak 's|size_t front:58, bits:6, count, mask;|uint64_t front:58, bits:6; size_t count, mask;|' kdq.h"
+        - 'emmake make CC=emcc CFLAGS="-O2 -Wall -Wc++-compat -Wno-unused-function -sUSE_ZLIB=1" LIBS="-lm -sUSE_ZLIB=1 -sFORCE_FILESYSTEM=1 -sALLOW_MEMORY_GROWTH=1 -sSTACK_SIZE=8MB -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain'']" -j4'
+        - 'mkdir -p out && mv miniasm out/miniasm.js && mv miniasm.wasm out/miniasm.wasm && mv minidot out/minidot.js && mv minidot.wasm out/minidot.wasm'
+        - "echo 'all:' > Makefile"
+      env: []
+  native:
+    buildsystem: make
+    workDir: .
+    outputDir: .
+
+runtime:
+  modes: [wasm, native, remote]
+
+operations:
+  - id: miniasm.assemble
+    name: Assemble Long Reads (miniasm)
+    category: Genomic Operations
+    bin: miniasm
+    description: Assemble long reads into a GFA assembly graph from a precomputed PAF overlap file (e.g. from minimap2 self-overlap). Output is GFA-format with read-coherent unitigs. No error correction — pair with racon downstream for polishing.
+    io:
+      inputs:
+        - { name: reads, types: [FASTA, Multi-FASTA, FASTQ], mode: file, flag: -f }
+        - { name: overlaps, types: [PAF, TEXT], mode: file }
+      outputs:
+        - { name: out, types: [GFA], mode: stdout }
+    parameters:
+      - { name: prefilter_contained, type: flag, flag: -R }
+      - { name: min_match_length, type: integer, flag: -m, default: 100 }
+      - { name: min_identity, type: float, flag: -i, default: 0.05 }
+      - { name: min_span, type: integer, flag: -s, default: 2000 }
+      - { name: min_coverage, type: integer, flag: -c, default: 3 }
+      - { name: min_overlap, type: integer, flag: -o }
+      - { name: max_overhang, type: integer, flag: -h, default: 1000 }
+      - { name: max_internal_match_ratio, type: float, flag: -I, default: 0.8 }
+      - { name: max_overhang_ratio, type: float, flag: -r, default: 0.5 }
+      - { name: min_end_dropoff, type: integer, flag: -e, default: 4 }
+      - { name: min_unitig_reads, type: integer, flag: -n, default: 3 }
+      - { name: max_short_unitig, type: integer, flag: -d, default: 50000 }
+      - { name: bub_pop_distance, type: float, flag: -g, default: 50000 }
+      - { name: small_tip_threshold, type: float, flag: -F, default: 0.8 }
+      - { name: verbose, type: integer, flag: -V, default: 1 }
+      - { name: output_overlap_only, type: integer, flag: "-1", default: 0 }
+
+  - id: miniasm.minidot
+    name: PAF Dotplot (minidot)
+    category: Sequence Analysis
+    bin: minidot
+    description: Render a PAF-format pairwise alignment as an EPS dotplot. Useful for visualizing self-overlap structure (e.g. tandem repeats) or assembly-to-reference alignment.
+    io:
+      inputs:
+        - { name: in, types: [PAF, TEXT], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: min_match_length, type: integer, flag: -m, default: 100 }
+      - { name: min_identity, type: float, flag: -i, default: 0.10 }
+      - { name: min_span, type: integer, flag: -s, default: 1000 }
+      - { name: long_edge_only, type: flag, flag: -L }
