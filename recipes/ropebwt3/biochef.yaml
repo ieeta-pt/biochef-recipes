@@ -1,0 +1,130 @@
+apiVersion: v1
+
+id: app.biochef.ropebwt3
+name: ropebwt3
+description: ropebwt3 — BWT/FM-index construction and querying for very large sequence collections. Build a single index across many genomes or a pan-genome, then run maximal-exact-match (MEM) finding, local Smith-Waterman alignment, k-mer counting, or haplotype-diversity scans. The construction is incremental (you can grow the index by merging new BWTs), making it suitable for streaming-in references. Third-generation successor to ropebwt2.
+
+version: 3.10.0-bc.1
+homepage: https://github.com/lh3/ropebwt3
+license:
+  spdx: MIT
+  files: [LICENSE.txt]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/lh3/ropebwt3
+  commit: "5afa1e56cd18a3c028a0d73256117851660d0f8c"
+  version: "3.10.0"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      outputDir: out
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+  native:
+    buildsystem: make
+    workDir: .
+    outputDir: .
+
+runtime:
+  modes: [wasm, native, remote]
+
+operations:
+  - id: ropebwt3.build
+    name: Build BWT (ropebwt3)
+    category: Genomic Operations
+    bin: ropebwt3
+    description: Construct a BWT/FM-index from one or more sequence files (FASTA / FASTQ / line-per-seq). Supports incremental construction — the resulting index can be extended later via `merge`. Output goes to stdout by default; redirect to a `.fmd` file for downstream use.
+    io:
+      inputs:
+        - { name: in, types: [FASTA, Multi-FASTA, FASTQ, TEXT], mode: file }
+      outputs:
+        - { name: out, types: [BIN], mode: stdout }
+    parameters:
+      - { name: subcommand, type: string, default: build, required: true, hidden: true }
+      - { name: output_format, type: string, flag: -d, default: fmd }
+      - { name: input_format, type: string, flag: -i }
+      - { name: max_block_size, type: integer, flag: -m }
+      - { name: reverse_complement, type: flag, flag: -R }
+      - { name: thread_per_batch, type: integer, flag: -t, default: 1 }
+
+  - id: ropebwt3.mem
+    name: Maximal Exact Matches (ropebwt3)
+    category: Genomic Operations
+    bin: ropebwt3
+    description: Find maximal exact matches (MEMs) between query sequences and a pre-built BWT/FM-index. Output is tab-separated — query name, start, length, occurrence count, matched references.
+    io:
+      inputs:
+        - { name: index, types: [BIN], mode: file }
+        - { name: query, types: [FASTA, Multi-FASTA, FASTQ], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: subcommand, type: string, default: mem, required: true, hidden: true }
+      - { name: min_length, type: integer, flag: -l, default: 19 }
+      - { name: max_occ, type: integer, flag: -c }
+      - { name: threads, type: integer, flag: -t, default: 1 }
+
+  - id: ropebwt3.sw
+    name: Local Alignment Smith-Waterman (ropebwt3)
+    category: Sequence Analysis
+    bin: ropebwt3
+    description: Local Smith-Waterman alignment of each query sequence against the pre-built index. Equivalent in spirit to bwa-mem's seeding step but driven by BWT/FM-index lookups for large reference collections.
+    io:
+      inputs:
+        - { name: index, types: [BIN], mode: file }
+        - { name: query, types: [FASTA, Multi-FASTA, FASTQ], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: subcommand, type: string, default: sw, required: true, hidden: true }
+      - { name: min_score, type: integer, flag: -s }
+      - { name: bandwidth, type: integer, flag: -w }
+      - { name: threads, type: integer, flag: -t, default: 1 }
+
+  - id: ropebwt3.kount
+    name: K-mer Count (ropebwt3)
+    category: Sequence Analysis
+    bin: ropebwt3
+    description: Count high-occurrence k-mers across the indexed collection. Useful for finding repeat / over-abundant sequences (centromeres, satellites, contaminants) before downstream analysis.
+    io:
+      inputs:
+        - { name: index, types: [BIN], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: subcommand, type: string, default: kount, required: true, hidden: true }
+      - { name: k, type: integer, flag: -k, default: 51 }
+      - { name: min_occ, type: integer, flag: -c }
+
+  - id: ropebwt3.stat
+    name: BWT Stats (ropebwt3)
+    category: Sequence Analysis
+    bin: ropebwt3
+    description: Print basic statistics for a built BWT — number of sequences, total bases, alphabet usage, run-length encoded size. Useful sanity-check after construction.
+    io:
+      inputs:
+        - { name: index, types: [BIN], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: subcommand, type: string, default: stat, required: true, hidden: true }
+
+  - id: ropebwt3.get
+    name: Retrieve Sequence (ropebwt3)
+    category: Format Conversion
+    bin: ropebwt3
+    description: Retrieve the i-th sequence from a BWT-encoded collection. Useful for extracting individual references from a single combined index.
+    io:
+      inputs:
+        - { name: index, types: [BIN], mode: file }
+      outputs:
+        - { name: out, types: [FASTA], mode: stdout }
+    parameters:
+      - { name: subcommand, type: string, default: get, required: true, hidden: true }
+      - { name: index_number, type: integer, required: true }
