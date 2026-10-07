@@ -40,7 +40,7 @@ operations:
       inputs:
         - { name: in, types: [FASTQ], mode: file }
       outputs:
-        - { name: out, types: [FASTA, Multi-FASTA], mode: stdout }
+        - { name: out, types: [FASTQ], mode: stdout }
     parameters:
       - { name: kmer_ec, type: integer, flag: -e, default: 0 }
       - { name: thresholds, type: string, flag: -c, default: "4,8" }
