@@ -1,0 +1,71 @@
+apiVersion: v1
+
+id: app.biochef.hifiasm
+name: hifiasm
+description: hifiasm — fast de novo haplotype-resolved assembler for PacBio HiFi reads (and Oxford Nanopore Q20+). The standard tool for telomere-to-telomere style assemblies of complex eukaryotes. Optionally consumes Hi-C reads and trio short-read data for phasing.
+
+version: 0.25.0-bc.1
+homepage: https://github.com/chhylp123/hifiasm
+license:
+  spdx: MIT
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/chhylp123/hifiasm
+  commit: "ec9a8b222d149d25b7355e83765698640d59b189"
+  version: "0.25.0"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      buildsystem: make
+      workDir: .
+      outputDir: out
+      commands:
+        - 'sed -i.bak "s|^void kt_pipeline|#ifdef __EMSCRIPTEN__\nvoid kt_pipeline(int n_threads, void *(*func)(void*, int, void*), void *shared_data, int n_steps)\n{\n\t(void)n_threads;\n\tfor (;;) {\n\t\tvoid *data = func(shared_data, 0, 0);\n\t\tif (data == 0) return;\n\t\tint step;\n\t\tfor (step = 1; step < n_steps; ++step)\n\t\t\tdata = func(shared_data, step, data);\n\t}\n}\n#else\nvoid kt_pipeline|" kthread.cpp'
+        - 'echo "#endif" >> kthread.cpp'
+        - 'emmake make CC=emcc CXX=em++ CXXFLAGS="-O3 -msse4.2 -msimd128 -sUSE_ZLIB=1 -Wno-implicit-function-declaration -Wno-unused-function -Wno-narrowing" CFLAGS="-O3 -msse4.2 -msimd128 -sUSE_ZLIB=1 -Wno-implicit-function-declaration -Wno-unused-function" -j4'
+        - 'em++ -O3 -sUSE_ZLIB=1 -sFORCE_FILESYSTEM=1 -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain''] -sALLOW_MEMORY_GROWTH=1 -sINITIAL_MEMORY=128MB CommandLines.o Process_Read.o Assembly.o Hash_Table.o POA.o Correct.o Levenshtein_distance.o Overlaps.o Trio.o kthread.o Purge_Dups.o htab.o hist.o sketch.o anchor.o extract.o sys.o hic.o rcut.o horder.o ecovlp.o tovlp.o inter.o kalloc.o gfa_ut.o gchain_map.o main.o -o hifiasm.js -lz -lm'
+        - 'mkdir -p out && mv hifiasm.js hifiasm.wasm out/'
+        - "echo 'all:' > Makefile.stub && mv Makefile.stub Makefile"
+      env: []
+  native:
+    buildsystem: make
+    workDir: .
+    outputDir: .
+
+runtime:
+  modes: [wasm, native, remote]
+
+operations:
+  - id: hifiasm.assemble
+    name: Assemble (hifiasm)
+    category: Genomic Operations
+    bin: hifiasm
+    description: De novo assembly of PacBio HiFi (or ONT Q20+) long reads. Produces a haplotype-resolved assembly in GFA format. Add --ont for Oxford Nanopore reads.
+    io:
+      inputs:
+        - { name: reads, types: [FASTA, Multi-FASTA, FASTQ], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: file, flag: -o }
+    parameters:
+      - { name: threads, type: integer, flag: -t, default: 1 }
+      - { name: ont, type: flag, flag: --ont }
+      - { name: kmer_length, type: integer, flag: -k }
+      - { name: window_size, type: integer, flag: -w }
+      - { name: bloom_bits, type: integer, flag: -f }
+      - { name: max_kmer_drop, type: float, flag: -D }
+      - { name: max_overlaps, type: integer, flag: -N }
+      - { name: min_unitig_length, type: integer, flag: --min-unitig-len }
+      - { name: hom_cov, type: integer, flag: --hom-cov }
+      - { name: similarity_threshold, type: float, flag: -s }
+      - { name: chimeric_drop_ratio, type: float, flag: -O }
+      - { name: ban_unbalanced_haplotypes, type: flag, flag: --hg-size }
+      - { name: write_paf, type: flag, flag: --write-paf }
+      - { name: write_ec, type: flag, flag: --write-ec }
+      - { name: dual_scaff, type: flag, flag: --dual-scaf }
