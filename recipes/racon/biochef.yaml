@@ -1,0 +1,62 @@
+apiVersion: v1
+
+id: app.biochef.racon
+name: racon
+description: racon — consensus-based polisher for long reads. Takes input long reads, their overlaps against an assembly (MHAP/PAF/SAM), and the target sequences; emits a polished assembly using partial-order alignment. The standard polishing pass after minimap2-based draft assembly with ONT/PacBio reads.
+
+version: 1.4.17-bc.1
+homepage: https://github.com/isovic/racon
+license:
+  spdx: MIT
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/isovic/racon
+  commit: "91191817fab5ac9f68d52d1ec8b9e193798b5824"
+  version: "1.4.17"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      buildsystem: make
+      workDir: .
+      outputDir: build/bin
+      commands:
+        - 'git submodule update --init --recursive'
+        - 'mkdir -p build && cd build && emcmake cmake -Dracon_build_tests=OFF -Dracon_enable_cuda=OFF -Dspoa_optimize_for_native=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_EXE_LINKER_FLAGS="-sFORCE_FILESYSTEM=1 -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain''] -sALLOW_MEMORY_GROWTH=1 -sUSE_ZLIB=1" ..'
+        - 'cd build && emmake make -j4 racon'
+        - "echo 'all:' > Makefile"
+      env: []
+
+runtime:
+  modes: [wasm, remote]
+
+operations:
+  - id: racon.polish
+    name: Polish (racon)
+    category: Genomic Operations
+    bin: racon
+    description: Polish a draft assembly using long reads and their overlaps. Reads + overlaps + target sequences → polished FASTA on stdout.
+    io:
+      inputs:
+        - { name: sequences, types: [FASTA, Multi-FASTA, FASTQ], mode: file }
+        - { name: overlaps, types: [SAM, TEXT], mode: file }
+        - { name: target, types: [FASTA, Multi-FASTA], mode: file }
+      outputs:
+        - { name: out, types: [FASTA, Multi-FASTA], mode: stdout }
+    parameters:
+      - { name: include_unpolished, type: flag, flag: -u }
+      - { name: fragment_correction, type: flag, flag: -f }
+      - { name: window_length, type: integer, flag: -w }
+      - { name: quality_threshold, type: float, flag: -q }
+      - { name: error_threshold, type: float, flag: -e }
+      - { name: trim, type: flag, flag: -t }
+      - { name: match, type: integer, flag: -m }
+      - { name: mismatch, type: integer, flag: -x }
+      - { name: gap, type: integer, flag: -g }
+      - { name: threads, type: integer, flag: -t, default: 1 }
