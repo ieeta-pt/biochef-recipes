@@ -1,0 +1,191 @@
+apiVersion: v1
+
+id: app.biochef.vt
+name: vt
+description: Variant tool (vt) by Adrian Tan — a toolkit for manipulating, normalizing, decomposing, and analysing variants in VCF/BCF files. Built from source against htslib.
+
+version: 0.57772-bc.1
+homepage: https://genome.sph.umich.edu/wiki/Vt
+license:
+  spdx: MIT
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/atks/vt
+  commit: "c6bd1591a23a1d116d52834a627c00bbf7ed4a64"
+  version: "0.57772"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      outputDir: build_wasm
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+  native:
+    buildsystem: make
+    workDir: .
+    outputDir: .
+
+runtime:
+  modes: [wasm, native, remote]
+
+operations:
+
+  - id: vt.view
+    name: View (vt)
+    category: Variant Analysis
+    bin: vt
+    description: Read a VCF/BCF/VCF.GZ file and print it as text VCF.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: file }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: view, required: true, hidden: true }
+      - { name: filter_expression, type: string, flag: -f }
+      - { name: print_sites_only, type: flag, flag: -s }
+
+  - id: vt.normalize
+    name: Normalize (vt)
+    category: Variant Analysis
+    bin: vt
+    description: Normalize variants — left-align and parsimonious representation. Requires a FASTA reference.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: file }
+        - { name: reference, types: [FASTA], mode: file, flag: -r }
+      outputs:
+        - { name: out, types: [VCF], mode: file, flag: -o }
+    parameters:
+      - { name: command, type: string, default: normalize, required: true, hidden: true }
+      - { name: no_fail, type: flag, flag: -n }
+      - { name: window, type: integer, flag: -w }
+
+  - id: vt.decompose
+    name: Decompose (vt)
+    category: Variant Analysis
+    bin: vt
+    description: Decompose multi-allelic variants into bi-allelic records.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: file }
+      outputs:
+        - { name: out, types: [VCF], mode: file, flag: -o }
+    parameters:
+      - { name: command, type: string, default: decompose, required: true, hidden: true }
+      - { name: smart, type: flag, flag: -s }
+
+  - id: vt.decompose.blocksub
+    name: Decompose Block Substitutions (vt)
+    category: Variant Analysis
+    bin: vt
+    description: Decompose block substitutions into SNP records.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: file }
+      outputs:
+        - { name: out, types: [VCF], mode: file, flag: -o }
+    parameters:
+      - { name: command, type: string, default: decompose_blocksub, required: true, hidden: true }
+      - { name: aggressive, type: flag, flag: -a }
+      - { name: phased, type: flag, flag: -p }
+
+  - id: vt.uniq
+    name: Uniq (vt)
+    category: Variant Analysis
+    bin: vt
+    description: Drop duplicate variants by chromosome, position, ref, and alt.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: file }
+      outputs:
+        - { name: out, types: [VCF], mode: file, flag: -o }
+    parameters:
+      - { name: command, type: string, default: uniq, required: true, hidden: true }
+
+  - id: vt.sort
+    name: Sort (vt)
+    category: Variant Analysis
+    bin: vt
+    description: Sort VCF records by chromosome and position.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: file }
+      outputs:
+        - { name: out, types: [VCF], mode: file, flag: -o }
+    parameters:
+      - { name: command, type: string, default: sort, required: true, hidden: true }
+      - { name: window, type: integer, flag: -w }
+
+  - id: vt.peek
+    name: Peek (vt)
+    category: Variant Analysis
+    bin: vt
+    description: Summary statistics of variants in a VCF file.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: peek, required: true, hidden: true }
+
+  - id: vt.cat
+    name: Concat (vt)
+    category: Variant Analysis
+    bin: vt
+    description: Concatenate multiple VCF files into one.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: file }
+      outputs:
+        - { name: out, types: [VCF], mode: file, flag: -o }
+    parameters:
+      - { name: command, type: string, default: cat, required: true, hidden: true }
+
+  - id: vt.subset
+    name: Subset (vt)
+    category: Variant Analysis
+    bin: vt
+    description: Subset a VCF to variants polymorphic in one or more samples.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: file }
+      outputs:
+        - { name: out, types: [VCF], mode: file, flag: -o }
+    parameters:
+      - { name: command, type: string, default: subset, required: true, hidden: true }
+      - { name: samples, type: string, flag: -s }
+      - { name: keep_invariant, type: flag, flag: -k }
+
+  - id: vt.validate
+    name: Validate (vt)
+    category: Variant Analysis
+    bin: vt
+    description: Validate a VCF file's structure and contents.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: validate, required: true, hidden: true }
+
+  - id: vt.index
+    name: Index (vt)
+    category: Variant Analysis
+    bin: vt
+    description: Index a bgzipped VCF/BCF file (.tbi or .csi).
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: file }
+      outputs:
+        - { name: out, types: [VCF], mode: file, flag: -o }
+    parameters:
+      - { name: command, type: string, default: index, required: true, hidden: true }
