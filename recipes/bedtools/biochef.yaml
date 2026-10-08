@@ -4,7 +4,7 @@ id: app.biochef.bedtools
 name: bedtools
 description: Genome arithmetic over BED/GFF/VCF/BAM intervals.
 
-version: 2.31.0-bc.1
+version: 2.31.0-bc.2
 homepage: https://github.com/arq5x/bedtools2
 license:
   spdx: MIT
@@ -37,7 +37,7 @@ operations:
     description: Report features in A that overlap B (and vice-versa)
     io:
       inputs:
-        - { name: a, types: [BED, GFF, VCF, BAM], mode: file, flag: -a }
+        - { name: a, types: [BED, GFF, VCF], mode: file, flag: -a }
         - { name: b, types: [BED, GFF, VCF, BAM], mode: file, flag: -b }
       outputs:
         - { name: out, types: [BED], mode: stdout }
@@ -156,7 +156,7 @@ operations:
     io:
       inputs:
         - { name: i, types: [BED, GFF, VCF], mode: file, flag: -i }
-        - { name: g, types: [TEXT], mode: file, flag: -g }
+        - { name: g, types: [TEXT, FAI], mode: file, flag: -g }
       outputs:
         - { name: out, types: [BED], mode: stdout }
     parameters:
@@ -195,7 +195,7 @@ operations:
     io:
       inputs:
         - { name: i, types: [BED, GFF, VCF], mode: file, flag: -i }
-        - { name: g, types: [TEXT], mode: file, flag: -g }
+        - { name: g, types: [TEXT, FAI], mode: file, flag: -g }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
@@ -205,7 +205,7 @@ operations:
       - { name: per_base, type: flag, flag: -d }
       - { name: per_base_zero, type: flag, flag: -dz }
       - { name: split_blocks, type: flag, flag: -split }
-      - { name: same_strand, type: flag, flag: -strand }
+      - { name: strand, type: string, flag: -strand }
       - { name: scale, type: float, flag: -scale }
       - { name: max_depth, type: integer, flag: -max }
 
@@ -236,7 +236,7 @@ operations:
     io:
       inputs:
         - { name: i, types: [BED, GFF, VCF], mode: file, flag: -i }
-        - { name: g, types: [TEXT], mode: file, flag: -g }
+        - { name: g, types: [TEXT, FAI], mode: file, flag: -g }
       outputs:
         - { name: out, types: [BED], mode: stdout }
     parameters:
@@ -256,7 +256,7 @@ operations:
     io:
       inputs:
         - { name: i, types: [BED, GFF, VCF], mode: file, flag: -i }
-        - { name: g, types: [TEXT], mode: file, flag: -g }
+        - { name: g, types: [TEXT, FAI], mode: file, flag: -g }
       outputs:
         - { name: out, types: [BED], mode: stdout }
     parameters:
@@ -282,9 +282,235 @@ operations:
     parameters:
       - { name: command, type: string, default: jaccard, required: true, hidden: true }
       - { name: same_strand, type: flag, flag: -s }
+      - { name: strand, type: string, flag: -S }
+      - { name: min_overlap_a, type: float, flag: -f }
+      - { name: min_overlap_b, type: float, flag: -F }
+      - { name: reciprocal, type: flag, flag: -r }
+      - { name: either_overlap, type: flag, flag: -e }
+      - { name: split_blocks, type: flag, flag: -split }
+
+
+  - id: bedtools.bamtobed
+    name: Bamtobed (bedtools)
+    category: Format Conversion
+    bin: bedtools
+    description: Convert BAM alignments to BED6, blocked BED12, or BEDPE intervals
+    io:
+      inputs:
+        - { name: i, types: [BAM], mode: file, flag: -i }
+      outputs:
+        - { name: out, types: [BED, TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: bamtobed, required: true, hidden: true }
+      - { name: bed12, type: flag, flag: -bed12 }
+      - { name: split_blocks, type: flag, flag: -split }
+      - { name: split_on_deletions, type: flag, flag: -splitD }
+      - { name: add_cigar, type: flag, flag: -cigar }
+      - { name: edit_distance_score, type: flag, flag: -ed }
+      - { name: score_tag, type: string, flag: -tag }
+      - { name: block_color, type: string, flag: -color }
+      - { name: bedpe, type: flag, flag: -bedpe }
+      - { name: mate1_first, type: flag, flag: -mate1 }
+
+  - id: bedtools.map
+    name: Map (bedtools)
+    category: Genomic Operations
+    bin: bedtools
+    description: Apply a summary function to a column of B for each interval in A (both inputs must be sorted)
+    io:
+      inputs:
+        - { name: a, types: [BED, GFF, VCF], mode: file, flag: -a }
+        - { name: b, types: [BED, GFF, VCF], mode: file, flag: -b }
+      outputs:
+        - { name: out, types: [BED], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: map, required: true, hidden: true }
+      - { name: columns, type: string, flag: -c, default: "5", required: true }
+      - { name: operations, type: string, flag: -o, default: sum, required: true }
+      - { name: null_value, type: string, flag: -null }
+      - { name: delimiter, type: string, flag: -delim }
+      - { name: precision, type: integer, flag: -prec }
+      - { name: same_strand, type: flag, flag: -s }
       - { name: opposite_strand, type: flag, flag: -S }
       - { name: min_overlap_a, type: float, flag: -f }
       - { name: min_overlap_b, type: float, flag: -F }
       - { name: reciprocal, type: flag, flag: -r }
       - { name: either_overlap, type: flag, flag: -e }
       - { name: split_blocks, type: flag, flag: -split }
+      - { name: header, type: flag, flag: -header }
+
+  - id: bedtools.genomecovbam
+    name: Genomecov from BAM (bedtools)
+    category: Information and Analysis
+    bin: bedtools
+    description: Per-base or BedGraph genome coverage straight from a BAM (chromosome sizes are read from the BAM header)
+    io:
+      inputs:
+        - { name: ibam, types: [BAM], mode: file, flag: -ibam }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: genomecov, required: true, hidden: true }
+      - { name: bedgraph, type: flag, flag: -bg }
+      - { name: bedgraph_all, type: flag, flag: -bga }
+      - { name: per_base, type: flag, flag: -d }
+      - { name: per_base_zero, type: flag, flag: -dz }
+      - { name: split_blocks, type: flag, flag: -split }
+      - { name: strand, type: string, flag: -strand }
+      - { name: scale, type: float, flag: -scale }
+      - { name: max_depth, type: integer, flag: -max }
+      - { name: five_prime_only, type: flag, flag: "-5" }
+      - { name: three_prime_only, type: flag, flag: "-3" }
+      - { name: pair_end_coverage, type: flag, flag: -pc }
+      - { name: fragment_size, type: integer, flag: -fs }
+
+  - id: bedtools.groupby
+    name: Groupby (bedtools)
+    category: Information and Analysis
+    bin: bedtools
+    description: Group rows by shared columns and summarize other columns, like SQL GROUP BY
+    io:
+      inputs:
+        - { name: i, types: [BED, TEXT], mode: file, flag: -i }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: groupby, required: true, hidden: true }
+      - { name: group_columns, type: string, flag: -g, default: "1,2,3", required: true }
+      - { name: columns, type: string, flag: -c, default: "5", required: true }
+      - { name: operations, type: string, flag: -o, default: sum, required: true }
+      - { name: all_columns, type: flag, flag: -full }
+      - { name: input_header, type: flag, flag: -inheader }
+      - { name: output_header, type: flag, flag: -outheader }
+      - { name: ignore_case, type: flag, flag: -ignorecase }
+      - { name: precision, type: integer, flag: -prec }
+      - { name: delimiter, type: string, flag: -delim }
+
+  - id: bedtools.makewindows
+    name: Makewindows (bedtools)
+    category: Genomic Operations
+    bin: bedtools
+    description: Tile a genome into fixed-size (optionally sliding) windows
+    io:
+      inputs:
+        - { name: g, types: [TEXT, FAI], mode: file, flag: -g }
+      outputs:
+        - { name: out, types: [BED], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: makewindows, required: true, hidden: true }
+      - { name: window_size, type: integer, flag: -w, default: 1000000, required: true }
+      - { name: step_size, type: integer, flag: -s }
+      - { name: name_ids, type: string, flag: -i }
+      - { name: reverse_numbering, type: flag, flag: -reverse }
+
+  - id: bedtools.window
+    name: Window (bedtools)
+    category: Genomic Operations
+    bin: bedtools
+    description: Report B features falling within a base-pair window around each A feature
+    io:
+      inputs:
+        - { name: a, types: [BED, GFF, VCF], mode: file, flag: -a }
+        - { name: b, types: [BED, GFF, VCF], mode: file, flag: -b }
+      outputs:
+        - { name: out, types: [BED], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: window, required: true, hidden: true }
+      - { name: window, type: integer, flag: -w }
+      - { name: left, type: integer, flag: -l }
+      - { name: right, type: integer, flag: -r }
+      - { name: strand_aware_window, type: flag, flag: -sw }
+      - { name: same_strand, type: flag, flag: -sm }
+      - { name: opposite_strand, type: flag, flag: -Sm }
+      - { name: unique, type: flag, flag: -u }
+      - { name: count_overlaps, type: flag, flag: -c }
+      - { name: report_no_overlap, type: flag, flag: -v }
+      - { name: header, type: flag, flag: -header }
+
+  - id: bedtools.cluster
+    name: Cluster (bedtools)
+    category: Genomic Operations
+    bin: bedtools
+    description: Assign a cluster id to overlapping or nearby features without merging them (sorted input required)
+    io:
+      inputs:
+        - { name: i, types: [BED, GFF, VCF], mode: file, flag: -i }
+      outputs:
+        - { name: out, types: [BED], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: cluster, required: true, hidden: true }
+      - { name: distance, type: integer, flag: -d }
+      - { name: same_strand, type: flag, flag: -s }
+
+  - id: bedtools.nuc
+    name: Nuc (bedtools)
+    category: Information and Analysis
+    bin: bedtools
+    description: Profile GC/AT content and per-base counts for each interval against a FASTA
+    io:
+      inputs:
+        - { name: fi, types: [FASTA, Multi-FASTA], mode: file, flag: -fi }
+        - { name: bed, types: [BED, GFF, VCF], mode: file, flag: -bed }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: nuc, required: true, hidden: true }
+      - { name: strand, type: flag, flag: -s }
+      - { name: print_sequence, type: flag, flag: -seq }
+      - { name: pattern, type: string, flag: -pattern }
+      - { name: ignore_case, type: flag, flag: -C }
+      - { name: full_header, type: flag, flag: -fullHeader }
+
+  - id: bedtools.fisher
+    name: Fisher (bedtools)
+    category: Information and Analysis
+    bin: bedtools
+    description: Fisher's exact test for overlap between two sorted interval files (needs genome file)
+    io:
+      inputs:
+        - { name: a, types: [BED, GFF, VCF], mode: file, flag: -a }
+        - { name: b, types: [BED, GFF, VCF], mode: file, flag: -b }
+        - { name: g, types: [TEXT, FAI], mode: file, flag: -g }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: fisher, required: true, hidden: true }
+      - { name: merge_first, type: flag, flag: -m }
+      - { name: same_strand, type: flag, flag: -s }
+      - { name: opposite_strand, type: flag, flag: -S }
+      - { name: min_overlap_a, type: float, flag: -f }
+      - { name: min_overlap_b, type: float, flag: -F }
+      - { name: reciprocal, type: flag, flag: -r }
+      - { name: either_overlap, type: flag, flag: -e }
+      - { name: split_blocks, type: flag, flag: -split }
+
+  - id: bedtools.bed12tobed6
+    name: Bed12tobed6 (bedtools)
+    category: Format Conversion
+    bin: bedtools
+    description: Split blocked BED12 features into discrete BED6 features (one per block)
+    io:
+      inputs:
+        - { name: i, types: [BED], mode: file, flag: -i }
+      outputs:
+        - { name: out, types: [BED], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: bed12tobed6, required: true, hidden: true }
+      - { name: block_number_score, type: flag, flag: -n }
+
+  - id: bedtools.maskfasta
+    name: Maskfasta (bedtools)
+    category: Format Conversion
+    bin: bedtools
+    description: Mask a FASTA reference at the positions covered by a BED/GFF/VCF file
+    io:
+      inputs:
+        - { name: fi, types: [FASTA, Multi-FASTA], mode: file, flag: -fi }
+        - { name: bed, types: [BED, GFF, VCF], mode: file, flag: -bed }
+      outputs:
+        - { name: fo, types: [FASTA, Multi-FASTA], mode: file, flag: -fo }
+    parameters:
+      - { name: command, type: string, default: maskfasta, required: true, hidden: true }
+      - { name: soft_mask, type: flag, flag: -soft }
+      - { name: mask_character, type: string, flag: -mc }
+      - { name: full_header, type: flag, flag: -fullHeader }
