@@ -5,6 +5,13 @@ on:
       - master
     paths:
       - 'recipes/**/biochef.yaml'
+  workflow_dispatch:
+    inputs:
+      recipes:
+        description: "Space-separated recipe paths, or 'all' for the controlled production backfill."
+        required: true
+        type: string
+        default: "all"
 
 jobs:
   detect_changes:
@@ -19,17 +26,34 @@ jobs:
 
       - name: Detect changed biochef.yaml files
         id: detect_files
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+          SELECTED_RECIPES: ${{ inputs.recipes }}
         run: |
-          echo "Listing changed files..."
-
-          CHANGED=$(git diff-tree --no-commit-id --name-only -r ${{ github.sha }})
-
-          FILES=$(echo "$CHANGED" | grep "biochef.yaml" | paste -sd " " - || true)
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            if [ "$SELECTED_RECIPES" = "all" ]; then
+              FILES=$(find recipes -path "*/biochef.yaml" | sort | paste -sd " " -)
+            else
+              FILES="$SELECTED_RECIPES"
+            fi
+          elif [[ "$BEFORE_SHA" =~ ^0+$ ]]; then
+            FILES=$(git diff-tree --root --no-commit-id --name-only -r "$GITHUB_SHA" -- 'recipes/**/biochef.yaml' | paste -sd " " -)
+          else
+            FILES=$(git diff --name-only "$BEFORE_SHA" "$GITHUB_SHA" -- 'recipes/**/biochef.yaml' | paste -sd " " -)
+          fi
 
           if [ -z "$FILES" ]; then
             echo "No recipe changes detected"
             exit 1
           fi
+
+          for file in $FILES; do
+            if [ ! -f "$file" ]; then
+              echo "Recipe file does not exist: $file"
+              exit 1
+            fi
+          done
 
           echo "Changed biochef.yaml files:"
           echo "$FILES"
@@ -38,11 +62,21 @@ jobs:
 
   publish_recipes:
     needs: detect_changes
+    permissions:
+      actions: read
+      contents: write
+      id-token: write
+      packages: write
     uses: ieeta-pt/biochef-hub/.github/workflows/publish-recipes.yml@master
     with:
       registry_url: ${{ vars.REGISTRY_URL }}
       recipes: ${{ needs.detect_changes.outputs.biochef_files }}
       oras_auth: ${{ vars.ORAS_AUTH_METHOD }}
+      package_prefix: biochef-plugins-
+      signing_policy: signing/biochef-signing-policy.json
+      publish: true
+      publish_catalog: true
     secrets:
       REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
       REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+      BIOCHEF_CATALOG_SIGNING_PRIVATE_JWK: ${{ secrets.BIOCHEF_CATALOG_SIGNING_PRIVATE_JWK }}

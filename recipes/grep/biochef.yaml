@@ -9,6 +9,7 @@ homepage: https://www.gnu.org/software/grep/
 license:
   spdx: GPL-3.0-or-later
   files: [COPYING]
+  evidence_files: [src/grep.c]
 maintainers:
   - name: Biochef
 
@@ -16,6 +17,7 @@ source:
   repo: https://git.savannah.gnu.org/git/grep.git
   tag: v3.7
   version: "3.7"
+  commit: "df49b0c1dd95eccc1fba8174584bf6122e998e6d"
 
 status: verified
 
