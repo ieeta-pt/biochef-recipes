@@ -1,0 +1,927 @@
+apiVersion: v1
+
+id: app.biochef.vcfx
+name: VCFX
+description: VCF manipulation toolkit from IEETA. Each operation is one small tool that reads a VCF and writes a VCF or a table, so they chain into pipelines.
+
+version: 1.1.6-bc.1
+homepage: https://github.com/ieeta-pt/VCFX
+license:
+  spdx: MIT
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/ieeta-pt/VCFX
+  tag: "v1.1.6"
+  commit: "4faeadfd4aff9974d482cc7937977a04184104e1"
+  version: "1.1.6"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      outputDir: build_wasm
+      buildScript: build-wasm.sh
+      emscriptenVersion: 4.0.18
+  native:
+    outputDir: bin
+    buildScript: build-native.sh
+    buildTools: [make]
+
+runtime:
+  modes: [wasm, native]
+
+# Every flag is the tool's long form. Several VCFX tools reuse a short letter
+# for unrelated things (in impact_filter -i is the impact level and -I the
+# input; in info_parser -i is the field list), so the long form is the only
+# spelling that cannot be misread.
+#
+# Three tools are not offered: VCFX_file_splitter writes one file per
+# chromosome under a prefix, a variable number of outputs nothing here can
+# collect; VCFX_compressor writes raw DEFLATE to stdout, and stdout carries
+# text only; and VCFX_ancestry_inferrer v1.1.6 aborts in its WASM build
+# (function signature mismatch) on every input, while the native build works.
+# VCFX_ancestry_assigner covers the same question and works in both.
+
+operations:
+
+  - id: vcfx.af.subsetter
+    name: AF Subsetter (VCFX)
+    category: Variant Analysis
+    bin: VCFX_af_subsetter
+    description: Keep variants whose INFO allele frequency (AF) lies in a range, written as MIN-MAX, e.g. 0.01-0.05.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: af_filter, type: string, flag: --af-filter, default: "0.01-0.5", required: true }
+      - { name: quiet, type: flag, flag: --quiet }
+
+  - id: vcfx.alignment.checker
+    name: Alignment Checker (VCFX)
+    category: Variant Analysis
+    bin: VCFX_alignment_checker
+    description: Report variants whose REF or ALT disagrees with the reference genome at that position.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: file }
+        - { name: reference, types: [FASTA, Multi-FASTA], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: alignment_discrepancy, type: flag, flag: --alignment-discrepancy, required: true, hidden: true }
+
+  - id: vcfx.allele.balance.calc
+    name: Allele Balance Calc (VCFX)
+    category: Variant Analysis
+    bin: VCFX_allele_balance_calc
+    description: Per sample and variant, the ratio of reference to alternate alleles in the genotype. Optionally limited to samples named in a space-separated list.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: samples, type: string, flag: --samples }
+      - { name: quiet, type: flag, flag: --quiet }
+
+  - id: vcfx.allele.balance.filter
+    name: Allele Balance Filter (VCFX)
+    category: Variant Analysis
+    bin: VCFX_allele_balance_filter
+    description: Drop a variant if any sample's allele balance is below the threshold (0.0 to 1.0).
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: filter_allele_balance, type: float, flag: --filter-allele-balance, default: 0.3, required: true }
+
+  - id: vcfx.allele.counter
+    name: Allele Counter (VCFX)
+    category: Variant Analysis
+    bin: VCFX_allele_counter
+    description: Count reference and alternate alleles per sample at each variant, or per variant across all samples with aggregate.
+    # A file, not stdin: VCFX_allele_counter v1.1.6 ignores --aggregate and
+    # --limit-samples when it reads stdin, and honours them with --input.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: file, flag: --input }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: samples, type: string, flag: --samples }
+      - { name: limit_samples, type: integer, flag: --limit-samples }
+      - { name: aggregate, type: flag, flag: --aggregate }
+      - { name: quiet, type: flag, flag: --quiet }
+
+  - id: vcfx.allele.freq.calc
+    name: Allele Freq Calc (VCFX)
+    category: Variant Analysis
+    bin: VCFX_allele_freq_calc
+    description: Alternate allele frequency of each variant, computed from the sample genotypes.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: quiet, type: flag, flag: --quiet }
+
+  - id: vcfx.ancestry.assigner
+    name: Ancestry Assigner (VCFX)
+    category: Variant Analysis
+    bin: VCFX_ancestry_assigner
+    description: Assign each sample to the most likely population. Frequencies is a table with header CHROM POS REF ALT POP1 POP2 ... and one allele frequency per population.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+        - { name: frequencies, types: [TEXT], mode: file, flag: --assign-ancestry }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters: []
+
+  - id: vcfx.annotation.extractor
+    name: Annotation Extractor (VCFX)
+    category: Variant Analysis
+    bin: VCFX_annotation_extractor
+    description: Tabulate INFO annotations, comma-separated (e.g. ANN,Gene), one line per ALT allele.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: annotation_extract, type: string, flag: --annotation-extract, default: "ANN", required: true }
+      - { name: quiet, type: flag, flag: --quiet }
+
+  - id: vcfx.concordance.checker
+    name: Concordance Checker (VCFX)
+    category: Variant Analysis
+    bin: VCFX_concordance_checker
+    description: Compare the genotypes of exactly two samples, named in samples separated by a space, and mark each variant concordant or discordant.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: samples, type: string, flag: --samples, required: true }
+      - { name: quiet, type: flag, flag: --quiet }
+
+  - id: vcfx.cross.sample.concordance
+    name: Cross Sample Concordance (VCFX)
+    category: Variant Analysis
+    bin: VCFX_cross_sample_concordance
+    description: For each variant, whether all samples with a genotype agree. Optionally limited to samples in a comma-separated list.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: samples, type: string, flag: --samples }
+      - { name: quiet, type: flag, flag: --quiet }
+
+  - id: vcfx.custom.annotator
+    name: Custom Annotator (VCFX)
+    category: Variant Analysis
+    bin: VCFX_custom_annotator
+    description: Add a CustomAnnotation INFO entry from a table whose lines are CHROM POS REF ALT annotation.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+        - { name: annotations, types: [TEXT], mode: file, flag: --add-annotation }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters: []
+
+  - id: vcfx.diff.tool
+    name: Diff Tool (VCFX)
+    category: Variant Analysis
+    bin: VCFX_diff_tool
+    description: List the variants present in only one of two VCF files.
+    io:
+      inputs:
+        - { name: first, types: [VCF], mode: file, flag: --file1 }
+        - { name: second, types: [VCF], mode: file, flag: --file2 }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: assume_sorted, type: flag, flag: --assume-sorted }
+      - { name: natural_chr, type: flag, flag: --natural-chr }
+      - { name: quiet, type: flag, flag: --quiet }
+
+  - id: vcfx.distance.calculator
+    name: Distance Calculator (VCFX)
+    category: Variant Analysis
+    bin: VCFX_distance_calculator
+    description: Distance in base pairs between consecutive variants on each chromosome.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: quiet, type: flag, flag: --quiet }
+
+  - id: vcfx.dosage.calculator
+    name: Dosage Calculator (VCFX)
+    category: Variant Analysis
+    bin: VCFX_dosage_calculator
+    description: Number of alternate alleles (0, 1 or 2) in each sample's genotype at each variant.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: quiet, type: flag, flag: --quiet }
+
+  - id: vcfx.duplicate.remover
+    name: Duplicate Remover (VCFX)
+    category: Variant Analysis
+    bin: VCFX_duplicate_remover
+    description: Remove repeated variants, matched on chromosome, position, REF and ALT.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: quiet, type: flag, flag: --quiet }
+
+  - id: vcfx.fasta.converter
+    name: FASTA Converter (VCFX)
+    category: Variant Analysis
+    bin: VCFX_fasta_converter
+    description: One sequence per sample made of its alleles at each variant site.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [Multi-FASTA], mode: stdout }
+    parameters:
+      - { name: quiet, type: flag, flag: --quiet }
+
+  - id: vcfx.field.extractor
+    name: Field Extractor (VCFX)
+    category: Variant Analysis
+    bin: VCFX_field_extractor
+    description: Tabulate chosen fields, comma-separated. Standard columns (CHROM, POS, REF...), INFO keys (DP, AF...) or sample subfields (S1:GT, or SampleName:DP).
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: fields, type: string, flag: --fields, default: "CHROM,POS,ID,REF,ALT", required: true }
+
+  - id: vcfx.format.converter.bed
+    name: VCF to BED (VCFX)
+    category: Variant Analysis
+    bin: VCFX_format_converter
+    description: Convert variants to BED intervals.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [BED], mode: stdout }
+    parameters:
+      - { name: to_bed, type: flag, flag: --to-bed, required: true, hidden: true }
+
+  - id: vcfx.format.converter.csv
+    name: VCF to CSV (VCFX)
+    category: Variant Analysis
+    bin: VCFX_format_converter
+    description: Convert variants to comma-separated values.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: to_csv, type: flag, flag: --to-csv, required: true, hidden: true }
+
+  - id: vcfx.genotype.query
+    name: Genotype Query (VCFX)
+    category: Variant Analysis
+    bin: VCFX_genotype_query
+    description: Keep variants where at least one sample has the given genotype. 0/1 also matches 0|1 and 1/0 unless strict is set.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: genotype_query, type: string, flag: --genotype-query, default: "0/1", required: true }
+      - { name: strict, type: flag, flag: --strict }
+      - { name: quiet, type: flag, flag: --quiet }
+
+  - id: vcfx.gl.filter
+    name: GL Filter (VCFX)
+    category: Variant Analysis
+    bin: VCFX_gl_filter
+    description: Keep variants whose samples pass a condition on a numeric FORMAT field, e.g. GQ>20. Mode all (default) needs every sample to pass, any needs one.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: filter, type: string, flag: --filter, default: "GQ>20", required: true }
+      - { name: mode, type: string, flag: --mode }
+
+  - id: vcfx.haplotype.extractor
+    name: Haplotype Extractor (VCFX)
+    category: Variant Analysis
+    bin: VCFX_haplotype_extractor
+    description: Group consecutive phased variants into haplotype blocks per sample.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: block_size, type: integer, flag: --block-size }
+      - { name: check_phase_consistency, type: flag, flag: --check-phase-consistency }
+      - { name: streaming, type: flag, flag: --streaming }
+      - { name: quiet, type: flag, flag: --quiet }
+
+  - id: vcfx.haplotype.phaser
+    name: Haplotype Phaser (VCFX)
+    category: Variant Analysis
+    bin: VCFX_haplotype_phaser
+    description: Group variants into blocks of linkage disequilibrium above an r squared threshold (0 to 1, default 0.8).
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: ld_threshold, type: float, flag: --ld-threshold }
+      - { name: streaming, type: flag, flag: --streaming }
+      - { name: window, type: integer, flag: --window }
+      - { name: quiet, type: flag, flag: --quiet }
+
+  - id: vcfx.header.parser
+    name: Header Parser (VCFX)
+    category: Variant Analysis
+    bin: VCFX_header_parser
+    description: The header lines of the VCF.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters: []
+
+  - id: vcfx.hwe.tester
+    name: HWE Tester (VCFX)
+    category: Variant Analysis
+    bin: VCFX_hwe_tester
+    description: Hardy-Weinberg equilibrium p-value for each biallelic variant.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: quiet, type: flag, flag: --quiet }
+
+  - id: vcfx.impact.filter
+    name: Impact Filter (VCFX)
+    category: Variant Analysis
+    bin: VCFX_impact_filter
+    description: Keep variants whose INFO IMPACT is at least the given level, one of HIGH, MODERATE, LOW, MODIFIER.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: filter_impact, type: string, flag: --filter-impact, default: "MODERATE", required: true }
+
+  - id: vcfx.inbreeding.calculator
+    name: Inbreeding Calculator (VCFX)
+    category: Variant Analysis
+    bin: VCFX_inbreeding_calculator
+    description: Inbreeding coefficient F of each sample, from biallelic sites. Frequency mode is excludeSample (default) or global.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: freq_mode, type: string, flag: --freq-mode }
+      - { name: skip_boundary, type: flag, flag: --skip-boundary }
+      - { name: count_boundary_as_used, type: flag, flag: --count-boundary-as-used }
+      - { name: quiet, type: flag, flag: --quiet }
+
+  - id: vcfx.indel.normalizer
+    name: Indel Normalizer (VCFX)
+    category: Variant Analysis
+    bin: VCFX_indel_normalizer
+    description: Split multi-allelic lines and trim the bases REF and ALT share. Does not left-align, which needs the reference.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: quiet, type: flag, flag: --quiet }
+
+  - id: vcfx.indexer
+    name: Indexer (VCFX)
+    category: Variant Analysis
+    bin: VCFX_indexer
+    description: Byte offset of each variant line, as CHROM POS FILE_OFFSET.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters: []
+
+  - id: vcfx.info.aggregator
+    name: Info Aggregator (VCFX)
+    category: Variant Analysis
+    bin: VCFX_info_aggregator
+    description: Pass the VCF through and append the sum and average of the given numeric INFO fields, comma-separated, as comment lines at the end.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: aggregate_info, type: string, flag: --aggregate-info, default: "DP", required: true }
+      - { name: quiet, type: flag, flag: --quiet }
+
+  - id: vcfx.info.parser
+    name: Info Parser (VCFX)
+    category: Variant Analysis
+    bin: VCFX_info_parser
+    description: Tabulate the given INFO fields, comma-separated, for each variant.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: info, type: string, flag: --info, default: "DP", required: true }
+      - { name: quiet, type: flag, flag: --quiet }
+
+  - id: vcfx.info.summarizer
+    name: Info Summarizer (VCFX)
+    category: Variant Analysis
+    bin: VCFX_info_summarizer
+    description: Mean, median and mode of the given numeric INFO fields, comma-separated.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: info, type: string, flag: --info, default: "DP", required: true }
+      - { name: quiet, type: flag, flag: --quiet }
+
+  - id: vcfx.ld.calculator
+    name: LD Calculator (VCFX)
+    category: Variant Analysis
+    bin: VCFX_ld_calculator
+    description: Pairwise linkage disequilibrium (r squared) between nearby variants. Region is CHR:START-END. Matrix mode prints every pair and is slow above a few thousand variants.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: region, type: string, flag: --region }
+      - { name: window, type: integer, flag: --window }
+      - { name: max_distance, type: integer, flag: --max-distance }
+      - { name: threshold, type: float, flag: --threshold }
+      - { name: matrix, type: flag, flag: --matrix }
+      - { name: quiet, type: flag, flag: --quiet }
+
+  - id: vcfx.merger
+    name: Merger (VCFX)
+    category: Variant Analysis
+    bin: VCFX_merger
+    description: Merge two VCF files into one, ordered by chromosome and position.
+    io:
+      inputs:
+        - { name: first, types: [VCF], mode: file, flag: --merge }
+        - { name: second, types: [VCF], mode: file, flag: --merge }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: assume_sorted, type: flag, flag: --assume-sorted }
+      - { name: natural_chr, type: flag, flag: --natural-chr }
+
+  - id: vcfx.metadata.summarizer
+    name: Metadata Summarizer (VCFX)
+    category: Variant Analysis
+    bin: VCFX_metadata_summarizer
+    description: Summary of the file's contigs, INFO, FILTER and FORMAT definitions, samples and variant count.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters: []
+
+  - id: vcfx.missing.data.handler
+    name: Missing Data Handler (VCFX)
+    category: Variant Analysis
+    bin: VCFX_missing_data_handler
+    description: Replace missing genotypes (./. or .) with the given genotype, 0/0 unless changed.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    # Without --fill-missing the tool copies the file unchanged, and its own
+    # default fill value is ./., which replaces a missing genotype with itself.
+    parameters:
+      - { name: fill_missing, type: flag, flag: --fill-missing, required: true, hidden: true }
+      - { name: default_genotype, type: string, flag: --default-genotype, default: "0/0", required: true }
+
+  - id: vcfx.missing.detector
+    name: Missing Detector (VCFX)
+    category: Variant Analysis
+    bin: VCFX_missing_detector
+    description: Mark variants that have a missing sample genotype with MISSING_GENOTYPES=1 in INFO.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: quiet, type: flag, flag: --quiet }
+
+  - id: vcfx.multiallelic.splitter
+    name: Multiallelic Splitter (VCFX)
+    category: Variant Analysis
+    bin: VCFX_multiallelic_splitter
+    description: Split multi-allelic variants into one line per ALT allele, rewriting GT, AD and PL.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: quiet, type: flag, flag: --quiet }
+
+  - id: vcfx.nonref.filter
+    name: Nonref Filter (VCFX)
+    category: Variant Analysis
+    bin: VCFX_nonref_filter
+    description: Drop variants at which every sample is homozygous reference.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters: []
+
+  - id: vcfx.outlier.detector
+    name: Outlier Detector (VCFX)
+    category: Variant Analysis
+    bin: VCFX_outlier_detector
+    description: Report variants whose INFO metric is above the threshold, or with sample set, samples whose average FORMAT metric is above it.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: metric, type: string, flag: --metric, default: "DP", required: true }
+      - { name: threshold, type: float, flag: --threshold, default: 30, required: true }
+      - { name: sample, type: flag, flag: --sample }
+
+  - id: vcfx.phase.checker
+    name: Phase Checker (VCFX)
+    category: Variant Analysis
+    bin: VCFX_phase_checker
+    description: Keep only variants at which every sample's genotype is fully phased.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: quiet, type: flag, flag: --quiet }
+
+  - id: vcfx.phase.quality.filter
+    name: Phase Quality Filter (VCFX)
+    category: Variant Analysis
+    bin: VCFX_phase_quality_filter
+    description: Keep variants whose INFO phasing quality passes a condition such as PQ>30. Operators are >, >=, <, <=, ==, !=.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: filter_pq, type: string, flag: --filter-pq, default: "PQ>30", required: true }
+
+  - id: vcfx.phred.filter
+    name: Phred Filter (VCFX)
+    category: Variant Analysis
+    bin: VCFX_phred_filter
+    description: Keep variants with QUAL at or above the threshold (default 30). A missing QUAL counts as 0 unless keep missing qual is set.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: phred_filter, type: float, flag: --phred-filter, default: 30, required: true }
+      - { name: keep_missing_qual, type: flag, flag: --keep-missing-qual }
+
+  - id: vcfx.population.filter
+    name: Population Filter (VCFX)
+    category: Variant Analysis
+    bin: VCFX_population_filter
+    description: Keep only the samples of one population. The population map has lines of SampleName, a tab, and Population.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+        - { name: population_map, types: [TEXT], mode: file, flag: --pop-map }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: population, type: string, flag: --population, required: true }
+      - { name: quiet, type: flag, flag: --quiet }
+
+  - id: vcfx.position.subsetter
+    name: Position Subsetter (VCFX)
+    category: Variant Analysis
+    bin: VCFX_position_subsetter
+    description: Keep variants inside one region, written CHR:START-END.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: region, type: string, flag: --region, required: true }
+
+  - id: vcfx.probability.filter
+    name: Probability Filter (VCFX)
+    category: Variant Analysis
+    bin: VCFX_probability_filter
+    description: Keep variants whose genotype probability passes a condition such as GP>0.9.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: filter_probability, type: string, flag: --filter-probability, default: "GP>0.9", required: true }
+
+  - id: vcfx.quality.adjuster
+    name: Quality Adjuster (VCFX)
+    category: Variant Analysis
+    bin: VCFX_quality_adjuster
+    description: Transform the QUAL column with log, sqrt, square or identity. Results are clamped to 0 to 1e12 unless no clamp is set.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: adjust_qual, type: string, flag: --adjust-qual, default: "log", required: true }
+      - { name: no_clamp, type: flag, flag: --no-clamp }
+
+  - id: vcfx.record.filter
+    name: Record Filter (VCFX)
+    category: Variant Analysis
+    bin: VCFX_record_filter
+    description: Keep variants matching criteria separated by semicolons, e.g. QUAL>=30;DP>10;FILTER==PASS. Logic and (default) needs all, or needs one.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: filter, type: string, flag: --filter, default: "QUAL>=30", required: true }
+      - { name: logic, type: string, flag: --logic }
+      - { name: quiet, type: flag, flag: --quiet }
+
+  - id: vcfx.ref.comparator
+    name: Ref Comparator (VCFX)
+    category: Variant Analysis
+    bin: VCFX_ref_comparator
+    description: Compare each variant's REF with the reference genome and record the result as REF_COMPARISON in INFO.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+        - { name: reference, types: [FASTA, Multi-FASTA], mode: file, flag: --reference }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: quiet, type: flag, flag: --quiet }
+
+  # VCFX_reformatter given none of its four options copies the file unchanged,
+  # so each option is its own operation with that option required.
+  - id: vcfx.reformatter.remove.info
+    name: Remove INFO Keys (VCFX)
+    category: Variant Analysis
+    bin: VCFX_reformatter
+    description: Remove the given INFO keys, comma-separated, from every variant.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: keys, type: string, flag: --compress-info, required: true }
+
+  - id: vcfx.reformatter.remove.format
+    name: Remove FORMAT Keys (VCFX)
+    category: Variant Analysis
+    bin: VCFX_reformatter
+    description: Remove the given FORMAT keys, comma-separated, from the FORMAT column and every sample.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: keys, type: string, flag: --compress-format, required: true }
+
+  - id: vcfx.reformatter.reorder.info
+    name: Reorder INFO Keys (VCFX)
+    category: Variant Analysis
+    bin: VCFX_reformatter
+    description: Move the given INFO keys, comma-separated, to the front in that order; the rest follow.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: keys, type: string, flag: --reorder-info, required: true }
+
+  - id: vcfx.reformatter.reorder.format
+    name: Reorder FORMAT Keys (VCFX)
+    category: Variant Analysis
+    bin: VCFX_reformatter
+    description: Move the given FORMAT keys, comma-separated, to the front in that order, in the FORMAT column and every sample.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: keys, type: string, flag: --reorder-format, required: true }
+
+  - id: vcfx.region.subsampler
+    name: Region Subsampler (VCFX)
+    category: Variant Analysis
+    bin: VCFX_region_subsampler
+    description: Keep variants that fall inside any region of a BED file.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+        - { name: regions, types: [BED], mode: file, flag: --region-bed }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: quiet, type: flag, flag: --quiet }
+
+  - id: vcfx.sample.extractor
+    name: Sample Extractor (VCFX)
+    category: Variant Analysis
+    bin: VCFX_sample_extractor
+    description: Keep only the named samples, comma- or space-separated.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: samples, type: string, flag: --samples, required: true }
+
+  - id: vcfx.sorter
+    name: Sorter (VCFX)
+    category: Variant Analysis
+    bin: VCFX_sorter
+    description: Sort variants by chromosome and position. Natural order puts chr2 before chr10.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: natural_chr, type: flag, flag: --natural-chr }
+
+  - id: vcfx.subsampler
+    name: Subsampler (VCFX)
+    category: Variant Analysis
+    bin: VCFX_subsampler
+    description: Keep a random sample of N variants. A seed makes the choice repeatable.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: subsample, type: integer, flag: --subsample, default: 1000, required: true }
+      - { name: seed, type: integer, flag: --seed }
+
+  # VCFX_sv_handler given neither option copies the file unchanged, so the two
+  # actions are separate operations.
+  - id: vcfx.sv.filter
+    name: SV Filter (VCFX)
+    category: Variant Analysis
+    bin: VCFX_sv_handler
+    description: Keep only structural variants, those with SVTYPE in INFO. Also annotates them when annotate is set.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: sv_filter_only, type: flag, flag: --sv-filter-only, required: true, hidden: true }
+      - { name: annotate, type: flag, flag: --sv-modify }
+
+  - id: vcfx.sv.annotate
+    name: SV Annotate (VCFX)
+    category: Variant Analysis
+    bin: VCFX_sv_handler
+    description: Add size and type details to the INFO of structural variants (SV_SIZE for DEL and DUP, INV_TYPE, BND_ORIENTATION); other variants pass unchanged.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: sv_modify, type: flag, flag: --sv-modify, required: true, hidden: true }
+
+  - id: vcfx.validator
+    name: Validator (VCFX)
+    category: Variant Analysis
+    bin: VCFX_validator
+    description: Check the VCF's structure, header, fields, genotypes and sort order. A valid file gives a report; an invalid one fails, naming the first error. Strict turns warnings into errors.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: strict, type: flag, flag: --strict }
+      - { name: report_dups, type: flag, flag: --report-dups }
+      - { name: no_dup_check, type: flag, flag: --no-dup-check }
+      - { name: allow_empty, type: flag, flag: --allow-empty }
+      - { name: gvcf, type: flag, flag: --gvcf }
+      - { name: no_sorting_check, type: flag, flag: --no-sorting-check }
+      - { name: no_chr_counts, type: flag, flag: --no-chr-counts }
+
+  - id: vcfx.variant.classifier
+    name: Variant Classifier (VCFX)
+    category: Variant Analysis
+    bin: VCFX_variant_classifier
+    description: Classify each variant as SNP, INDEL, MNV or STRUCTURAL, as a table.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: quiet, type: flag, flag: --quiet }
+
+  - id: vcfx.variant.classifier.annotate
+    name: Variant Classifier, annotate (VCFX)
+    category: Variant Analysis
+    bin: VCFX_variant_classifier
+    description: Classify each variant as SNP, INDEL, MNV or STRUCTURAL, written as VCF_CLASS in INFO.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: append_info, type: flag, flag: --append-info, required: true, hidden: true }
+      - { name: quiet, type: flag, flag: --quiet }
+
+  - id: vcfx.variant.counter
+    name: Variant Counter (VCFX)
+    category: Variant Analysis
+    bin: VCFX_variant_counter
+    description: Total number of variants. With strict, a malformed line is an error rather than skipped.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: strict, type: flag, flag: --strict }
