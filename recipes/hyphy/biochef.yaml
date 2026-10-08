@@ -16,6 +16,7 @@ source:
   repo: https://github.com/veg/hyphy
   tag: "2.5.57"
   version: "2.5.57"
+  commit: "c1f1ca1ce0123bc7e20fac39810a7aa8ba26377b"
 
 status: experimental
 
@@ -28,12 +29,20 @@ build:
 runtime:
   modes: [wasm]
 
+# Every analysis needs an in-frame codon alignment (length a multiple of 3, no
+# stop codons) and a Newick tree whose leaf names match the sequence names.
+# hyphy writes the reason for a rejected input to errors.log, not to stderr, so
+# a bad input only shows up as "program exited (with status: 1)".
+#
+# Options are the analysis' own keyword arguments (res/TemplateBatchFiles/
+# SelectionAnalyses/<method>.bf at the tag); defaults are hyphy's.
+
 operations:
   - id: hyphy.busted
     name: BUSTED (HyPhy)
     category: Genomic Operations
     bin: hyphy
-    description: Branch-Site Unrestricted Statistical Test for Episodic Diversification — gene-wide test for episodic positive selection on a (subset of) phylogenetic branches.
+    description: Branch-Site Unrestricted Statistical Test for Episodic Diversification — gene-wide test for episodic positive selection on a (subset of) phylogenetic branches. Needs an in-frame codon alignment without stop codons and a Newick tree with matching names.
     io:
       inputs:
         - { name: alignment, types: [Multi-FASTA, FASTA], mode: file, flag: --alignment }
@@ -42,17 +51,18 @@ operations:
         - { name: out, types: [JSON], mode: file, flag: --output }
     parameters:
       - { name: command, type: string, default: BUSTED, required: true, hidden: true }
-      - { name: branches, type: string, flag: --branches }
-      - { name: srv, type: string, flag: --srv }
-      - { name: syn_rates, type: integer, flag: --syn-rates }
-      - { name: multiple_hits, type: string, flag: --multiple-hits }
-      - { name: starting_points, type: integer, flag: --starting-points }
+      - { name: code, type: string, flag: --code, default: Universal }
+      - { name: branches, type: string, flag: --branches, default: All }
+      - { name: srv, type: string, flag: --srv, default: "Yes" }
+      - { name: syn_rates, type: integer, flag: --syn-rates, default: 3 }
+      - { name: multiple_hits, type: string, flag: --multiple-hits, default: None }
+      - { name: starting_points, type: integer, flag: --starting-points, default: 1 }
 
   - id: hyphy.meme
     name: MEME (HyPhy)
     category: Genomic Operations
     bin: hyphy
-    description: Mixed Effects Model of Evolution — per-site test for episodic positive selection.
+    description: Mixed Effects Model of Evolution — per-site test for episodic positive selection. Needs an in-frame codon alignment without stop codons and a Newick tree with matching names.
     io:
       inputs:
         - { name: alignment, types: [Multi-FASTA, FASTA], mode: file, flag: --alignment }
@@ -61,16 +71,17 @@ operations:
         - { name: out, types: [JSON], mode: file, flag: --output }
     parameters:
       - { name: command, type: string, default: MEME, required: true, hidden: true }
-      - { name: branches, type: string, flag: --branches }
-      - { name: pvalue, type: float, flag: --pvalue }
-      - { name: srv, type: string, flag: --srv }
-      - { name: resample, type: integer, flag: --resample }
+      - { name: code, type: string, flag: --code, default: Universal }
+      - { name: branches, type: string, flag: --branches, default: All }
+      - { name: pvalue, type: float, flag: --pvalue, default: 0.1 }
+      - { name: multiple_hits, type: string, flag: --multiple-hits, default: None }
+      - { name: resample, type: integer, flag: --resample, default: 0 }
 
   - id: hyphy.fel
     name: FEL (HyPhy)
     category: Genomic Operations
     bin: hyphy
-    description: Fixed Effects Likelihood — per-site frequentist test for pervasive selection (dN/dS != 1).
+    description: Fixed Effects Likelihood — per-site frequentist test for pervasive selection (dN/dS != 1). Needs an in-frame codon alignment without stop codons and a Newick tree with matching names.
     io:
       inputs:
         - { name: alignment, types: [Multi-FASTA, FASTA], mode: file, flag: --alignment }
@@ -79,17 +90,19 @@ operations:
         - { name: out, types: [JSON], mode: file, flag: --output }
     parameters:
       - { name: command, type: string, default: FEL, required: true, hidden: true }
-      - { name: branches, type: string, flag: --branches }
-      - { name: pvalue, type: float, flag: --pvalue }
-      - { name: srv, type: string, flag: --srv }
-      - { name: ci, type: string, flag: --ci }
-      - { name: resample, type: integer, flag: --resample }
+      - { name: code, type: string, flag: --code, default: Universal }
+      - { name: branches, type: string, flag: --branches, default: All }
+      - { name: pvalue, type: float, flag: --pvalue, default: 0.1 }
+      - { name: srv, type: string, flag: --srv, default: "Yes" }
+      - { name: multiple_hits, type: string, flag: --multiple-hits, default: None }
+      - { name: ci, type: string, flag: --ci, default: "No" }
+      - { name: resample, type: integer, flag: --resample, default: 0 }
 
   - id: hyphy.absrel
     name: aBSREL (HyPhy)
     category: Genomic Operations
     bin: hyphy
-    description: Adaptive Branch-Site Random Effects Likelihood — branch-site test for episodic diversification, allowing per-branch rate categories.
+    description: Adaptive Branch-Site Random Effects Likelihood — branch-site test for episodic diversification, allowing per-branch rate categories. Needs an in-frame codon alignment without stop codons and a Newick tree with matching names.
     io:
       inputs:
         - { name: alignment, types: [Multi-FASTA, FASTA], mode: file, flag: --alignment }
@@ -98,6 +111,7 @@ operations:
         - { name: out, types: [JSON], mode: file, flag: --output }
     parameters:
       - { name: command, type: string, default: aBSREL, required: true, hidden: true }
-      - { name: branches, type: string, flag: --branches }
-      - { name: pvalue, type: float, flag: --pvalue }
-      - { name: multiple_hits, type: string, flag: --multiple-hits }
+      - { name: code, type: string, flag: --code, default: Universal }
+      - { name: branches, type: string, flag: --branches, default: All }
+      - { name: srv, type: string, flag: --srv, default: "No" }
+      - { name: multiple_hits, type: string, flag: --multiple-hits, default: None }
