@@ -1,0 +1,1 @@
+emmake make CC=emcc CFLAGS="-sUSE_ZLIB=1 -Wno-implicit-function-declaration" LDFLAGS="$EM_FLAGS -sSTACK_SIZE=8MB" TARGET=prodigal.js
