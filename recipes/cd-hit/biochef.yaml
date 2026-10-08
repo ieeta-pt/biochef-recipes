@@ -1,0 +1,128 @@
+apiVersion: v1
+
+id: app.biochef.cdhit
+name: CD-HIT
+description: CD-HIT — fast clustering of protein or DNA sequences. Greedy incremental clustering algorithm that groups sequences sharing identity above a user-set threshold. Ships six related binaries for protein clustering (cd-hit), nucleotide clustering (cd-hit-est), 2-way comparison (cd-hit-2d / cd-hit-est-2d), redundancy filtering of 454 reads (cd-hit-454), and diversity selection (cd-hit-div).
+
+version: 4.8.1-bc.1
+homepage: http://weizhongli-lab.org/cd-hit/
+license:
+  spdx: GPL-2.0-or-later
+  files: [license.txt]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/weizhongli/cdhit
+  commit: "4f6720f573d3d9d4c835793a05f09e098003bfe9"
+  version: "4.8.1"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      outputDir: out
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+
+runtime:
+  modes: [wasm, remote]
+
+operations:
+  - id: cdhit.cluster
+    name: Cluster Proteins (cd-hit)
+    category: Sequence Analysis
+    bin: cd-hit
+    description: Cluster protein sequences by global or local identity. Output contains the representative sequence per cluster plus a .clstr file listing cluster members.
+    io:
+      inputs:
+        - { name: in, types: [FASTA, Multi-FASTA], mode: file, flag: -i }
+      outputs:
+        - { name: out, types: [FASTA, Multi-FASTA], mode: file, flag: -o }
+    parameters:
+      - { name: identity_threshold, type: float, flag: -c, default: 0.9 }
+      - { name: global_identity, type: integer, flag: -G }
+      - { name: word_length, type: integer, flag: -n }
+      - { name: max_memory_mb, type: integer, flag: -M }
+      - { name: length_diff_cutoff, type: float, flag: -s }
+      - { name: alignment_coverage_shorter, type: float, flag: -aS }
+      - { name: alignment_coverage_longer, type: float, flag: -aL }
+      - { name: descriptions, type: integer, flag: -d }
+      - { name: cluster_all, type: integer, flag: -g }
+
+  - id: cdhit.cluster.nucleotide
+    name: Cluster Nucleotides (cd-hit-est)
+    category: Sequence Analysis
+    bin: cd-hit-est
+    description: Cluster nucleotide sequences (DNA/RNA) by identity. Like cd-hit but optimised for nucleotide alphabets.
+    io:
+      inputs:
+        - { name: in, types: [FASTA, Multi-FASTA], mode: file, flag: -i }
+      outputs:
+        - { name: out, types: [FASTA, Multi-FASTA], mode: file, flag: -o }
+    parameters:
+      - { name: identity_threshold, type: float, flag: -c, default: 0.95 }
+      - { name: word_length, type: integer, flag: -n }
+      - { name: max_memory_mb, type: integer, flag: -M }
+      - { name: length_diff_cutoff, type: float, flag: -s }
+      - { name: strand_compare, type: integer, flag: -r }
+
+  - id: cdhit.compare.proteins
+    name: Compare Proteins (cd-hit-2d)
+    category: Sequence Analysis
+    bin: cd-hit-2d
+    description: Compare two protein FASTA files; report sequences in file 2 that are not redundant against file 1.
+    io:
+      inputs:
+        - { name: in1, types: [FASTA, Multi-FASTA], mode: file, flag: -i }
+        - { name: in2, types: [FASTA, Multi-FASTA], mode: file, flag: -i2 }
+      outputs:
+        - { name: out, types: [FASTA, Multi-FASTA], mode: file, flag: -o }
+    parameters:
+      - { name: identity_threshold, type: float, flag: -c, default: 0.9 }
+      - { name: word_length, type: integer, flag: -n }
+
+  - id: cdhit.compare.nucleotide
+    name: Compare Nucleotides (cd-hit-est-2d)
+    category: Sequence Analysis
+    bin: cd-hit-est-2d
+    description: Compare two nucleotide FASTA files; report sequences in file 2 that are not redundant against file 1.
+    io:
+      inputs:
+        - { name: in1, types: [FASTA, Multi-FASTA], mode: file, flag: -i }
+        - { name: in2, types: [FASTA, Multi-FASTA], mode: file, flag: -i2 }
+      outputs:
+        - { name: out, types: [FASTA, Multi-FASTA], mode: file, flag: -o }
+    parameters:
+      - { name: identity_threshold, type: float, flag: -c, default: 0.95 }
+      - { name: word_length, type: integer, flag: -n }
+      - { name: strand_compare, type: integer, flag: -r }
+
+  - id: cdhit.div
+    name: Divide (cd-hit-div)
+    category: Sequence Analysis
+    bin: cd-hit-div
+    description: Divide a FASTA file into N segments by length or similarity, for parallel downstream processing.
+    io:
+      inputs:
+        - { name: in, types: [FASTA, Multi-FASTA], mode: file, flag: -i }
+      outputs:
+        - { name: out, types: [FASTA, Multi-FASTA], mode: file, flag: -o }
+    parameters:
+      - { name: num_divisions, type: integer, flag: -div }
+
+  - id: cdhit.dup.454
+    name: 454 Duplicate Removal (cd-hit-454)
+    category: Sequence Analysis
+    bin: cd-hit-454
+    description: Detect and remove duplicate or near-duplicate 454 / Roche reads.
+    io:
+      inputs:
+        - { name: in, types: [FASTA, Multi-FASTA, FASTQ], mode: file, flag: -i }
+      outputs:
+        - { name: out, types: [FASTA, Multi-FASTA, FASTQ], mode: file, flag: -o }
+    parameters:
+      - { name: identity_threshold, type: float, flag: -c, default: 0.98 }
+      - { name: word_length, type: integer, flag: -n }
