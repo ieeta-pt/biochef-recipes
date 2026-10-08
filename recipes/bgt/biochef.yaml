@@ -1,0 +1,102 @@
+apiVersion: v1
+
+id: app.biochef.bgt
+name: BGT
+description: BGT — compact genotype storage and query for very large cohorts. Converts VCF/BCF to a column-oriented binary format optimized for fast sample and region subsetting, then queries it with sample- and site-expression filters. Useful when you need ad-hoc population-genetic queries (e.g. allele frequency in a subgroup) across thousands of samples without rereading the source VCF every time.
+
+version: 1.0-bc.1
+homepage: https://github.com/lh3/bgt
+license:
+  spdx: MIT
+  files: [LICENSE.txt]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/lh3/bgt
+  commit: "93ce0c92281d313d991fb8ef567062406676aa32"
+  version: "1.0"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      buildsystem: make
+      workDir: .
+      outputDir: out
+      commands:
+        - 'emmake make CC=emcc AR=emar CFLAGS="-O2 -Wall -Wc++-compat -Wno-unused-function -Wno-deprecated-non-prototype -sUSE_ZLIB=1" LIBS="-L. -lbgt -lm -sUSE_ZLIB=1 -sFORCE_FILESYSTEM=1 -sALLOW_MEMORY_GROWTH=1 -sSTACK_SIZE=8MB -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain'']" -j4'
+        - 'mkdir -p out && mv bgt out/bgt.js && mv bgt.wasm out/bgt.wasm'
+        - "echo 'all:' > Makefile"
+      env: []
+
+runtime:
+  modes: [wasm, remote]
+
+operations:
+  - id: bgt.import
+    name: Import VCF to BGT
+    category: Format Conversion
+    bin: bgt
+    description: Convert a multi-sample VCF/BCF into the BGT compact column-oriented format. Produces a `<prefix>.bcf` site list and a `<prefix>.pbf` genotype store. The output is read-only and supports fast random-access queries.
+    io:
+      inputs:
+        - { name: in, types: [VCF, BCF], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: subcommand, type: string, default: import, required: true, hidden: true }
+      - { name: prefix, type: string, required: true }
+      - { name: sample_metadata, type: string, flag: -S }
+      - { name: site_only, type: flag, flag: -s }
+
+  - id: bgt.view
+    name: View / Query BGT
+    category: Genomic Operations
+    bin: bgt
+    description: Query a BGT store and emit a filtered VCF subset. Supports sample-expression filtering (e.g. `-s '?Sex=="M"'`), site-expression filtering (e.g. `-f 'AF>0.05'`), and standard region restriction.
+    io:
+      inputs:
+        - { name: prefix, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: subcommand, type: string, default: view, required: true, hidden: true }
+      - { name: region, type: string, flag: -r }
+      - { name: regions_bed, type: string, flag: -B }
+      - { name: sample_filter, type: string, flag: -s }
+      - { name: site_filter, type: string, flag: -f }
+      - { name: allele_filter, type: string, flag: -a }
+      - { name: include_samples, type: flag, flag: -G }
+      - { name: output_format, type: string, flag: -O }
+      - { name: count_only, type: flag, flag: -C }
+
+  - id: bgt.atomize
+    name: Atomize VCF
+    category: Format Conversion
+    bin: bgt
+    description: Decompose multi-allelic VCF records into single-allele records — each output line carries exactly one ALT. Useful preprocessing before downstream tools that don't handle multi-allelic sites (e.g. some annotation pipelines).
+    io:
+      inputs:
+        - { name: in, types: [VCF, BCF], mode: file }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: subcommand, type: string, default: atomize, required: true, hidden: true }
+
+  - id: bgt.fmf
+    name: FMF Operations
+    category: Format Conversion
+    bin: bgt
+    description: Manipulate FMF (Flat Metadata Format) files — the tab-separated sample-metadata format BGT uses for sample annotations. Supports filtering and column extraction with expression queries.
+    io:
+      inputs:
+        - { name: in, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: subcommand, type: string, default: fmf, required: true, hidden: true }
+      - { name: filter, type: string, flag: -e }
+      - { name: column_list, type: string, flag: -c }
