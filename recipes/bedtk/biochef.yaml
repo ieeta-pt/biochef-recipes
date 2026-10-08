@@ -1,0 +1,138 @@
+apiVersion: v1
+
+id: app.biochef.bedtk
+name: bedtk
+description: bedtk — lightweight BED interval toolkit by Heng Li. Implements intersect, subtract, merge, sort, filter, coverage and total length operations on BED files. Effectively a focused subset of bedtools, with minimal dependencies.
+
+version: 0.1.0-bc.1
+homepage: https://github.com/lh3/bedtk
+license:
+  spdx: MIT
+  files: [LICENSE.txt]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/lh3/bedtk
+  commit: "fa2cc15a8ab61d28bf6a4cfd50f36f883021a385"
+  version: "0.1.0"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      buildsystem: make
+      workDir: .
+      outputDir: out
+      commands:
+        - 'emmake make CC=emcc CFLAGS="-O2 -sUSE_ZLIB=1 -Wno-implicit-function-declaration" LIBS="-lz" -j4'
+        - 'emcc -O2 -sUSE_ZLIB=1 -sFORCE_FILESYSTEM=1 -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain''] -sALLOW_MEMORY_GROWTH=1 cgranges.o bedtk.o -o bedtk.js -lz'
+        - 'mkdir -p out && mv bedtk.js bedtk.wasm out/'
+        - "echo 'all:' > Makefile.stub && mv Makefile.stub Makefile"
+      env: []
+  native:
+    buildsystem: make
+    workDir: .
+    outputDir: .
+
+runtime:
+  modes: [wasm, native, remote]
+
+operations:
+  - id: bedtk.isec
+    name: Intersect (bedtk)
+    category: Genomic Operations
+    bin: bedtk
+    description: Intersection between two BED files (equivalent to bedtools intersect).
+    io:
+      inputs:
+        - { name: a, types: [BED], mode: file }
+        - { name: b, types: [BED], mode: file }
+      outputs:
+        - { name: out, types: [BED], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: isec, required: true, hidden: true }
+
+  - id: bedtk.sub
+    name: Subtract (bedtk)
+    category: Genomic Operations
+    bin: bedtk
+    description: Subtract regions in B from regions in A.
+    io:
+      inputs:
+        - { name: a, types: [BED], mode: file }
+        - { name: b, types: [BED], mode: file }
+      outputs:
+        - { name: out, types: [BED], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: sub, required: true, hidden: true }
+
+  - id: bedtk.merge
+    name: Merge (bedtk)
+    category: Genomic Operations
+    bin: bedtk
+    description: Merge overlapping or adjacent intervals in a BED file. Input must be sorted.
+    io:
+      inputs:
+        - { name: in, types: [BED], mode: file }
+      outputs:
+        - { name: out, types: [BED], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: merge, required: true, hidden: true }
+
+  - id: bedtk.sort
+    name: Sort (bedtk)
+    category: Genomic Operations
+    bin: bedtk
+    description: Sort BED intervals lexicographically by chromosome and by start position.
+    io:
+      inputs:
+        - { name: in, types: [BED], mode: file }
+      outputs:
+        - { name: out, types: [BED], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: sort, required: true, hidden: true }
+
+  - id: bedtk.flt
+    name: Filter (bedtk)
+    category: Genomic Operations
+    bin: bedtk
+    description: Filter records in a BED or VCF file against a BED of regions (keep only records that overlap).
+    io:
+      inputs:
+        - { name: a, types: [BED, VCF], mode: file }
+        - { name: b, types: [BED], mode: file }
+      outputs:
+        - { name: out, types: [BED], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: flt, required: true, hidden: true }
+      - { name: invert, type: flag, flag: -v }
+
+  - id: bedtk.cov
+    name: Coverage (bedtk)
+    category: Genomic Operations
+    bin: bedtk
+    description: Breadth of coverage between A and B (fraction of A bases covered by B intervals).
+    io:
+      inputs:
+        - { name: a, types: [BED], mode: file }
+        - { name: b, types: [BED], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: cov, required: true, hidden: true }
+
+  - id: bedtk.sum
+    name: Sum (bedtk)
+    category: Genomic Operations
+    bin: bedtk
+    description: Total length of all intervals in a BED file.
+    io:
+      inputs:
+        - { name: in, types: [BED], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: sum, required: true, hidden: true }
