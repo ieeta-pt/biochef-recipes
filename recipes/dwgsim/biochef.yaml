@@ -1,0 +1,67 @@
+apiVersion: v1
+
+id: app.biochef.dwgsim
+name: dwgsim
+description: dwgsim — short-read sequencing simulator. Generates paired-end FASTQ from a reference FASTA with configurable error rates, insert size distributions, and a mutation table (SNPs and indels) for benchmarking variant callers. Drop-in successor to wgsim with realistic error profiles for Illumina/Ion Torrent platforms.
+
+version: 0.1.17-bc.1
+homepage: https://github.com/nh13/DWGSIM
+license:
+  spdx: GPL-2.0-or-later
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/nh13/DWGSIM
+  commit: "dfe676b828d46a12e7529207839d3e7163a34b14"
+  version: "0.1.17"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      buildsystem: make
+      workDir: .
+      outputDir: out
+      commands:
+        - 'git submodule update --init --recursive'
+        - 'emmake make CC=emcc CFLAGS="-O2 -sUSE_ZLIB=1 -Wno-implicit-function-declaration" DFLAGS=''-D_FILE_OFFSET_BITS=64 -DPACKAGE_VERSION=\"0.1.17\"'' -j4 src/dwgsim_opt.o src/mut.o src/contigs.o src/regions_bed.o src/mut_txt.o src/mut_bed.o src/mut_vcf.o src/mut_input.o src/dwgsim.o'
+        - 'emcc -O2 -sUSE_ZLIB=1 -sFORCE_FILESYSTEM=1 -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain''] -sALLOW_MEMORY_GROWTH=1 src/dwgsim_opt.o src/mut.o src/contigs.o src/regions_bed.o src/mut_txt.o src/mut_bed.o src/mut_vcf.o src/mut_input.o src/dwgsim.o -lm -lz -o dwgsim.js'
+        - 'mkdir -p out && mv dwgsim.js dwgsim.wasm out/'
+        - "echo 'all:' > Makefile"
+      env: []
+
+runtime:
+  modes: [wasm, remote]
+
+operations:
+  - id: dwgsim.simulate
+    name: Simulate (dwgsim)
+    category: Genomic Operations
+    bin: dwgsim
+    description: Simulate paired-end short reads from a reference FASTA. Output prefix is positional after the reference and produces .bwa.read1.fastq + .bwa.read2.fastq plus a truth mutations VCF.
+    io:
+      inputs:
+        - { name: reference, types: [FASTA, Multi-FASTA], mode: file }
+      outputs:
+        - { name: out_prefix, types: [TEXT], mode: file, filename: "dwgsim.out" }
+    parameters:
+      - { name: error_rate_1, type: float, flag: -e }
+      - { name: error_rate_2, type: float, flag: -E }
+      - { name: outer_distance, type: integer, flag: -d, default: 500 }
+      - { name: std_dev, type: float, flag: -s }
+      - { name: inner_distance, type: flag, flag: -i }
+      - { name: num_pairs, type: integer, flag: -N }
+      - { name: coverage, type: float, flag: -C }
+      - { name: read1_length, type: integer, flag: "-1" }
+      - { name: read2_length, type: integer, flag: "-2" }
+      - { name: mutation_rate, type: float, flag: -r }
+      - { name: indel_fraction, type: float, flag: -R }
+      - { name: indel_extend, type: float, flag: -X }
+      - { name: random_dna, type: flag, flag: -y }
+      - { name: random_probability, type: float, flag: -P }
+      - { name: random_seed, type: integer, flag: -z }
+      - { name: haplotype, type: flag, flag: -H }
