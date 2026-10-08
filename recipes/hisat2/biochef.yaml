@@ -1,0 +1,101 @@
+apiVersion: v1
+
+id: app.biochef.hisat2
+name: HISAT2
+description: HISAT2 — splice-aware RNA-seq read aligner. Uses a hierarchical graph FM-index to map short reads to a reference genome or transcriptome, with support for spliced alignment across exon-exon junctions. Standard tool for RNA-seq mapping. Ships hisat2-build (index construction), hisat2-align (alignment), and hisat2-inspect (index introspection). In-browser usage is limited to small references (single-chromosome / viral / bacterial) — human-genome indexes are multi-GB.
+
+version: 2.2.2-bc.1
+homepage: https://github.com/DaehwanKimLab/hisat2
+license:
+  spdx: GPL-3.0-or-later
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/DaehwanKimLab/hisat2
+  commit: "99583d7536b9ee017ac07de8834017a3bf99a2fe"
+  version: "2.2.2"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+
+runtime:
+  modes: [wasm, remote]
+
+operations:
+  - id: hisat2.align
+    name: Align Reads (HISAT2)
+    category: Genomic Operations
+    bin: hisat2-align-s
+    description: Splice-aware alignment of short RNA-seq reads to a pre-built HISAT2 index. Supports single-end and paired-end input. Output is SAM (default — stdout) or BAM (with --no-unal etc.). Requires an index built by hisat2-build.
+    io:
+      inputs:
+        - { name: unpaired, types: [FASTQ, FASTA], mode: file, flag: -U }
+        - { name: mate1, types: [FASTQ, FASTA], mode: file, flag: "-1" }
+        - { name: mate2, types: [FASTQ, FASTA], mode: file, flag: "-2" }
+      outputs:
+        - { name: out, types: [SAM], mode: stdout }
+    parameters:
+      - { name: index_prefix, type: string, flag: -x, required: true }
+      - { name: input_fasta, type: flag, flag: -f }
+      - { name: max_alignments, type: integer, flag: -k }
+      - { name: very_fast, type: flag, flag: --very-fast }
+      - { name: fast, type: flag, flag: --fast }
+      - { name: sensitive, type: flag, flag: --sensitive }
+      - { name: very_sensitive, type: flag, flag: --very-sensitive }
+      - { name: no_unaligned, type: flag, flag: --no-unal }
+      - { name: no_head, type: flag, flag: --no-head }
+      - { name: no_softclip, type: flag, flag: --no-softclip }
+      - { name: no_spliced_alignment, type: flag, flag: --no-spliced-alignment }
+      - { name: rna_strandness, type: string, flag: --rna-strandness }
+      - { name: min_intron, type: integer, flag: --min-intronlen }
+      - { name: max_intron, type: integer, flag: --max-intronlen }
+      - { name: seed, type: integer, flag: --seed }
+
+  - id: hisat2.build
+    name: Build Index (HISAT2)
+    category: Genomic Operations
+    bin: hisat2-build-s
+    description: Construct a HISAT2 graph FM-index from a reference FASTA. Output is a set of `<prefix>.N.ht2` files (8 total) used by hisat2-align. For browser use, restrict to small references — full human indexes are >5 GB.
+    io:
+      inputs:
+        - { name: reference, types: [FASTA, Multi-FASTA], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: index_prefix, type: string, required: true }
+      - { name: noref, type: flag, flag: -r }
+      - { name: noauto, type: flag, flag: -a }
+      - { name: packed, type: flag, flag: -p }
+      - { name: bmax, type: integer, flag: --bmax }
+      - { name: bmaxdivn, type: integer, flag: --bmaxdivn }
+      - { name: ftabchars, type: integer, flag: --ftabchars }
+      - { name: ss_file, type: string, flag: --ss }
+      - { name: exon_file, type: string, flag: --exon }
+      - { name: snp_file, type: string, flag: --snp }
+      - { name: haplotype, type: string, flag: --haplotype }
+
+  - id: hisat2.inspect
+    name: Inspect Index (HISAT2)
+    category: Genomic Operations
+    bin: hisat2-inspect-s
+    description: Extract metadata, FASTA, or splice-site information from a pre-built HISAT2 index. Useful for verifying index contents or reconstructing the reference.
+    io:
+      inputs:
+        - { name: index, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: index_prefix, type: string, required: true }
+      - { name: summary_only, type: flag, flag: -s }
+      - { name: snps_only, type: flag, flag: --snp }
+      - { name: ss_only, type: flag, flag: --ss }
+      - { name: exons_only, type: flag, flag: --exon }
+      - { name: across, type: integer, flag: -a }
