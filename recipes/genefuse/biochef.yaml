@@ -1,0 +1,65 @@
+apiVersion: v1
+
+id: app.biochef.genefuse
+name: GeneFuse
+description: GeneFuse — detect gene fusions directly from FASTQ reads using k-mer matching against a user-supplied fusion list and reference. No alignment step required. Designed for targeted RNA-seq / DNA-seq panels — clinical cancer panels and similar applications where you know the fusion partners to look for. Outputs an HTML report with read-level evidence plus an optional JSON summary. From the OpenGene group, same authors as fastp and MutScan.
+
+version: 0.8.0-bc.1
+homepage: https://github.com/OpenGene/GeneFuse
+license:
+  spdx: MIT
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/OpenGene/GeneFuse
+  commit: "aa281c03a04a9eb199bb80f219a6ca69a9963d71"
+  version: "0.8.0"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      buildsystem: make
+      workDir: .
+      outputDir: out
+      commands:
+        # Drop -lpthread (no shared-memory pthreads in browser WASM) and wire in
+        # the standard emcc runtime flags via the upstream link rule.
+        - "sed -i.bak 's|-lz -lpthread|-sUSE_ZLIB=1 -sFORCE_FILESYSTEM=1 -sALLOW_MEMORY_GROWTH=1 -sSTACK_SIZE=8MB -sEXPORTED_RUNTIME_METHODS=[\"FS\",\"callMain\"]|' Makefile"
+        - 'emmake make CC=em++ CFLAGS="-std=c++11 -O2 -I./inc -sUSE_ZLIB=1 -Wno-c++11-narrowing -Wno-narrowing" -j4'
+        - 'mkdir -p out && mv genefuse out/genefuse.js && mv genefuse.wasm out/genefuse.wasm'
+        - "echo 'all:' > Makefile"
+      env: []
+  native:
+    buildsystem: make
+    workDir: .
+    outputDir: .
+
+runtime:
+  modes: [wasm, native, remote]
+
+operations:
+  - id: genefuse.scan
+    name: Detect Gene Fusions (GeneFuse)
+    category: Sequence Analysis
+    bin: genefuse
+    description: Scan raw FASTQ reads (single- or paired-end) for evidence of gene fusions defined in a CSV fusion file, against a reference FASTA. No alignment required — works directly on reads via k-mer matching. Output is an HTML report with per-fusion read-level evidence plus an optional JSON summary.
+    io:
+      inputs:
+        - { name: read1, types: [FASTQ], mode: file, flag: "-1" }
+        - { name: read2, types: [FASTQ], mode: file, flag: "-2" }
+        - { name: fusion, types: [TEXT], mode: file, flag: -f }
+        - { name: ref, types: [FASTA, Multi-FASTA], mode: file, flag: -r }
+      outputs:
+        - { name: html, types: [TEXT], mode: file, flag: -h, filename: "genefuse.html" }
+        - { name: json, types: [TEXT], mode: file, flag: -j, filename: "genefuse.json" }
+    parameters:
+      - { name: min_support, type: integer, flag: -u, default: 2 }
+      - { name: threads, type: integer, flag: -t, default: 1 }
+      - { name: min_deletion_length, type: integer, flag: -d, default: 50 }
+      - { name: output_deletions, type: flag, flag: -D }
+      - { name: output_untranslated, type: flag, flag: -U }
