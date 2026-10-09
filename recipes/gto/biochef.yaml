@@ -16,6 +16,7 @@ source:
   repo: https://github.com/WildBunnie/gto
   version: "1.6.3"
   tag: v1.6.3
+  commit: "e30d665ffceb96944f00149ff9275da16a7abd2c"
 
 status: verified
 
@@ -25,18 +26,13 @@ build:
     biowasm:
       package: gto
     emscripten:
-      buildsystem: make
-      workDir: src
+      emscriptenVersion: 4.0.18
       outputDir: bin
-      commands:
-        - make clean
-        - sed -Ei 's/\$\(\s*BIN\s*\)\/([a-zA-Z0-9._-]+)/$(BIN)\/\1.js/g' Makefile
-      env: 
-        - CC="emcc -msimd128 $EM_FLAGS"
+      buildScript: build-wasm.sh
   native:
-    buildsystem: make
-    workDir: src
     outputDir: bin
+    buildScript: build-native.sh
+    buildTools: [make]
 
 runtime:
   modes: [wasm, native]
@@ -255,7 +251,7 @@ operations:
     description: Shows the readed information of a FASTA or Multi-FASTA file format.
     io:
       inputs:
-        - { name: in, types: [FASTA], mode: stdin }
+        - { name: in, types: [FASTA, Multi-FASTA], mode: stdin }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters: []
@@ -350,9 +346,9 @@ operations:
       inputs:
         - { name: in, types: [FASTA, Multi-FASTA], mode: stdin }
       outputs:
-        - { name: headers, types: [TEXT], mode: file, filename: "HEADERS.JV2"}
-        - { name: extra, types: [TEXT], mode: file, filename: "EXTRA.JV2"}
-        - { name: DNA, types: [TEXT, DNA, AminoAcids, RNA], mode: file, filename: "DNA.JV2"}
+        - { name: headers, types: [TEXT], mode: file, flag: -H,  filename: "HEADERS.JV2"}
+        - { name: extra, types: [TEXT], mode: file, flag: -e, filename: "EXTRA.JV2"}
+        - { name: DNA, types: [TEXT, DNA, AminoAcids, RNA], mode: file, flag: -d, filename: "DNA.JV2"}
         
     parameters: []
 

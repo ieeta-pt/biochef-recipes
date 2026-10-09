@@ -16,6 +16,7 @@ source:
   repo: https://github.com/lh3/seqtk
   tag: v1.4
   version: "1.4"
+  commit: "ae7defa8bead3ef77d241f12194dc66acdd40fca"
 
 status: experimental
 
@@ -25,7 +26,8 @@ build:
     biowasm:
       package: seqtk
   native:
-    buildsystem: make
+    buildScript: build-native.sh
+    buildTools: [make]
     
 runtime:
   modes: [wasm, native]
@@ -38,9 +40,9 @@ operations:
     description: Common transformation of FASTA/Q
     io:
       inputs:
-        - { name: in, types: [FASTA, FASTQ], mode: file }
+        - { name: in, types: [FASTA, Multi-FASTA, FASTQ], mode: file }
       outputs:
-        - { name: out, types: [FASTA, FASTQ], mode: stdout }
+        - { name: out, types: [FASTA, Multi-FASTA, FASTQ], mode: stdout }
     parameters:
       - { name: command, type: string, default: seq, required: true, hidden: true }
       - { name: quality_min, type: integer, flag: -q }
@@ -91,7 +93,7 @@ operations:
     description: Get nucleotide composition of FASTA/Q
     io:
       inputs:
-        - { name: in, types: [FASTA], mode: file }
+        - { name: in, types: [FASTA, Multi-FASTA], mode: file }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
@@ -142,21 +144,21 @@ operations:
       - { name: command, type: string, default: gap, required: true, hidden: true }
       - { name: min_gap_size, type: integer, flag: -l }
 
-  # - id: seqtk.subseq
-  #   name: Subseq (SEQTK)
-  #   bin: seqtk
-  #   description: Extract subsequences from FASTA/Q
-  #   io:
-  #     inputs:
-  #       - { name: in, types: [FASTA, FASTQ], mode: file }
-  #       - { name: regions, types: [BED, LIST], mode: file }
-  #     outputs:
-  #       - { name: out, types: [FASTA, FASTQ, TEXT], mode: stdout }
-  #   parameters:
-  #     - { name: command, type: string, default: subseq, required: true, hidden: true }
-  #     - { name: tab_output, type: flag, flag: -t }
-  #     - { name: strand_aware, type: flag, flag: -s }
-  #     - { name: line_length, type: integer, flag: -l }
+  - id: seqtk.subseq
+    name: Subseq (SEQTK)
+    bin: seqtk
+    description: Extract subsequences from FASTA/Q
+    io:
+      inputs:
+        - { name: in, types: [FASTA, FASTQ], mode: file }
+        - { name: regions, types: [BED, LIST], mode: file }
+      outputs:
+        - { name: out, types: [FASTA, FASTQ, TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: subseq, required: true, hidden: true }
+      - { name: tab_output, type: flag, flag: -t }
+      - { name: strand_aware, type: flag, flag: -s }
+      - { name: line_length, type: integer, flag: -l }
 
   - id: seqtk.mergefa
     name: Mergefa (SEQTK)
