@@ -26,9 +26,12 @@ build:
       outputDir: .
       buildScript: build-wasm.sh
       emscriptenVersion: 4.0.18
+  native:
+    buildScript: build-native.sh
+    buildTools: [gcc]
 
 runtime:
-  modes: [wasm, remote]
+  modes: [wasm, native]
 
 operations:
   - id: wgsim.simulate
