@@ -43,13 +43,14 @@ operations:
       inputs:
         - { name: ref, types: [FASTA, Multi-FASTA], mode: file }
       outputs:
-        - { name: out1, types: [FASTQ], mode: file, flag: "", filename: "read1.fq" }
-        - { name: out2, types: [FASTQ], mode: file, flag: "", filename: "read2.fq" }
+        - { name: out1, types: [FASTQ], mode: file, flag: "" }
+        - { name: out2, types: [FASTQ], mode: file, flag: "" }
+        - { name: mutations, types: [TEXT], mode: stdout }
     parameters:
       - { name: error_rate, type: float, flag: -e }
       - { name: outer_distance, type: integer, flag: -d }
       - { name: std_dev, type: integer, flag: -s }
-      - { name: num_pairs, type: integer, flag: -N }
+      - { name: num_pairs, type: integer, flag: -N, required: true, default: "1000" }
       - { name: read1_length, type: integer, flag: "-1" }
       - { name: read2_length, type: integer, flag: "-2" }
       - { name: mutation_rate, type: float, flag: -r }
