@@ -16,6 +16,7 @@ source:
   repo: https://github.com/samtools/htslib
   tag: "1.21"
   version: "1.21"
+  commit: "0f8bedc11e3ee039060a058b5cd5ec99e0b593a2"
 
 status: experimental
 
