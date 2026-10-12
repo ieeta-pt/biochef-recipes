@@ -23,21 +23,11 @@ build:
   wasm:
     strategy: emscripten
     emscripten:
-      buildsystem: make
-      workDir: .
-      outputDir: out
-      commands:
-        # Drop -lpthread (no shared-memory pthreads in browser WASM) and wire in
-        # the standard emcc runtime flags via the upstream link rule.
-        - "sed -i.bak 's|-lz -lpthread|-sUSE_ZLIB=1 -sFORCE_FILESYSTEM=1 -sALLOW_MEMORY_GROWTH=1 -sSTACK_SIZE=8MB -sEXPORTED_RUNTIME_METHODS=[\"FS\",\"callMain\"]|' Makefile"
-        - 'emmake make CC=em++ CFLAGS="-std=c++11 -O2 -I./inc -sUSE_ZLIB=1 -Wno-c++11-narrowing -Wno-narrowing" -j4'
-        - 'mkdir -p out && mv genefuse out/genefuse.js && mv genefuse.wasm out/genefuse.wasm'
-        - "echo 'all:' > Makefile"
-      env: []
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
   native:
-    buildsystem: make
-    workDir: .
-    outputDir: .
+    buildScript: build-native.sh
+    buildTools: [make]
 
 runtime:
   modes: [wasm, native, remote]
