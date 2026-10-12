@@ -23,21 +23,11 @@ build:
   wasm:
     strategy: emscripten
     emscripten:
-      buildsystem: make
-      workDir: .
-      outputDir: out
-      commands:
-        - 'sed -i.bak "s|^void kt_pipeline|#ifdef __EMSCRIPTEN__\nvoid kt_pipeline(int n_threads, void *(*func)(void*, int, void*), void *shared_data, int n_steps)\n{\n\t(void)n_threads;\n\tfor (;;) {\n\t\tvoid *data = func(shared_data, 0, 0);\n\t\tif (data == 0) return;\n\t\tint step;\n\t\tfor (step = 1; step < n_steps; ++step)\n\t\t\tdata = func(shared_data, step, data);\n\t}\n}\n#else\nvoid kt_pipeline|" kthread.c'
-        - 'echo "#endif" >> kthread.c'
-        - 'emmake make CC=emcc CFLAGS="-O2 -sUSE_ZLIB=1 -Wno-implicit-function-declaration -Wno-unused-function" LIBS="-lm -lz" -j4'
-        - 'emcc -O2 -sUSE_ZLIB=1 -sFORCE_FILESYSTEM=1 -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain''] -sALLOW_MEMORY_GROWTH=1 kthread.o bbf.o htab.o bseq.o misc.o sys.o 6gjdn.o count.o qv.o triobin.o trioeval.o inspect.o chkerr.o sexchr.o main.o -o yak.js -lm -lz'
-        - 'mkdir -p out && mv yak.js yak.wasm out/'
-        - "echo 'all:' > Makefile.stub && mv Makefile.stub Makefile"
-      env: []
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
   native:
-    buildsystem: make
-    workDir: .
-    outputDir: .
+    buildScript: build-native.sh
+    buildTools: [make]
 
 runtime:
   modes: [wasm, native, remote]
