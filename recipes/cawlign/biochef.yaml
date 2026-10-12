@@ -4,7 +4,7 @@ id: app.biochef.cawlign
 name: cawlign
 description: Codon-aware pairwise aligner — maps query sequences to a reference (default HIV-1 HXB2 pol) in nucleotide, protein, or codon space. Handles out-of-frame events, flexible scoring matrices. Standalone C++ port of `bealign` from the BioExt package, part of the HIV-TRACE pipeline. Useful for viral, comparative, and codon-level genomics workflows.
 
-version: 0.1.4-bc.1
+version: 0.1.0-bc.1
 homepage: https://github.com/veg/cawlign
 license:
   spdx: MIT
@@ -15,7 +15,7 @@ maintainers:
 source:
   repo: https://github.com/veg/cawlign
   commit: "00d068f18a2fa716297cf4554cdef00c09846d3c"
-  version: "0.1.4"
+  version: "0.1.0"
 
 status: experimental
 
