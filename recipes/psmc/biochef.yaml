@@ -23,16 +23,8 @@ build:
   wasm:
     strategy: emscripten
     emscripten:
-      buildsystem: make
-      workDir: .
-      outputDir: out
-      commands:
-        - 'emmake make CC=emcc CFLAGS="-O2 -Wno-unused-function -sUSE_ZLIB=1" LIBS="-lm -sUSE_ZLIB=1 -sFORCE_FILESYSTEM=1 -sALLOW_MEMORY_GROWTH=1 -sSTACK_SIZE=8MB -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain'']" -j4'
-        - 'cd utils && emmake make CC=emcc CFLAGS="-O2 -Wno-unused-function -sUSE_ZLIB=1" LIBS="-lm -sUSE_ZLIB=1 -sFORCE_FILESYSTEM=1 -sALLOW_MEMORY_GROWTH=1 -sSTACK_SIZE=8MB -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain'']" -j4'
-        - 'mkdir -p out && mv psmc out/psmc.js && mv psmc.wasm out/psmc.wasm'
-        - 'for b in fq2psmcfa splitfa cntcpg calD mutDiff; do mv "utils/$b" "out/$b.js" && mv "utils/$b.wasm" "out/$b.wasm"; done'
-        - "echo 'all:' > Makefile"
-      env: []
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
 
 runtime:
   modes: [wasm, remote]
