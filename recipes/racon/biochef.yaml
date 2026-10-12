@@ -23,15 +23,9 @@ build:
   wasm:
     strategy: emscripten
     emscripten:
-      buildsystem: make
-      workDir: .
+      emscriptenVersion: 4.0.18
       outputDir: build/bin
-      commands:
-        - 'git submodule update --init --recursive'
-        - 'mkdir -p build && cd build && emcmake cmake -Dracon_build_tests=OFF -Dracon_enable_cuda=OFF -Dspoa_optimize_for_native=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_EXE_LINKER_FLAGS="-sFORCE_FILESYSTEM=1 -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain''] -sALLOW_MEMORY_GROWTH=1 -sUSE_ZLIB=1" ..'
-        - 'cd build && emmake make -j4 racon'
-        - "echo 'all:' > Makefile"
-      env: []
+      buildScript: build-wasm.sh
 
 runtime:
   modes: [wasm, remote]
