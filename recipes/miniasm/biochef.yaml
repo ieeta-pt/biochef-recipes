@@ -23,22 +23,11 @@ build:
   wasm:
     strategy: emscripten
     emscripten:
-      buildsystem: make
-      workDir: .
-      outputDir: out
-      commands:
-        # kdq.h uses size_t for 58+6-bit bitfields; size_t is 32-bit on wasm32
-        # and can't hold them. Repromote the field-pair to uint64_t and split
-        # count/mask back out as size_t (same fix used in abPOA, vt etc).
-        - "sed -i.bak 's|size_t front:58, bits:6, count, mask;|uint64_t front:58, bits:6; size_t count, mask;|' kdq.h"
-        - 'emmake make CC=emcc CFLAGS="-O2 -Wall -Wc++-compat -Wno-unused-function -sUSE_ZLIB=1" LIBS="-lm -sUSE_ZLIB=1 -sFORCE_FILESYSTEM=1 -sALLOW_MEMORY_GROWTH=1 -sSTACK_SIZE=8MB -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain'']" -j4'
-        - 'mkdir -p out && mv miniasm out/miniasm.js && mv miniasm.wasm out/miniasm.wasm && mv minidot out/minidot.js && mv minidot.wasm out/minidot.wasm'
-        - "echo 'all:' > Makefile"
-      env: []
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
   native:
-    buildsystem: make
-    workDir: .
-    outputDir: .
+    buildScript: build-native.sh
+    buildTools: [make]
 
 runtime:
   modes: [wasm, native, remote]
