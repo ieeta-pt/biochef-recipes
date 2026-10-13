@@ -23,16 +23,9 @@ build:
   wasm:
     strategy: emscripten
     emscripten:
-      buildsystem: make
-      workDir: .
-      outputDir: out
-      commands:
-        - 'git submodule update --init --recursive'
-        - 'emmake make CC=emcc CFLAGS="-O2 -sUSE_ZLIB=1 -Wno-implicit-function-declaration" DFLAGS=''-D_FILE_OFFSET_BITS=64 -DPACKAGE_VERSION=\"0.1.17\"'' -j4 src/dwgsim_opt.o src/mut.o src/contigs.o src/regions_bed.o src/mut_txt.o src/mut_bed.o src/mut_vcf.o src/mut_input.o src/dwgsim.o'
-        - 'emcc -O2 -sUSE_ZLIB=1 -sFORCE_FILESYSTEM=1 -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain''] -sALLOW_MEMORY_GROWTH=1 src/dwgsim_opt.o src/mut.o src/contigs.o src/regions_bed.o src/mut_txt.o src/mut_bed.o src/mut_vcf.o src/mut_input.o src/dwgsim.o -lm -lz -o dwgsim.js'
-        - 'mkdir -p out && mv dwgsim.js dwgsim.wasm out/'
-        - "echo 'all:' > Makefile"
-      env: []
+      emscriptenVersion: 4.0.18
+      outputDir: src
+      buildScript: build-wasm.sh
 
 runtime:
   modes: [wasm, remote]
