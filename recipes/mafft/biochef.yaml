@@ -16,6 +16,7 @@ source:
   repo: https://github.com/GSLBiotech/mafft
   tag: "7.471-without-extensions-msvc"
   version: "7.471"
+  commit: "26ecaba0130b533cf06a29200f0fb40829c00101"
 
 status: experimental
 
