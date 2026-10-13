@@ -16,6 +16,7 @@ source:
   repo: https://github.com/inab/trimal
   tag: "v1.5.1"
   version: "1.5.1"
+  commit: "d637091abe33595775f40480970d1a18d87a7bcb"
 
 status: experimental
 
@@ -27,9 +28,9 @@ build:
       emscriptenVersion: 4.0.18
       buildScript: build-wasm.sh
   native:
-    buildsystem: make
-    workDir: source
-    outputDir: .
+    outputDir: source
+    buildScript: build-native.sh
+    buildTools: [make]
 
 runtime:
   modes: [wasm, native, remote]
