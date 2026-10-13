@@ -16,6 +16,7 @@ source:
   repo: https://github.com/torognes/vsearch
   tag: "v2.31.0"
   version: "2.31.0"
+  commit: "75f1cf6c145799967f6d2f7d25937039123a3f28"
 
 status: experimental
 
