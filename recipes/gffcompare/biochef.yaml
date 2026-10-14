@@ -23,18 +23,12 @@ build:
   wasm:
     strategy: emscripten
     emscripten:
-      buildsystem: make
-      workDir: .
+      emscriptenVersion: 4.0.18
       outputDir: out
-      commands:
-        - 'emmake make release CXX=em++ LINKER=em++ LDFLAGS="-sFORCE_FILESYSTEM=1 -sALLOW_MEMORY_GROWTH=1 -sSTACK_SIZE=8MB -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain'']" -j4'
-        - 'mkdir -p out && mv gffcompare out/gffcompare.js && mv gffcompare.wasm out/gffcompare.wasm && mv trmap out/trmap.js && mv trmap.wasm out/trmap.wasm'
-        - "echo 'all:' > Makefile"
-      env: []
+      buildScript: build-wasm.sh
   native:
-    buildsystem: make
-    workDir: .
-    outputDir: .
+    buildScript: build-native.sh
+    buildTools: [make]
 
 runtime:
   modes: [wasm, native, remote]
