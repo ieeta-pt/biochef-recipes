@@ -16,6 +16,7 @@ source:
   repo: https://github.com/ucscGenomeBrowser/kent
   tag: "v437_base"
   version: "437"
+  commit: "8eb698a50a97e1da02a8df3ebbc26379273dafc8"
 
 status: experimental
 
