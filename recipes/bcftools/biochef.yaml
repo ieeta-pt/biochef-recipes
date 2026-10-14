@@ -16,6 +16,7 @@ source:
   repo: https://github.com/samtools/bcftools
   tag: "1.10"
   version: "1.10"
+  commit: "9f0a0a2451bb64e52a12c4a586ffa5744a4bd965"
 
 status: experimental
 
