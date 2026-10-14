@@ -8,7 +8,7 @@ sed -i.bak 's|"-march=native -D_FILE_OFFSET_BITS=64"|"-D_FILE_OFFSET_BITS=64"|' 
 sed -i.bak "s|^if (NOT BUILD_STATIC) # only when not building static$|if (NOT BUILD_STATIC AND NOT EMSCRIPTEN AND pybind11_FOUND) # only when not building static|" CMakeLists.txt
 sed -i.bak "s|set(flags \"-O2 -g -fPIC\")|set(flags \"-O2 -g -sUSE_ZLIB=1 -fPIC\")|" CMakeLists.txt
 sed -i.bak "s|CONFIGURE_COMMAND ./configure --disable-s3|CONFIGURE_COMMAND emconfigure ./configure --disable-s3 --disable-bz2 --disable-lzma --disable-libcurl --disable-plugins CFLAGS=-sUSE_ZLIB=1 LDFLAGS=-sUSE_ZLIB=1|" CMakeLists.txt
-sed -i.bak "s|BUILD_COMMAND \$(MAKE) CFLAGS=\${flags} lib-static|BUILD_COMMAND emmake make CFLAGS=\${flags} lib-static|" CMakeLists.txt
+sed -i.bak "s|BUILD_COMMAND \$(MAKE) CFLAGS=\${flags} lib-static|BUILD_COMMAND emmake \$(MAKE) CFLAGS=\${flags} lib-static|" CMakeLists.txt
 sed -i.bak "s|set(vcflib_LIBS curl deflate)|set(vcflib_LIBS)|" CMakeLists.txt
 sed -i.bak "/^  lzma\$/d" CMakeLists.txt
 sed -i.bak "/^  bz2\$/d" CMakeLists.txt

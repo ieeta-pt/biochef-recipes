@@ -16,6 +16,7 @@ source:
   repo: https://github.com/vcflib/vcflib
   tag: "v1.0.15"
   version: "1.0.15"
+  commit: "beef6694d3b12bb9ccbc1f1f1c3657a51e48ae3c"
 
 status: experimental
 
@@ -27,8 +28,8 @@ build:
       emscriptenVersion: 4.0.18
       buildScript: build-wasm.sh
   native:
-    buildsystem: make
-    workDir: .
+    buildScript: build-native.sh
+    buildTools: [make]
     outputDir: bin
 
 runtime:
