@@ -23,14 +23,9 @@ build:
   wasm:
     strategy: emscripten
     emscripten:
-      buildsystem: make
-      workDir: .
+      emscriptenVersion: 4.0.18
       outputDir: out
-      commands:
-        - 'emmake make CC=emcc AR=emar CFLAGS="-O2 -Wall -Wc++-compat -Wno-unused-function -Wno-deprecated-non-prototype -sUSE_ZLIB=1" LIBS="-L. -lbgt -lm -sUSE_ZLIB=1 -sFORCE_FILESYSTEM=1 -sALLOW_MEMORY_GROWTH=1 -sSTACK_SIZE=8MB -sEXPORTED_RUNTIME_METHODS=[''FS'',''callMain'']" -j4'
-        - 'mkdir -p out && mv bgt out/bgt.js && mv bgt.wasm out/bgt.wasm'
-        - "echo 'all:' > Makefile"
-      env: []
+      buildScript: build-wasm.sh
 
 runtime:
   modes: [wasm, remote]
