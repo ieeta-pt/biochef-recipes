@@ -16,6 +16,7 @@ source:
   repo: https://github.com/Martinsos/edlib
   tag: "v1.2.7"
   version: "1.2.7"
+  commit: "ec2310eda1841ab48c14cd3d866778a4f5eb1491"
 
 status: experimental
 
