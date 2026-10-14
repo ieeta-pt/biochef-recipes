@@ -27,8 +27,8 @@ build:
       emscriptenVersion: 4.0.18
       buildScript: build-wasm.sh
   native:
-    buildsystem: make
-    workDir: .
+    buildScript: build-native.sh
+    buildTools: [make]
     outputDir: .
 
 runtime:
@@ -39,15 +39,15 @@ operations:
     name: Build BWT (ropebwt3)
     category: Genomic Operations
     bin: ropebwt3
-    description: Construct a BWT/FM-index from one or more sequence files (FASTA / FASTQ / line-per-seq). Supports incremental construction — the resulting index can be extended later via `merge`. Output goes to stdout by default; redirect to a `.fmd` file for downstream use.
+    description: Construct a BWT/FM-index from one or more sequence files (FASTA / FASTQ / line-per-seq). Supports incremental construction — the resulting index can be extended later via `merge`. The index is written in the fermi-delta (FMD) format that the other ropebwt3 operations read.
     io:
       inputs:
         - { name: in, types: [FASTA, Multi-FASTA, FASTQ, TEXT], mode: file }
       outputs:
-        - { name: out, types: [BIN], mode: stdout }
+        - { name: out, types: [FMD], mode: file, flag: -o, filename: index.fmd }
     parameters:
       - { name: subcommand, type: string, default: build, required: true, hidden: true }
-      - { name: output_format, type: string, flag: -d, default: fmd }
+      - { name: output_format, type: flag, flag: -d, required: true, hidden: true }
       - { name: input_format, type: string, flag: -i }
       - { name: max_block_size, type: integer, flag: -m }
       - { name: reverse_complement, type: flag, flag: -R }
@@ -60,7 +60,7 @@ operations:
     description: Find maximal exact matches (MEMs) between query sequences and a pre-built BWT/FM-index. Output is tab-separated — query name, start, length, occurrence count, matched references.
     io:
       inputs:
-        - { name: index, types: [BIN], mode: file }
+        - { name: index, types: [FMD], mode: file }
         - { name: query, types: [FASTA, Multi-FASTA, FASTQ], mode: file }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
@@ -77,7 +77,7 @@ operations:
     description: Local Smith-Waterman alignment of each query sequence against the pre-built index. Equivalent in spirit to bwa-mem's seeding step but driven by BWT/FM-index lookups for large reference collections.
     io:
       inputs:
-        - { name: index, types: [BIN], mode: file }
+        - { name: index, types: [FMD], mode: file }
         - { name: query, types: [FASTA, Multi-FASTA, FASTQ], mode: file }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
@@ -94,7 +94,7 @@ operations:
     description: Count high-occurrence k-mers across the indexed collection. Useful for finding repeat / over-abundant sequences (centromeres, satellites, contaminants) before downstream analysis.
     io:
       inputs:
-        - { name: index, types: [BIN], mode: file }
+        - { name: index, types: [FMD], mode: file }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
@@ -109,7 +109,7 @@ operations:
     description: Print basic statistics for a built BWT — number of sequences, total bases, alphabet usage, run-length encoded size. Useful sanity-check after construction.
     io:
       inputs:
-        - { name: index, types: [BIN], mode: file }
+        - { name: index, types: [FMD], mode: file }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
@@ -122,7 +122,7 @@ operations:
     description: Retrieve the i-th sequence from a BWT-encoded collection. Useful for extracting individual references from a single combined index.
     io:
       inputs:
-        - { name: index, types: [BIN], mode: file }
+        - { name: index, types: [FMD], mode: file }
       outputs:
         - { name: out, types: [FASTA], mode: stdout }
     parameters:
