@@ -226,7 +226,9 @@ operations:
         - { name: in, types: [VCF], mode: stdin }
       outputs:
         - { name: out, types: [VCF], mode: stdout }
-    parameters: []
+    parameters:
+      - { name: vcf, type: string, default: "-", required: true, hidden: true }
+      - { name: samples, type: string }
 
   - id: vcflib.tsv
     name: To TSV (vcflib)
