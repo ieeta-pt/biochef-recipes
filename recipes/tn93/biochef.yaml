@@ -16,6 +16,7 @@ source:
   repo: https://github.com/veg/tn93
   tag: "v1.0.16"
   version: "1.0.16"
+  commit: "92756802509fd7aa5abc4fa8f8c0c9c4ac68c2a8"
 
 status: experimental
 
