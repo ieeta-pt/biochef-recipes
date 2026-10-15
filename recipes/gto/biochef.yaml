@@ -16,6 +16,7 @@ source:
   repo: https://github.com/WildBunnie/gto
   version: "1.6.3"
   tag: v1.6.3
+  commit: "e30d665ffceb96944f00149ff9275da16a7abd2c"
 
 status: verified
 
@@ -25,18 +26,13 @@ build:
     biowasm:
       package: gto
     emscripten:
-      buildsystem: make
-      workDir: src
+      emscriptenVersion: 4.0.18
       outputDir: bin
-      commands:
-        - make clean
-        - sed -Ei 's/\$\(\s*BIN\s*\)\/([a-zA-Z0-9._-]+)/$(BIN)\/\1.js/g' Makefile
-      env: 
-        - CC="emcc -msimd128 $EM_FLAGS"
+      buildScript: build-wasm.sh
   native:
-    buildsystem: make
-    workDir: src
     outputDir: bin
+    buildScript: build-native.sh
+    buildTools: [make]
 
 runtime:
   modes: [wasm, native]
