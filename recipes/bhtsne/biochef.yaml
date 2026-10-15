@@ -21,9 +21,11 @@ status: experimental
 
 build:
   wasm:
-    strategy: biowasm
-    biowasm:
-      package: bhtsne
+    strategy: emscripten
+    emscripten:
+      emscriptenVersion: 4.0.18
+      outputDir: out
+      buildScript: build-wasm.sh
 
 runtime:
   modes: [wasm]
