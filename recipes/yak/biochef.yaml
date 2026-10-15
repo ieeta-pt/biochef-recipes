@@ -42,13 +42,12 @@ operations:
       inputs:
         - { name: in, types: [FASTA, Multi-FASTA, FASTQ], mode: file }
       outputs:
-        - { name: out, types: [TEXT], mode: file, flag: -o }
+        - { name: out, types: [YAK], mode: file, flag: -o }
     parameters:
       - { name: command, type: string, default: count, required: true, hidden: true }
       - { name: kmer_length, type: integer, flag: -k, default: 31 }
       - { name: bloom_bits, type: integer, flag: -b }
-      - { name: min_count, type: integer, flag: -K }
-      - { name: chunk_size, type: integer, flag: -B }
+      - { name: chunk_size, type: integer, flag: -K }
       - { name: threads, type: integer, flag: -t, default: 1 }
 
   - id: yak.print
@@ -58,12 +57,12 @@ operations:
     description: Print k-mers from a .yak hash table (k <= 31 only).
     io:
       inputs:
-        - { name: in, types: [TEXT], mode: file }
+        - { name: in, types: [YAK], mode: file }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
       - { name: command, type: string, default: print, required: true, hidden: true }
-      - { name: min_count, type: integer, flag: -c }
+      - { name: print_counts, type: flag, flag: -c }
 
   - id: yak.qv
     name: QV (yak)
@@ -72,14 +71,14 @@ operations:
     description: Estimate assembly quality value (QV) using k-mers from a high-quality short-read set vs the assembly.
     io:
       inputs:
-        - { name: reference_kmers, types: [TEXT], mode: file }
+        - { name: reference_kmers, types: [YAK], mode: file }
         - { name: assembly, types: [FASTA, Multi-FASTA], mode: file }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
       - { name: command, type: string, default: qv, required: true, hidden: true }
       - { name: threads, type: integer, flag: -t, default: 1 }
-      - { name: report_min_count, type: integer, flag: -p }
+      - { name: per_sequence, type: flag, flag: -p }
 
   - id: yak.isec
     name: Intersect (yak)
@@ -88,10 +87,10 @@ operations:
     description: Intersect two k-mer hash tables.
     io:
       inputs:
-        - { name: a, types: [TEXT], mode: file }
-        - { name: b, types: [TEXT], mode: file }
+        - { name: a, types: [YAK], mode: file }
+        - { name: b, types: [YAK], mode: file }
       outputs:
-        - { name: out, types: [TEXT], mode: file, flag: -o }
+        - { name: out, types: [YAK], mode: file, flag: -o }
     parameters:
       - { name: command, type: string, default: isec, required: true, hidden: true }
 
@@ -102,10 +101,10 @@ operations:
     description: Subtract k-mers in B from k-mers in A.
     io:
       inputs:
-        - { name: a, types: [TEXT], mode: file }
-        - { name: b, types: [TEXT], mode: file }
+        - { name: a, types: [YAK], mode: file }
+        - { name: b, types: [YAK], mode: file }
       outputs:
-        - { name: out, types: [TEXT], mode: file, flag: -o }
+        - { name: out, types: [YAK], mode: file, flag: -o }
     parameters:
       - { name: command, type: string, default: subtract, required: true, hidden: true }
 
@@ -116,7 +115,7 @@ operations:
     description: Print summary statistics about a .yak hash table (k size, # of k-mers, count distribution).
     io:
       inputs:
-        - { name: in, types: [TEXT], mode: file }
+        - { name: in, types: [YAK], mode: file }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
