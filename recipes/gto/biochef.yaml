@@ -16,6 +16,7 @@ source:
   repo: https://github.com/WildBunnie/gto
   version: "1.6.3"
   tag: v1.6.3
+  commit: "e30d665ffceb96944f00149ff9275da16a7abd2c"
 
 status: verified
 
@@ -29,9 +30,9 @@ build:
       outputDir: bin
       buildScript: build-wasm.sh
   native:
-    buildsystem: make
-    workDir: src
     outputDir: bin
+    buildScript: build-native.sh
+    buildTools: [make]
 
 runtime:
   modes: [wasm, native]
