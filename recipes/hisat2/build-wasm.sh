@@ -1,3 +1,5 @@
+sed -i.bak 's|^            threads\[i\] = new tthread::thread(multiseedSearchWorker_hisat2, (void\*)&tids\[i\]);$|#ifdef __EMSCRIPTEN__\n            multiseedSearchWorker_hisat2((void*)\&tids[i]);\n            threads[i] = NULL;\n#else\n&\n#endif|; s|^            threads\[i\]->join();$|            if (threads[i] != NULL) threads[i]->join();|' hisat2.cpp
+
 emmake make \
   hisat2-align-s \
   hisat2-build-s \
