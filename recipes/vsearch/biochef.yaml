@@ -44,7 +44,7 @@ operations:
         - { name: centroids, types: [FASTA, Multi-FASTA], mode: file, flag: --centroids, filename: "centroids.fasta" }
         - { name: uc, types: [TEXT], mode: file, flag: --uc, filename: "clusters.uc" }
     parameters:
-      - { name: id, type: float, flag: --id, default: 0.97 }
+      - { name: id, type: float, flag: --id, default: 0.97, required: true }
       - { name: strand, type: string, flag: --strand, default: plus }
       - { name: sizein, type: flag, flag: --sizein }
       - { name: sizeout, type: flag, flag: --sizeout }
@@ -96,7 +96,7 @@ operations:
       outputs:
         - { name: blast6out, types: [TEXT], mode: file, flag: --blast6out, filename: "hits.b6" }
     parameters:
-      - { name: id, type: float, flag: --id, default: 0.97 }
+      - { name: id, type: float, flag: --id, default: 0.97, required: true }
       - { name: strand, type: string, flag: --strand, default: plus }
       - { name: top_hits_only, type: flag, flag: --top_hits_only }
       - { name: maxaccepts, type: integer, flag: --maxaccepts }

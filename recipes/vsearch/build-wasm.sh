@@ -7,6 +7,16 @@ sed -i.bak \
   -e 's/std::distance(taxonomic_fields\.data(), next_level)/std::distance(taxonomic_fields.begin(), next_level)/' \
   src/tax.cc
 
+cat > serial-threads.inc <<'EOF'
+static void serial_xpthread_create(pthread_t *, pthread_attr_t const *, void * (*start_routine)(void *), void * arg) { start_routine(arg); }
+static void serial_xpthread_join(pthread_t, void **) {}
+#define xpthread_create serial_xpthread_create
+#define xpthread_join serial_xpthread_join
+EOF
+for f in src/allpairs.cc src/chimera.cc src/mask.cc src/search.cc src/search_exact.cc src/sintax.cc; do
+  sed -i.bak '/^#include <pthread.h>$/r serial-threads.inc' "$f"
+done
+
 emconfigure ./configure --disable-bzip2 --disable-pdfman
 
 sed -i.bak \
