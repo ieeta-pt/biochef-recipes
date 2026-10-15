@@ -454,12 +454,12 @@ operations:
     name: Info Aggregator (VCFX)
     category: Variant Analysis
     bin: VCFX_info_aggregator
-    description: Pass the VCF through and append the sum and average of the given numeric INFO fields, comma-separated, as comment lines at the end.
+    description: Pass the VCF through and append the sum and average of the given numeric INFO fields, comma-separated, after the records. The appended summary makes the result plain text rather than VCF, so VCF tools will not read it.
     io:
       inputs:
         - { name: in, types: [VCF], mode: stdin }
       outputs:
-        - { name: out, types: [VCF], mode: stdout }
+        - { name: out, types: [TEXT], mode: stdout }
     parameters:
       - { name: aggregate_info, type: string, flag: --aggregate-info, default: "DP", required: true }
       - { name: quiet, type: flag, flag: --quiet }
