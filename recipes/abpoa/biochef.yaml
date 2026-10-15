@@ -1,0 +1,60 @@
+apiVersion: v1
+
+id: app.biochef.abpoa
+name: abPOA
+description: abPOA — adaptive banded Partial Order Alignment. SIMD-accelerated partial-order multiple sequence alignment with banded dynamic programming. Used for long-read consensus polishing (e.g. as the POA backend in racon / medaka-like pipelines). Faster than SPOA on long inputs because of the adaptive banding.
+
+version: 1.5.6-bc.1
+homepage: https://github.com/yangao07/abPOA
+license:
+  spdx: MIT
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/yangao07/abPOA
+  commit: "b29b9f4e8641650597d6bf214313aef5910a4303"
+  version: "1.5.6"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      outputDir: out
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+
+runtime:
+  modes: [wasm]
+
+operations:
+  - id: abpoa.align
+    name: Align (abPOA)
+    category: Sequence Analysis
+    bin: abpoa
+    description: Adaptive banded partial-order multiple sequence alignment. Default output is the consensus; use --result to emit MSA or graph instead. Suitable for long-read consensus polishing.
+    io:
+      inputs:
+        - { name: in, types: [FASTA, Multi-FASTA, FASTQ], mode: file }
+      outputs:
+        - { name: out, types: [FASTA, Multi-FASTA], mode: stdout }
+    parameters:
+      - { name: aln_mode, type: integer, flag: -m, default: 0 }
+      - { name: match, type: integer, flag: -M, default: 2 }
+      - { name: mismatch, type: integer, flag: -X, default: 4 }
+      - { name: gap_open1, type: integer, flag: -O }
+      - { name: gap_extend1, type: integer, flag: -E }
+      - { name: gap_open2, type: integer, flag: -O }
+      - { name: gap_extend2, type: integer, flag: -E }
+      - { name: band_width, type: integer, flag: -b }
+      - { name: zdrop, type: integer, flag: -z }
+      - { name: end_bonus, type: integer, flag: -e }
+      - { name: result, type: integer, flag: -r }
+      - { name: out_msa, type: flag, flag: --out-msa }
+      - { name: out_cons, type: flag, flag: --out-cons }
+      - { name: out_pog, type: string, flag: -g }
+      - { name: incremental, type: flag, flag: -i }
+      - { name: scoring_matrix, type: string, flag: -t }
