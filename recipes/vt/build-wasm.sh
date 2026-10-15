@@ -21,6 +21,7 @@ touch lib/htslib/libhts.a lib/Rmath/libRmath.a lib/pcre2/libpcre2.a lib/libsvm/l
 emmake make \
   CXX=em++ \
   AR=emar \
+  OPTFLAG="-O3 -fexceptions" \
   EXTRA_LIBS="-sSTACK_SIZE=33554432 -sINITIAL_MEMORY=64MB $EM_FLAGS" \
   -j4 vt
 

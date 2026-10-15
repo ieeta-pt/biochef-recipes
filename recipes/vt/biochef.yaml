@@ -45,7 +45,7 @@ operations:
       inputs:
         - { name: in, types: [VCF], mode: file }
       outputs:
-        - { name: out, types: [VCF], mode: stdout }
+        - { name: out, types: [VCF], mode: file, flag: -o, filename: out.vcf }
     parameters:
       - { name: command, type: string, default: view, required: true, hidden: true }
       - { name: filter_expression, type: string, flag: -f }
@@ -61,7 +61,7 @@ operations:
         - { name: in, types: [VCF], mode: file }
         - { name: reference, types: [FASTA], mode: file, flag: -r }
       outputs:
-        - { name: out, types: [VCF], mode: file, flag: -o }
+        - { name: out, types: [VCF], mode: file, flag: -o, filename: out.vcf }
     parameters:
       - { name: command, type: string, default: normalize, required: true, hidden: true }
       - { name: no_fail, type: flag, flag: -n }
@@ -76,7 +76,7 @@ operations:
       inputs:
         - { name: in, types: [VCF], mode: file }
       outputs:
-        - { name: out, types: [VCF], mode: file, flag: -o }
+        - { name: out, types: [VCF], mode: file, flag: -o, filename: out.vcf }
     parameters:
       - { name: command, type: string, default: decompose, required: true, hidden: true }
       - { name: smart, type: flag, flag: -s }
@@ -90,7 +90,7 @@ operations:
       inputs:
         - { name: in, types: [VCF], mode: file }
       outputs:
-        - { name: out, types: [VCF], mode: file, flag: -o }
+        - { name: out, types: [VCF], mode: file, flag: -o, filename: out.vcf }
     parameters:
       - { name: command, type: string, default: decompose_blocksub, required: true, hidden: true }
       - { name: aggressive, type: flag, flag: -a }
@@ -105,7 +105,7 @@ operations:
       inputs:
         - { name: in, types: [VCF], mode: file }
       outputs:
-        - { name: out, types: [VCF], mode: file, flag: -o }
+        - { name: out, types: [VCF], mode: file, flag: -o, filename: out.vcf }
     parameters:
       - { name: command, type: string, default: uniq, required: true, hidden: true }
 
@@ -118,7 +118,7 @@ operations:
       inputs:
         - { name: in, types: [VCF], mode: file }
       outputs:
-        - { name: out, types: [VCF], mode: file, flag: -o }
+        - { name: out, types: [VCF], mode: file, flag: -o, filename: out.vcf }
     parameters:
       - { name: command, type: string, default: sort, required: true, hidden: true }
       - { name: window, type: integer, flag: -w }
@@ -145,7 +145,7 @@ operations:
       inputs:
         - { name: in, types: [VCF], mode: file }
       outputs:
-        - { name: out, types: [VCF], mode: file, flag: -o }
+        - { name: out, types: [VCF], mode: file, flag: -o, filename: out.vcf }
     parameters:
       - { name: command, type: string, default: cat, required: true, hidden: true }
 
@@ -153,16 +153,16 @@ operations:
     name: Subset (vt)
     category: Variant Analysis
     bin: vt
-    description: Subset a VCF to variants polymorphic in one or more samples.
+    description: Subset a VCF to variants polymorphic in one or more samples, given as a list with one sample name per line.
     io:
       inputs:
         - { name: in, types: [VCF], mode: file }
+        - { name: samples, types: [LIST], mode: file, flag: -s }
       outputs:
-        - { name: out, types: [VCF], mode: file, flag: -o }
+        - { name: out, types: [VCF], mode: file, flag: -o, filename: out.vcf }
     parameters:
       - { name: command, type: string, default: subset, required: true, hidden: true }
-      - { name: samples, type: string, flag: -s }
-      - { name: keep_invariant, type: flag, flag: -k }
+      - { name: filter_expression, type: string, flag: -f }
 
   - id: vt.validate
     name: Validate (vt)
