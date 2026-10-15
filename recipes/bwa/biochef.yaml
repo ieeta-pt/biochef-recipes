@@ -1,0 +1,127 @@
+apiVersion: v1
+
+id: app.biochef.bwa
+name: bwa
+description: BWA (Burrows-Wheeler Aligner) — short-read alignment via the BWT/FM-index. Implements `bwa index` (build FM-index), `bwa mem` (the BWA-MEM algorithm for 70+bp reads), `bwa aln/samse/sampe` (older short-read algorithm), and `bwa fastmap` (super-maximal exact matches).
+
+version: 0.7.19-bc.1
+homepage: https://github.com/lh3/bwa
+license:
+  spdx: GPL-3.0-or-later
+  files: [COPYING]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/lh3/bwa
+  tag: "v0.7.19"
+  version: "0.7.19"
+  commit: "b92993c1161e73167181558856567ef2f367e3f0"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+  native:
+    buildScript: build-native.sh
+    buildTools: [make]
+
+runtime:
+  modes: [wasm, native, remote]
+
+operations:
+  - id: bwa.index
+    name: Index (bwa)
+    category: Genomic Operations
+    bin: bwa
+    description: Build the BWT/FM-index from a reference FASTA. Produces 5 sidecar files (.amb, .ann, .bwt, .pac, .sa) used by bwa mem and bwa aln.
+    io:
+      inputs:
+        - { name: reference, types: [FASTA, Multi-FASTA], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: index, required: true, hidden: true }
+      - { name: algorithm, type: string, flag: -a }
+      - { name: prefix, type: string, flag: -p }
+
+  - id: bwa.mem
+    name: Mem (bwa)
+    category: Genomic Operations
+    bin: bwa
+    description: BWA-MEM algorithm for short and long reads (70bp+). Produces SAM alignments. Requires an indexed reference (run bwa.index first).
+    io:
+      inputs:
+        - { name: reference, types: [FASTA, Multi-FASTA], mode: file }
+        - { name: reads, types: [FASTQ, FASTA], mode: file }
+      outputs:
+        - { name: out, types: [SAM], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: mem, required: true, hidden: true }
+      - { name: threads, type: integer, flag: -t, default: 1 }
+      - { name: min_seed_len, type: integer, flag: -k }
+      - { name: band_width, type: integer, flag: -w }
+      - { name: read_group, type: string, flag: -R }
+      - { name: paired, type: flag, flag: -p }
+      - { name: all_alignments, type: flag, flag: -a }
+      - { name: min_score, type: integer, flag: -T }
+      - { name: output_secondary, type: flag, flag: -M }
+      - { name: verbose, type: integer, flag: -v }
+
+  - id: bwa.aln
+    name: Aln (bwa)
+    category: Genomic Operations
+    bin: bwa
+    description: Older BWA backtracking algorithm for short reads (<70bp). Produces a .sai suffix-array intermediate; pair with bwa.samse or bwa.sampe to get SAM.
+    io:
+      inputs:
+        - { name: reference, types: [FASTA, Multi-FASTA], mode: file }
+        - { name: reads, types: [FASTQ], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: file, flag: -f }
+    parameters:
+      - { name: command, type: string, default: aln, required: true, hidden: true }
+      - { name: threads, type: integer, flag: -t, default: 1 }
+      - { name: max_diff, type: integer, flag: -n }
+      - { name: max_gap_open, type: integer, flag: -o }
+      - { name: max_gap_ext, type: integer, flag: -e }
+      - { name: seed_length, type: integer, flag: -l }
+      - { name: max_seed_diff, type: integer, flag: -k }
+      - { name: quality_trim, type: integer, flag: -q }
+
+  - id: bwa.samse
+    name: Samse (bwa)
+    category: Genomic Operations
+    bin: bwa
+    description: Convert single-end bwa.aln output (.sai) to SAM alignment.
+    io:
+      inputs:
+        - { name: reference, types: [FASTA, Multi-FASTA], mode: file }
+        - { name: sai, types: [TEXT], mode: file }
+        - { name: reads, types: [FASTQ], mode: file }
+      outputs:
+        - { name: out, types: [SAM], mode: file, flag: -f }
+    parameters:
+      - { name: command, type: string, default: samse, required: true, hidden: true }
+      - { name: max_hits, type: integer, flag: -n }
+      - { name: read_group, type: string, flag: -r }
+
+  - id: bwa.fastmap
+    name: Fastmap (bwa)
+    category: Genomic Operations
+    bin: bwa
+    description: Identify super-maximal exact matches (SMEMs) between queries and an indexed reference. Useful for read pre-processing or quick mapping diagnostics.
+    io:
+      inputs:
+        - { name: reference, types: [FASTA, Multi-FASTA], mode: file }
+        - { name: reads, types: [FASTQ, FASTA], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: fastmap, required: true, hidden: true }
+      - { name: min_smem_len, type: integer, flag: -l }
+      - { name: print_seq, type: flag, flag: -w }
