@@ -71,7 +71,7 @@ operations:
       inputs:
         - { name: in, types: [BIGWIG], mode: file }
       outputs:
-        - { name: out, types: [TEXT], mode: file, filename: out.wig }
+        - { name: out, types: [WIG], mode: file, filename: out.wig }
     parameters:
       - { name: chrom, type: string, flag: -chrom }
       - { name: start, type: integer, flag: -start }
