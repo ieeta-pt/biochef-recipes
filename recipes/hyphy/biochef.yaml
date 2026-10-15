@@ -22,20 +22,14 @@ status: experimental
 
 build:
   wasm:
-    strategy: biowasm
-    biowasm:
-      package: hyphy
+    strategy: emscripten
+    emscripten:
+      emscriptenVersion: 4.0.18
+      outputDir: out
+      buildScript: build-wasm.sh
 
 runtime:
   modes: [wasm]
-
-# Every analysis needs an in-frame codon alignment (length a multiple of 3, no
-# stop codons) and a Newick tree whose leaf names match the sequence names.
-# hyphy writes the reason for a rejected input to errors.log, not to stderr, so
-# a bad input only shows up as "program exited (with status: 1)".
-#
-# Options are the analysis' own keyword arguments (res/TemplateBatchFiles/
-# SelectionAnalyses/<method>.bf at the tag); defaults are hyphy's.
 
 operations:
   - id: hyphy.busted
@@ -46,7 +40,7 @@ operations:
     io:
       inputs:
         - { name: alignment, types: [Multi-FASTA, FASTA], mode: file, flag: --alignment }
-        - { name: tree, types: [TEXT], mode: file, flag: --tree }
+        - { name: tree, types: [NEWICK], mode: file, flag: --tree }
       outputs:
         - { name: out, types: [JSON], mode: file, flag: --output }
     parameters:
@@ -66,7 +60,7 @@ operations:
     io:
       inputs:
         - { name: alignment, types: [Multi-FASTA, FASTA], mode: file, flag: --alignment }
-        - { name: tree, types: [TEXT], mode: file, flag: --tree }
+        - { name: tree, types: [NEWICK], mode: file, flag: --tree }
       outputs:
         - { name: out, types: [JSON], mode: file, flag: --output }
     parameters:
@@ -85,7 +79,7 @@ operations:
     io:
       inputs:
         - { name: alignment, types: [Multi-FASTA, FASTA], mode: file, flag: --alignment }
-        - { name: tree, types: [TEXT], mode: file, flag: --tree }
+        - { name: tree, types: [NEWICK], mode: file, flag: --tree }
       outputs:
         - { name: out, types: [JSON], mode: file, flag: --output }
     parameters:
@@ -106,7 +100,7 @@ operations:
     io:
       inputs:
         - { name: alignment, types: [Multi-FASTA, FASTA], mode: file, flag: --alignment }
-        - { name: tree, types: [TEXT], mode: file, flag: --tree }
+        - { name: tree, types: [NEWICK], mode: file, flag: --tree }
       outputs:
         - { name: out, types: [JSON], mode: file, flag: --output }
     parameters:
