@@ -450,7 +450,7 @@ operations:
     io:
       inputs:
         - { name: in, types: [VCF, BCF], mode: file }
-        - { name: header, types: [TEXT], mode: file, flag: -h }
+        - { name: header, types: [VCF, TEXT], mode: file, flag: -h }
       outputs:
         - { name: out, types: [VCF, BCF], mode: file, flag: -o }
     parameters:
