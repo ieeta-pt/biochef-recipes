@@ -41,7 +41,7 @@ operations:
       inputs:
         - { name: in, types: [FASTA, Multi-FASTA], mode: file, flag: --cluster_fast }
       outputs:
-        - { name: centroids, types: [FASTA], mode: file, flag: --centroids, filename: "centroids.fasta" }
+        - { name: centroids, types: [FASTA, Multi-FASTA], mode: file, flag: --centroids, filename: "centroids.fasta" }
         - { name: uc, types: [TEXT], mode: file, flag: --uc, filename: "clusters.uc" }
     parameters:
       - { name: id, type: float, flag: --id, default: 0.97 }
@@ -59,7 +59,7 @@ operations:
       inputs:
         - { name: in, types: [FASTA, Multi-FASTA, FASTQ], mode: file, flag: --derep_fulllength }
       outputs:
-        - { name: output, types: [FASTA], mode: file, flag: --output, filename: "dereplicated.fasta" }
+        - { name: output, types: [FASTA, Multi-FASTA], mode: file, flag: --output, filename: "dereplicated.fasta" }
         - { name: uc, types: [TEXT], mode: file, flag: --uc, filename: "derep.uc" }
     parameters:
       - { name: strand, type: string, flag: --strand, default: plus }
@@ -77,8 +77,8 @@ operations:
       inputs:
         - { name: in, types: [FASTA, Multi-FASTA], mode: file, flag: --uchime_denovo }
       outputs:
-        - { name: nonchimeras, types: [FASTA], mode: file, flag: --nonchimeras, filename: "nonchimeras.fasta" }
-        - { name: chimeras, types: [FASTA], mode: file, flag: --chimeras, filename: "chimeras.fasta" }
+        - { name: nonchimeras, types: [FASTA, Multi-FASTA], mode: file, flag: --nonchimeras, filename: "nonchimeras.fasta" }
+        - { name: chimeras, types: [FASTA, Multi-FASTA], mode: file, flag: --chimeras, filename: "chimeras.fasta" }
     parameters:
       - { name: sizein, type: flag, flag: --sizein }
       - { name: mindiv, type: float, flag: --mindiv }
@@ -128,7 +128,7 @@ operations:
         - { name: reverse, types: [FASTQ], mode: file, flag: --reverse }
       outputs:
         - { name: fastqout, types: [FASTQ], mode: file, flag: --fastqout, filename: "merged.fastq" }
-        - { name: fastaout, types: [FASTA], mode: file, flag: --fastaout, filename: "merged.fasta" }
+        - { name: fastaout, types: [FASTA, Multi-FASTA], mode: file, flag: --fastaout, filename: "merged.fasta" }
     parameters:
       - { name: fastq_minovlen, type: integer, flag: --fastq_minovlen, default: 10 }
       - { name: fastq_maxdiffs, type: integer, flag: --fastq_maxdiffs, default: 10 }
@@ -144,7 +144,7 @@ operations:
         - { name: in, types: [FASTQ], mode: file, flag: --fastq_filter }
       outputs:
         - { name: fastqout, types: [FASTQ], mode: file, flag: --fastqout, filename: "filtered.fastq" }
-        - { name: fastaout, types: [FASTA], mode: file, flag: --fastaout, filename: "filtered.fasta" }
+        - { name: fastaout, types: [FASTA, Multi-FASTA], mode: file, flag: --fastaout, filename: "filtered.fasta" }
     parameters:
       - { name: fastq_maxee, type: float, flag: --fastq_maxee }
       - { name: fastq_truncqual, type: integer, flag: --fastq_truncqual }
