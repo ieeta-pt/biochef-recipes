@@ -39,7 +39,7 @@ operations:
       inputs:
         - { name: in, types: [BIGBED], mode: file }
       outputs:
-        - { name: out, types: [BED], mode: file, filename: out.bed }
+        - { name: out, types: [BED], mode: file, flag: "", filename: out.bed }
     parameters:
       - { name: chrom, type: string, flag: -chrom }
       - { name: start, type: integer, flag: -start }
@@ -71,7 +71,7 @@ operations:
       inputs:
         - { name: in, types: [BIGWIG], mode: file }
       outputs:
-        - { name: out, types: [WIG], mode: file, filename: out.wig }
+        - { name: out, types: [WIG], mode: file, flag: "", filename: out.wig }
     parameters:
       - { name: chrom, type: string, flag: -chrom }
       - { name: start, type: integer, flag: -start }
