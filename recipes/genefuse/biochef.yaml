@@ -2,7 +2,7 @@ apiVersion: v1
 
 id: app.biochef.genefuse
 name: GeneFuse
-description: GeneFuse — detect gene fusions directly from FASTQ reads using k-mer matching against a user-supplied fusion list and reference. No alignment step required. Designed for targeted RNA-seq / DNA-seq panels — clinical cancer panels and similar applications where you know the fusion partners to look for. Outputs an HTML report with read-level evidence plus an optional JSON summary. From the OpenGene group, same authors as fastp and MutScan.
+description: GeneFuse detects gene fusions directly from FASTQ reads, without an alignment step, by matching reads against the exons of the genes listed in a fusion file. It suits targeted panels where the fusion partners are known, such as clinical cancer panels, and reports each fusion with its supporting reads as text, JSON and HTML.
 
 version: 0.8.0-bc.1
 homepage: https://github.com/OpenGene/GeneFuse
@@ -37,7 +37,7 @@ operations:
     name: Detect Gene Fusions (GeneFuse)
     category: Sequence Analysis
     bin: genefuse
-    description: Scan raw FASTQ reads (single- or paired-end) for evidence of gene fusions defined in a CSV fusion file, against a reference FASTA. No alignment required — works directly on reads via k-mer matching. Output is an HTML report with per-fusion read-level evidence plus an optional JSON summary.
+    description: Scan single-end or paired-end FASTQ reads for fusions between the genes of a fusion file, using a reference FASTA with the same coordinates. The fusion file lists each gene and its exons, as in the files GeneFuse ships for hg19 and hg38. The results are written as text, JSON and an HTML report.
     io:
       inputs:
         - { name: read1, types: [FASTQ], mode: file, flag: "-1" }
@@ -45,11 +45,12 @@ operations:
         - { name: fusion, types: [TEXT], mode: file, flag: -f }
         - { name: ref, types: [FASTA, Multi-FASTA], mode: file, flag: -r }
       outputs:
+        - { name: result, types: [TEXT], mode: stdout }
         - { name: html, types: [TEXT], mode: file, flag: -h, filename: "genefuse.html" }
-        - { name: json, types: [TEXT], mode: file, flag: -j, filename: "genefuse.json" }
+        - { name: json, types: [JSON], mode: file, flag: -j, filename: "genefuse.json" }
     parameters:
       - { name: min_support, type: integer, flag: -u, default: 2 }
-      - { name: threads, type: integer, flag: -t, default: 1 }
+      - { name: threads, type: integer, flag: -t, default: 4 }
       - { name: min_deletion_length, type: integer, flag: -d, default: 50 }
       - { name: output_deletions, type: flag, flag: -D }
       - { name: output_untranslated, type: flag, flag: -U }
