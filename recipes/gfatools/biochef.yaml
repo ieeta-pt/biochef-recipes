@@ -1,0 +1,184 @@
+apiVersion: v1
+
+id: app.biochef.gfatools
+name: gfatools
+description: gfatools reads, converts and transforms assembly and pangenome graphs in the Graphical Fragment Assembly format (GFA and reference GFA, rGFA). It reports graph statistics, subsets graphs, converts them to FASTA or BED, finds bubbles, and simplifies assembly graphs the way miniasm does.
+
+version: 0.1.296-bc.1
+homepage: https://github.com/lh3/gfatools
+license:
+  spdx: MIT
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/lh3/gfatools
+  commit: "39c54d5dfe4678d4cfb75b37bd27d4fb21f4de72"
+  version: "r296"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      outputDir: out
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+  native:
+    buildScript: build-native.sh
+    buildTools: [make]
+
+runtime:
+  modes: [wasm, native]
+
+operations:
+  - id: gfatools.view
+    name: View (gfatools)
+    category: Sequence Analysis
+    bin: gfatools
+    description: Read a GFA graph and write it back, optionally restricted to a list of segments or a region and its neighbourhood.
+    io:
+      inputs:
+        - { name: graph, types: [GFA], mode: file }
+      outputs:
+        - { name: out, types: [GFA], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: view, required: true, hidden: true }
+      - { name: segments, type: string, flag: -l }
+      - { name: region, type: string, flag: -R }
+      - { name: radius, type: integer, flag: -r }
+      - { name: delete_segments, type: flag, flag: -d }
+      - { name: remove_multi_edges, type: flag, flag: -M }
+      - { name: no_sequences, type: flag, flag: -S }
+      - { name: keep_walk_coordinates, type: flag, flag: -c }
+      - { name: flip_walks, type: flag, flag: -w }
+      - { name: flip_walks_by_segment, type: string, flag: -b }
+
+  - id: gfatools.stat
+    name: Stat (gfatools)
+    category: Sequence Analysis
+    bin: gfatools
+    description: Report the number of segments and links, segment lengths and vertex degrees of a GFA graph.
+    io:
+      inputs:
+        - { name: graph, types: [GFA], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: stat, required: true, hidden: true }
+
+  - id: gfatools.gfa2fa
+    name: GFA to FASTA (gfatools)
+    category: Format Conversion
+    bin: gfatools
+    description: Write the segments of a GFA graph as FASTA. On rGFA, it can instead write the stable sequences.
+    io:
+      inputs:
+        - { name: graph, types: [GFA], mode: file }
+      outputs:
+        - { name: out, types: [FASTA, Multi-FASTA], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: gfa2fa, required: true, hidden: true }
+      - { name: line_length, type: integer, flag: -l, default: 60 }
+      - { name: stable_sequences, type: flag, flag: -s }
+      - { name: skip_rank0, type: flag, flag: -P }
+      - { name: rank0_only, type: flag, flag: "-0" }
+
+  - id: gfatools.gfa2bed
+    name: GFA to BED (gfatools)
+    category: Format Conversion
+    bin: gfatools
+    description: Write where each segment of an rGFA graph lies on its stable sequence, as BED. A graph without rGFA tags gives no lines.
+    io:
+      inputs:
+        - { name: graph, types: [GFA], mode: file }
+      outputs:
+        - { name: out, types: [BED], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: gfa2bed, required: true, hidden: true }
+      - { name: merge_adjacent, type: flag, flag: -s }
+
+  - id: gfatools.blacklist
+    name: Blacklist (gfatools)
+    category: Sequence Analysis
+    bin: gfatools
+    description: Write the regions of an rGFA graph's reference that lie in bubbles, as BED, padded to a minimum length.
+    io:
+      inputs:
+        - { name: graph, types: [GFA], mode: file }
+      outputs:
+        - { name: out, types: [BED], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: blacklist, required: true, hidden: true }
+      - { name: min_length, type: integer, flag: -l, default: 100 }
+      - { name: both_strands, type: flag, flag: -b }
+
+  - id: gfatools.bubble
+    name: Bubble (gfatools)
+    category: Sequence Analysis
+    bin: gfatools
+    description: Find bubble-like regions in an rGFA graph and write one per line (experimental upstream).
+    io:
+      inputs:
+        - { name: graph, types: [GFA], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: bubble, required: true, hidden: true }
+      - { name: with_subgraphs, type: flag, flag: -g }
+
+  - id: gfatools.asm
+    name: Simplify Assembly Graph (gfatools)
+    category: Sequence Analysis
+    bin: gfatools
+    description: Simplify an assembly graph the way miniasm does. The steps run in the order listed, and the result is written as GFA.
+    io:
+      inputs:
+        - { name: graph, types: [GFA], mode: file }
+      outputs:
+        - { name: out, types: [GFA], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: asm, required: true, hidden: true }
+      - { name: transitive_reduction_fuzz, type: integer, flag: -r }
+      - { name: cut_tips, type: string, flag: -t }
+      - { name: pop_bubbles, type: string, flag: -b }
+      - { name: pop_bubbles_and_tips, type: string, flag: -B }
+      - { name: cut_short_overlaps, type: string, flag: -o }
+      - { name: cut_overlaps_topology, type: string, flag: -c }
+      - { name: unitigs, type: flag, flag: -u }
+
+  - id: gfatools.sql
+    name: rGFA to SQL (gfatools)
+    category: Format Conversion
+    bin: gfatools
+    description: Write an rGFA graph as SQL statements that create and fill SQLite tables.
+    io:
+      inputs:
+        - { name: graph, types: [GFA], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: sql, required: true, hidden: true }
+      - { name: with_sequences, type: flag, flag: -s }
+
+  - id: gfatools.ed
+    name: Align to Graph (gfatools)
+    category: Sequence Analysis
+    bin: gfatools
+    description: Align each query sequence to a graph from its starting segment and report the edit distance, or the path with the alignment option (upstream marks it for evaluation only).
+    io:
+      inputs:
+        - { name: graph, types: [GFA, FASTA], mode: file }
+        - { name: queries, types: [FASTA, Multi-FASTA], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: ed, required: true, hidden: true }
+      - { name: max_lag, type: integer, flag: -l }
+      - { name: max_diagonals, type: integer, flag: -n }
+      - { name: band_width, type: integer, flag: -w }
+      - { name: max_edit_distance, type: integer, flag: -m }
+      - { name: start_segment, type: string, flag: -s }
+      - { name: report_path, type: flag, flag: -c }
