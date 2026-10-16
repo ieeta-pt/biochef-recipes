@@ -4,7 +4,7 @@ id: app.biochef.aster
 name: ASTER
 description: Accurate Species Tree EstimatoR. Quartet-based species tree inference from gene trees (ASTRAL, ASTRAL-Pro, wASTRAL) or directly from multi-locus sequence alignments (CASTER).
 
-version: 1.23.0-bc.1
+version: 1.23.0-bc.2
 homepage: https://github.com/chaoszhang/ASTER
 license:
   spdx: AGPL-3.0-or-later
@@ -37,9 +37,9 @@ operations:
     description: Quartet-based species tree estimation from a set of gene trees (Newick).
     io:
       inputs:
-        - { name: gene_trees, types: [TEXT], mode: file, flag: -i }
+        - { name: gene_trees, types: [NEWICK], mode: file, flag: -i }
       outputs:
-        - { name: out, types: [TEXT], mode: file, flag: -o }
+        - { name: out, types: [NEWICK], mode: file, flag: -o }
     parameters:
       - { name: seed, type: integer, flag: -s }
       - { name: rounds, type: integer, flag: -r }
@@ -53,10 +53,10 @@ operations:
     description: Paralog-aware species tree estimation. Handles multi-copy gene families using a gene-to-species mapping.
     io:
       inputs:
-        - { name: gene_trees, types: [TEXT], mode: file, flag: -i }
+        - { name: gene_trees, types: [NEWICK], mode: file, flag: -i }
         - { name: mapping, types: [TEXT], mode: file, flag: -a }
       outputs:
-        - { name: out, types: [TEXT], mode: file, flag: -o }
+        - { name: out, types: [NEWICK], mode: file, flag: -o }
     parameters:
       - { name: seed, type: integer, flag: -s }
       - { name: rounds, type: integer, flag: -r }
@@ -69,9 +69,9 @@ operations:
     description: Weighted ASTRAL — combines branch lengths and support values for more accurate species tree estimation.
     io:
       inputs:
-        - { name: gene_trees, types: [TEXT], mode: file, flag: -i }
+        - { name: gene_trees, types: [NEWICK], mode: file, flag: -i }
       outputs:
-        - { name: out, types: [TEXT], mode: file, flag: -o }
+        - { name: out, types: [NEWICK], mode: file, flag: -o }
     parameters:
       - { name: seed, type: integer, flag: -s }
       - { name: rounds, type: integer, flag: -r }
@@ -85,9 +85,9 @@ operations:
     description: Species tree estimation directly from multi-locus sequence alignments (site-pattern model). Bypasses the gene-tree step.
     io:
       inputs:
-        - { name: alignment, types: [FASTA, Multi-FASTA], mode: file, flag: -i }
+        - { name: alignment, types: [Multi-FASTA], mode: file, flag: -i }
       outputs:
-        - { name: out, types: [TEXT], mode: file, flag: -o }
+        - { name: out, types: [NEWICK], mode: file, flag: -o }
     parameters:
       - { name: seed, type: integer, flag: -s }
       - { name: rounds, type: integer, flag: -r }
