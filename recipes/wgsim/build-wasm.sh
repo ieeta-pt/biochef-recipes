@@ -1,0 +1,1 @@
+emcc wgsim.c -o wgsim.js $EM_FLAGS -lm -O2 -w
