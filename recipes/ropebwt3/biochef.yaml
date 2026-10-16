@@ -1,0 +1,229 @@
+apiVersion: v1
+
+id: app.biochef.ropebwt3
+name: ropebwt3
+description: ropebwt3 builds a BWT and FM-index over large sequence collections, such as many genomes or a pangenome, and searches it. It finds maximal exact matches, local alignments and matching suffixes, scans haplotype diversity and counts k-mers. An index can be grown by building new sequences onto it.
+
+version: 3.10.0-bc.1
+homepage: https://github.com/lh3/ropebwt3
+license:
+  spdx: MIT
+  files: [LICENSE.txt]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/lh3/ropebwt3
+  commit: "5afa1e56cd18a3c028a0d73256117851660d0f8c"
+  version: "3.10.0"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      outputDir: out
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+  native:
+    buildScript: build-native.sh
+    buildTools: [make]
+    outputDir: .
+
+runtime:
+  modes: [wasm, native, remote]
+
+operations:
+  - id: ropebwt3.build
+    name: Build BWT (ropebwt3)
+    category: Genomic Operations
+    bin: ropebwt3
+    description: Build a BWT index in the FMD format from sequence files. Both strands are indexed unless excluded. Given an existing index, the new sequences are added to it.
+    io:
+      inputs:
+        - { name: sequences, types: [FASTA, Multi-FASTA, FASTQ, TEXT], mode: file }
+        - { name: existing_index, types: [FMD], mode: file, flag: -i }
+      outputs:
+        - { name: index, types: [FMD], mode: file, flag: -o, filename: index.fmd }
+    parameters:
+      - { name: subcommand, type: string, default: build, required: true, hidden: true }
+      - { name: fmd_format, type: flag, flag: -d, required: true, hidden: true }
+      - { name: batch_size, type: string, flag: -m }
+      - { name: threads, type: integer, flag: -t }
+      - { name: sais_threads, type: integer, flag: -p }
+      - { name: leaf_block_size, type: integer, flag: -l }
+      - { name: max_children, type: integer, flag: -n }
+      - { name: ropebwt2_algorithm, type: flag, flag: "-2" }
+      - { name: reverse_lexicographic_order, type: flag, flag: -s }
+      - { name: rclo_order, type: flag, flag: -r }
+      - { name: one_sequence_per_line, type: flag, flag: -L }
+      - { name: no_forward_strand, type: flag, flag: -F }
+      - { name: no_reverse_strand, type: flag, flag: -R }
+
+  - id: ropebwt3.mem
+    name: Maximal Exact Matches (ropebwt3)
+    category: Genomic Operations
+    bin: ropebwt3
+    description: Find the maximal exact matches between each query and the index. Each line gives the query name, the match start and end on the query, and how many times it occurs in the index.
+    io:
+      inputs:
+        - { name: index, types: [FMD], mode: file }
+        - { name: queries, types: [FASTA, Multi-FASTA, FASTQ], mode: file }
+      outputs:
+        - { name: out, types: [BED, TEXT], mode: stdout }
+    parameters:
+      - { name: subcommand, type: string, default: mem, required: true, hidden: true }
+      - { name: min_length, type: integer, flag: -l, default: 19 }
+      - { name: min_occurrences, type: integer, flag: -c, default: 1 }
+      - { name: uncovered_regions, type: string, flag: --gap }
+      - { name: coverage, type: flag, flag: --cov }
+      - { name: original_algorithm, type: flag, flag: --old-mem }
+      - { name: threads, type: integer, flag: -t }
+      - { name: one_sequence_per_line, type: flag, flag: -L }
+      - { name: query_batch_size, type: string, flag: -K }
+
+  - id: ropebwt3.sw
+    name: Local Alignment (ropebwt3)
+    category: Sequence Analysis
+    bin: ropebwt3
+    description: Align each query to the index with a BWA-SW style local alignment and write the hits as PAF. Reference positions are not reported, since they need a sampled suffix array next to the index.
+    io:
+      inputs:
+        - { name: index, types: [FMD], mode: file }
+        - { name: queries, types: [FASTA, Multi-FASTA, FASTQ], mode: file }
+      outputs:
+        - { name: out, types: [PAF, TEXT], mode: stdout }
+    parameters:
+      - { name: subcommand, type: string, default: sw, required: true, hidden: true }
+      - { name: hits_per_node, type: integer, flag: -N, default: 25 }
+      - { name: min_score, type: integer, flag: -m, default: 30 }
+      - { name: match_score, type: integer, flag: -A, default: 1 }
+      - { name: mismatch_penalty, type: integer, flag: -B, default: 3 }
+      - { name: gap_open_penalty, type: integer, flag: -O, default: 5 }
+      - { name: gap_extension_penalty, type: integer, flag: -E, default: 2 }
+      - { name: ranking_cache_size, type: string, flag: -C }
+      - { name: secondary_score_drop, type: integer, flag: -y }
+      - { name: end_to_end, type: flag, flag: -e }
+      - { name: min_seed_length, type: integer, flag: -j }
+      - { name: end_match_length, type: integer, flag: -k, default: 11 }
+      - { name: both_strands, type: flag, flag: -b }
+      - { name: write_unmapped, type: flag, flag: -u }
+      - { name: reference_sequence_tag, type: flag, flag: --seq }
+      - { name: all_end_to_end_hits, type: flag, flag: --all-e2e }
+      - { name: max_end_to_end_hits, type: integer, flag: -g }
+      - { name: threads, type: integer, flag: -t }
+      - { name: one_sequence_per_line, type: flag, flag: -L }
+      - { name: query_batch_size, type: string, flag: -K }
+
+  - id: ropebwt3.hapdiv
+    name: Haplotype Diversity (ropebwt3)
+    category: Sequence Analysis
+    bin: ropebwt3
+    description: Align sliding k-mers of each query end to end against the index and report, per window, how many distinct haplotypes in the index match it.
+    io:
+      inputs:
+        - { name: index, types: [FMD], mode: file }
+        - { name: queries, types: [FASTA, Multi-FASTA, FASTQ], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: subcommand, type: string, default: hapdiv, required: true, hidden: true }
+      - { name: kmer_length, type: integer, flag: -a, default: 101 }
+      - { name: kmer_step, type: integer, flag: -w, default: 50 }
+      - { name: hits_per_node, type: integer, flag: -N, default: 25 }
+      - { name: min_score, type: integer, flag: -m, default: 30 }
+      - { name: match_score, type: integer, flag: -A, default: 1 }
+      - { name: mismatch_penalty, type: integer, flag: -B, default: 3 }
+      - { name: gap_open_penalty, type: integer, flag: -O, default: 5 }
+      - { name: gap_extension_penalty, type: integer, flag: -E, default: 2 }
+      - { name: ranking_cache_size, type: string, flag: -C }
+      - { name: secondary_score_drop, type: integer, flag: -y }
+      - { name: threads, type: integer, flag: -t }
+      - { name: one_sequence_per_line, type: flag, flag: -L }
+      - { name: query_batch_size, type: string, flag: -K }
+
+  - id: ropebwt3.suffix
+    name: Longest Matching Suffix (ropebwt3)
+    category: Sequence Analysis
+    bin: ropebwt3
+    description: Find, for each query, the longest suffix that occurs in the index. Each line gives the query name, the suffix start and end, and its number of occurrences.
+    io:
+      inputs:
+        - { name: index, types: [FMD], mode: file }
+        - { name: queries, types: [FASTA, Multi-FASTA, FASTQ], mode: file }
+      outputs:
+        - { name: out, types: [BED, TEXT], mode: stdout }
+    parameters:
+      - { name: subcommand, type: string, default: suffix, required: true, hidden: true }
+      - { name: one_sequence_per_line, type: flag, flag: -L }
+
+  - id: ropebwt3.kount
+    name: K-mer Count (ropebwt3)
+    category: Sequence Analysis
+    bin: ropebwt3
+    description: List the k-mers that occur at least a minimum number of times in the index, with their counts.
+    io:
+      inputs:
+        - { name: index, types: [FMD], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: subcommand, type: string, default: kount, required: true, hidden: true }
+      - { name: kmer_length, type: integer, flag: -k, default: 51 }
+      - { name: min_occurrences, type: integer, flag: -m, default: 100 }
+
+  - id: ropebwt3.stat
+    name: BWT Stats (ropebwt3)
+    category: Sequence Analysis
+    bin: ropebwt3
+    description: Report the number of sequences, symbols and runs in an index, and the count of each base.
+    io:
+      inputs:
+        - { name: index, types: [FMD], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: subcommand, type: string, default: stat, required: true, hidden: true }
+
+  - id: ropebwt3.fa2line
+    name: Sequences to Lines (ropebwt3)
+    category: Format Conversion
+    bin: ropebwt3
+    description: Write each sequence on its own line, followed by its reverse complement unless excluded. The result can be built with the one sequence per line option.
+    io:
+      inputs:
+        - { name: sequences, types: [FASTA, Multi-FASTA, FASTQ], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: subcommand, type: string, default: fa2line, required: true, hidden: true }
+      - { name: no_reverse_strand, type: flag, flag: -R }
+
+  - id: ropebwt3.fa2kmer
+    name: Extract K-mers (ropebwt3)
+    category: Sequence Analysis
+    bin: ropebwt3
+    description: Extract k-mers from each sequence at a fixed step and write them as FASTA, named by their position.
+    io:
+      inputs:
+        - { name: sequences, types: [FASTA, Multi-FASTA, FASTQ], mode: file }
+      outputs:
+        - { name: out, types: [Multi-FASTA, FASTA], mode: stdout }
+    parameters:
+      - { name: subcommand, type: string, default: fa2kmer, required: true, hidden: true }
+      - { name: kmer_length, type: integer, flag: -k, default: 151 }
+      - { name: step, type: integer, flag: -w, default: 50 }
+
+  - id: ropebwt3.plain2fmd
+    name: Plain BWT to FMD (ropebwt3)
+    category: Format Conversion
+    bin: ropebwt3
+    description: Convert a BWT written as plain text into the FMD format.
+    io:
+      inputs:
+        - { name: bwt, types: [TEXT], mode: file }
+      outputs:
+        - { name: index, types: [FMD], mode: file, flag: -o, filename: index.fmd }
+    parameters:
+      - { name: subcommand, type: string, default: plain2fmd, required: true, hidden: true }
