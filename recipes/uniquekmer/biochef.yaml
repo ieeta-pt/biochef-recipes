@@ -1,0 +1,53 @@
+apiVersion: v1
+
+id: app.biochef.uniquekmer
+name: UniqueKMER
+description: UniqueKMER finds the k-mers unique to each genome or contig of a multi-FASTA, giving each one a k-mer fingerprint for k-mer based detection or classification. It can also drop the k-mers that map to a background reference genome within an edit distance, so the k-mers left distinguish the target. From the OpenGene group.
+
+version: 0.1.0-bc.1
+homepage: https://github.com/OpenGene/UniqueKMER
+license:
+  spdx: MIT
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/OpenGene/UniqueKMER
+  commit: "8b902e9a82c9ace13d038e684adc06460afeff89"
+  version: "0.1.0"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      outputDir: out
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+  native:
+    buildScript: build-native.sh
+    buildTools: [make]
+
+runtime:
+  modes: [wasm, native]
+
+operations:
+  - id: uniquekmer.generate
+    name: Generate Unique K-mer Sets
+    category: Sequence Analysis
+    bin: uniquekmer
+    description: Find the k-mers unique to each genome of a multi-FASTA input and write them as one FASTA record per genome. With a reference genome (-r), k-mers that map to it within the edit distance are removed.
+    io:
+      inputs:
+        - { name: fasta, types: [FASTA, Multi-FASTA], mode: file, flag: -f }
+        - { name: ref, types: [FASTA, Multi-FASTA], mode: file, flag: -r }
+      outputs:
+        - { name: kmers, types: [Multi-FASTA], mode: file, filename: kmercollection.fasta }
+    parameters:
+      - { name: outdir, type: string, flag: -o, default: ".", required: true, hidden: true }
+      - { name: kmer_length, type: integer, flag: -k, default: 25 }
+      - { name: spacing, type: integer, flag: -s, default: 0 }
+      - { name: genome_limit, type: integer, flag: -g, default: 0 }
+      - { name: edit_distance, type: integer, flag: -e, default: 3 }
