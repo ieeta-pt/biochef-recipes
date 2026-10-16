@@ -1,0 +1,58 @@
+apiVersion: v1
+
+id: app.biochef.mutscan
+name: MutScan
+description: MutScan detects target mutations directly in FASTQ reads, without an alignment step. It looks for the mutations in a CSV list, or in a VCF together with its reference, and suits targeted panels where the mutations of interest are known in advance, such as clinical hotspot panels. Each mutation is reported with its supporting reads as text, JSON and HTML.
+
+version: 1.14.1-bc.1
+homepage: https://github.com/OpenGene/MutScan
+license:
+  spdx: MIT
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/OpenGene/MutScan
+  commit: "118c7047e90cf498da4d1f56f9528190473c8e17"
+  version: "1.14.1"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+  native:
+    buildScript: build-native.sh
+    buildTools: [make]
+
+runtime:
+  modes: [wasm, native, remote]
+
+operations:
+  - id: mutscan.scan
+    name: Scan for Mutations (MutScan)
+    category: Sequence Analysis
+    bin: mutscan
+    description: Scan single-end or paired-end FASTQ reads for the mutations in a CSV list, or in a VCF given with its reference FASTA. Without a mutation file it scans for MutScan's built-in list of about 60 cancer hotspot mutations. The results are written as text, JSON and an HTML report.
+    io:
+      inputs:
+        - { name: read1, types: [FASTQ], mode: file, flag: "-1" }
+        - { name: read2, types: [FASTQ], mode: file, flag: "-2" }
+        - { name: mutation, types: [VCF, TEXT], mode: file, flag: -m }
+        - { name: ref, types: [FASTA, Multi-FASTA], mode: file, flag: -r }
+      outputs:
+        - { name: result, types: [TEXT], mode: stdout }
+        - { name: html, types: [TEXT], mode: file, flag: -h, filename: "mutscan.html" }
+        - { name: json, types: [JSON], mode: file, flag: -j, filename: "mutscan.json" }
+    parameters:
+      - { name: threads, type: integer, flag: -t, default: 4 }
+      - { name: min_support, type: integer, flag: -S, default: 2 }
+      - { name: mark_vcf, type: flag, flag: -k }
+      - { name: legacy, type: flag, flag: -l }
+      - { name: standalone_html, type: flag, flag: -s }
+      - { name: simplified, type: string, flag: --simplified, default: auto }
+      - { name: verbose, type: flag, flag: -v }
