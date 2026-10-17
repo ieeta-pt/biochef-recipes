@@ -35,10 +35,10 @@ operations:
     name: Draw Tree as SVG (newick-utils)
     category: Information and Analysis
     bin: nw_display
-    description: Render a phylogenetic tree as a scalable SVG image, either as a standard rectangular cladogram or as a radial tree.
+    description: Render phylogenetic trees as a scalable SVG image, either as a rectangular cladogram or as a radial tree.
     io:
       inputs:
-        - { name: in, types: [TEXT], mode: file }
+        - { name: in, types: [NEWICK], mode: file }
       outputs:
         - { name: out, types: [SVG], mode: stdout }
     parameters:
@@ -50,9 +50,13 @@ operations:
       - { name: leaf_label_style, type: string, flag: -l }
       - { name: inner_label_style, type: string, flag: -i }
       - { name: node_style, type: string, flag: -d }
+      - { name: inner_label_position, type: string, flag: -I }
+      - { name: label_offset, type: integer, flag: -n }
+      - { name: label_char_width, type: float, flag: -W }
       - { name: suppress_scale_bar, type: flag, flag: -S }
       - { name: scale_unit, type: string, flag: -u }
       - { name: label_rotation, type: float, flag: -a }
+      - { name: left_label_rotation, type: float, flag: -A }
       - { name: root_length, type: integer, flag: -R }
       - { name: depth_zero, type: flag, flag: -t }
 
@@ -60,15 +64,17 @@ operations:
     name: Draw Tree as Text (newick-utils)
     category: Information and Analysis
     bin: nw_display
-    description: Render a phylogenetic tree as ASCII art, with an optional scale bar.
+    description: Render phylogenetic trees as ASCII art, with a scale bar for trees with branch lengths.
     io:
       inputs:
-        - { name: in, types: [TEXT], mode: file }
+        - { name: in, types: [NEWICK], mode: file }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
       - { name: width, type: integer, flag: -w }
       - { name: graph_style, type: string, flag: -e }
+      - { name: inner_label_position, type: string, flag: -I }
+      - { name: root_length, type: integer, flag: -R }
       - { name: suppress_scale_bar, type: flag, flag: -S }
       - { name: scale_unit, type: string, flag: -u }
       - { name: depth_zero, type: flag, flag: -t }
@@ -77,12 +83,13 @@ operations:
     name: Reroot (newick-utils)
     category: Genomic Operations
     bin: nw_reroot
-    description: Reroot a tree on the outgroup formed by the labels given as arguments, or deroot it entirely.
+    description: Reroot trees on the outgroup formed by the labels in the outgroup list (one per line), or, without one, on the longest branch. With deroot, remove the root instead.
     io:
       inputs:
-        - { name: in, types: [TEXT], mode: file }
+        - { name: in, types: [NEWICK], mode: file }
+        - { name: outgroup, types: [LIST], mode: file, flag: --bc-labels }
       outputs:
-        - { name: out, types: [TEXT], mode: stdout }
+        - { name: out, types: [NEWICK], mode: stdout }
     parameters:
       - { name: deroot, type: flag, flag: -d }
       - { name: lax, type: flag, flag: -l }
@@ -92,12 +99,13 @@ operations:
     name: Prune (newick-utils)
     category: Genomic Operations
     bin: nw_prune
-    description: Remove the named nodes from a tree, or with reverse enabled keep only those nodes.
+    description: Remove the nodes whose labels are in the label list (one per line), or with reverse keep only those nodes.
     io:
       inputs:
-        - { name: in, types: [TEXT], mode: file }
+        - { name: in, types: [NEWICK], mode: file }
+        - { name: labels, types: [LIST], mode: file, flag: --bc-labels }
       outputs:
-        - { name: out, types: [TEXT], mode: stdout }
+        - { name: out, types: [NEWICK], mode: stdout }
     parameters:
       - { name: reverse, type: flag, flag: -v }
 
@@ -108,9 +116,9 @@ operations:
     description: Strip branch lengths to leave the tree topology alone, optionally discarding labels as well.
     io:
       inputs:
-        - { name: in, types: [TEXT], mode: file }
+        - { name: in, types: [NEWICK], mode: file }
       outputs:
-        - { name: out, types: [TEXT], mode: stdout }
+        - { name: out, types: [NEWICK], mode: stdout }
     parameters:
       - { name: keep_branch_lengths, type: flag, flag: -b }
       - { name: discard_inner_labels, type: flag, flag: -I }
@@ -120,28 +128,45 @@ operations:
     name: Extract Clade (newick-utils)
     category: Genomic Operations
     bin: nw_clade
-    description: Extract the smallest clade containing all the labels given as arguments.
+    description: Extract the smallest clade containing all the labels in the label list (one per line).
     io:
       inputs:
-        - { name: in, types: [TEXT], mode: file }
+        - { name: in, types: [NEWICK], mode: file }
+        - { name: labels, types: [LIST], mode: file, flag: --bc-labels }
       outputs:
-        - { name: out, types: [TEXT], mode: stdout }
+        - { name: out, types: [NEWICK], mode: stdout }
     parameters:
       - { name: context_levels, type: integer, flag: -c }
       - { name: monophyletic_only, type: flag, flag: -m }
       - { name: siblings, type: flag, flag: -s }
-      - { name: label_regexp, type: string, flag: -r }
+
+  - id: newickutils.clade.regexp
+    name: Extract Clade by Pattern (newick-utils)
+    category: Genomic Operations
+    bin: nw_clade
+    description: Extract the smallest clade containing all the labels that match a pattern, a basic POSIX regular expression (as in grep, so alternation is written \|).
+    io:
+      inputs:
+        - { name: in, types: [NEWICK], mode: file }
+      outputs:
+        - { name: out, types: [NEWICK], mode: stdout }
+    parameters:
+      - { name: regexp_mode, type: flag, flag: -r, required: true, hidden: true }
+      - { name: pattern, type: string, flag: --bc-last, required: true }
+      - { name: context_levels, type: integer, flag: -c }
+      - { name: monophyletic_only, type: flag, flag: -m }
+      - { name: siblings, type: flag, flag: -s }
 
   - id: newickutils.labels
     name: List Labels (newick-utils)
     category: Information and Analysis
     bin: nw_labels
-    description: List the node labels of a tree, one per line or tab separated.
+    description: List the node labels of trees, one per line or, with tab_separated, on one line.
     io:
       inputs:
-        - { name: in, types: [TEXT], mode: file }
+        - { name: in, types: [NEWICK], mode: file }
       outputs:
-        - { name: out, types: [TEXT], mode: stdout }
+        - { name: out, types: [LIST], mode: stdout }
     parameters:
       - { name: no_inner_labels, type: flag, flag: -I }
       - { name: no_leaf_labels, type: flag, flag: -L }
@@ -152,10 +177,11 @@ operations:
     name: Distances (newick-utils)
     category: Information and Analysis
     bin: nw_distance
-    description: Report distances between nodes, as a list or as a matrix, measured from the root, the parent, or the last common ancestor.
+    description: Report distances between nodes, as a list or as a matrix, measured from the root, the parent, or the last common ancestor. With a label list (one per line), only between those nodes.
     io:
       inputs:
-        - { name: in, types: [TEXT], mode: file }
+        - { name: in, types: [NEWICK], mode: file }
+        - { name: labels, types: [LIST], mode: file, flag: --bc-labels }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
@@ -168,10 +194,10 @@ operations:
     name: Tree Statistics (newick-utils)
     category: Information and Analysis
     bin: nw_stats
-    description: Report summary statistics for a tree, including node and leaf counts and whether it is a cladogram or a phylogram.
+    description: Report summary statistics for trees, including node and leaf counts and whether each is a cladogram or a phylogram.
     io:
       inputs:
-        - { name: in, types: [TEXT], mode: file }
+        - { name: in, types: [NEWICK], mode: file }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
@@ -184,22 +210,23 @@ operations:
     description: Order the children of each node by a chosen criterion, which makes two trees with the same topology directly comparable.
     io:
       inputs:
-        - { name: in, types: [TEXT], mode: file }
+        - { name: in, types: [NEWICK], mode: file }
       outputs:
-        - { name: out, types: [TEXT], mode: stdout }
+        - { name: out, types: [NEWICK], mode: stdout }
     parameters:
       - { name: criterion, type: string, flag: -c }
+      - { name: reverse, type: flag, flag: -r }
 
   - id: newickutils.indent
     name: Indent (newick-utils)
     category: Format Conversion
     bin: nw_indent
-    description: Reformat a tree across multiple indented lines so it can be read, or with compact enabled collapse it back onto one line.
+    description: Reformat trees across multiple indented lines so they can be read, or with compact collapse them back onto one line.
     io:
       inputs:
-        - { name: in, types: [TEXT], mode: file }
+        - { name: in, types: [NEWICK], mode: file }
       outputs:
-        - { name: out, types: [TEXT], mode: stdout }
+        - { name: out, types: [NEWICK], mode: stdout }
     parameters:
       - { name: compact, type: flag, flag: -c }
       - { name: indent_text, type: string, flag: -t }
@@ -208,12 +235,13 @@ operations:
     name: Condense (newick-utils)
     category: Genomic Operations
     bin: nw_condense
-    description: Collapse clades whose leaves all share a label into a single node.
+    description: Collapse clades whose leaves all share a label into a single leaf. With a group map (a label and a group per line), collapse the clades whose leaves all belong to one group into a leaf named group_sample_size.
     io:
       inputs:
-        - { name: in, types: [TEXT], mode: file }
+        - { name: in, types: [NEWICK], mode: file }
+        - { name: group_map, types: [TEXT], mode: file, flag: -m }
       outputs:
-        - { name: out, types: [TEXT], mode: stdout }
+        - { name: out, types: [NEWICK], mode: stdout }
     parameters:
       - { name: unicify_labels, type: flag, flag: -u }
 
@@ -221,11 +249,12 @@ operations:
     name: Trim (newick-utils)
     category: Genomic Operations
     bin: nw_trim
-    description: Cut the tree at a given depth, measured as a distance from the root or as a number of ancestors.
+    description: Cut trees at a maximum depth, measured as a distance from the root or, with depth_in_ancestors, as a number of ancestors.
     io:
       inputs:
-        - { name: in, types: [TEXT], mode: file }
+        - { name: in, types: [NEWICK], mode: file }
       outputs:
-        - { name: out, types: [TEXT], mode: stdout }
+        - { name: out, types: [NEWICK], mode: stdout }
     parameters:
+      - { name: max_depth, type: float, flag: --bc-last, required: true, default: 1 }
       - { name: depth_in_ancestors, type: flag, flag: -a }
