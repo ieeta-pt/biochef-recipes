@@ -2,7 +2,7 @@ apiVersion: v1
 
 id: app.biochef.psmc
 name: PSMC
-description: PSMC — Pairwise Sequentially Markovian Coalescent. Infers historical population size changes from a single diploid genome using the distribution of heterozygous sites along the chromosome. Standard demographic-history tool — pair with a consensus FASTA from variant calling and convert to PSMC FASTA via fq2psmcfa first.
+description: PSMC, the Pairwise Sequentially Markovian Coalescent model, infers the history of effective population size from a single diploid genome, using the density of heterozygous sites along its chromosomes. Its input is a PSMC FASTA, made with fq2psmcfa from a diploid consensus FASTQ such as samtools consensus or vcfutils vcf2fq output.
 
 version: 0.6.5-bc.1
 homepage: https://github.com/lh3/psmc
@@ -34,14 +34,14 @@ operations:
     name: Fit PSMC Model
     category: Phylogenetics
     bin: psmc
-    description: Run the pairwise SMC inference on a PSMC-format FASTA (one diploid sample). Outputs per-iteration parameter estimates including effective population size trajectory. Input must come from fq2psmcfa.
+    description: Fit the PSMC model to a PSMC FASTA from fq2psmcfa. The output lists, for each EM iteration, the estimated theta and rho and the coalescent rate of each time interval, which psmc_plot.pl turns into a population size history. With bootstrap (-b) the input must come from Split PSMC FASTA.
     io:
       inputs:
         - { name: in, types: [FASTA, Multi-FASTA], mode: file }
-        - { name: cpg_counts, types: [TEXT], mode: file, flag: -c }
-        - { name: init_params, types: [TEXT], mode: file, flag: -i }
+        - { name: cpg_counts, types: [PSMC_CPG], mode: file, flag: -c }
+        - { name: init_params, types: [PSMC_PARAMS], mode: file, flag: -i }
       outputs:
-        - { name: out, types: [TEXT], mode: file, flag: -o, filename: "psmc.out" }
+        - { name: out, types: [PSMC], mode: file, flag: -o, filename: "psmc.out" }
     parameters:
       - { name: pattern, type: string, flag: -p, default: "4+5*3+4" }
       - { name: max_coal_time, type: float, flag: -t, default: 15 }
@@ -59,63 +59,78 @@ operations:
     name: FASTQ to PSMC FASTA
     category: Format Conversion
     bin: fq2psmcfa
-    description: Convert a per-base consensus FASTQ (e.g. samtools consensus output) into PSMC FASTA — a binned representation where each character marks a 100bp window as homozygous (T) or heterozygous (K). This is the canonical preprocessing step before psmc.fit.
+    description: Convert a diploid consensus FASTQ, where heterozygous sites are IUPAC codes, into PSMC FASTA, with one character per bin of 100 bp marking it as homozygous (T), heterozygous (K) or missing (N). Bases below the quality threshold are treated as missing. This is the input of Fit PSMC Model.
     io:
       inputs:
         - { name: in, types: [FASTQ], mode: file }
       outputs:
-        - { name: out, types: [FASTA], mode: stdout }
+        - { name: out, types: [FASTA, Multi-FASTA], mode: stdout }
     parameters:
       - { name: bin_size, type: integer, flag: -s, default: 100 }
       - { name: min_quality, type: integer, flag: -q, default: 20 }
-      - { name: min_depth, type: float, flag: -d }
-      - { name: max_depth, type: float, flag: -D }
+      - { name: min_good_bases, type: integer, flag: -g, default: 10000 }
+      - { name: mask_chrx_par, type: flag, flag: -x }
+      - { name: transversions_only, type: flag, flag: -v }
+      - { name: transitions_without_cpg, type: flag, flag: -n }
+      - { name: cpg_transitions_only, type: flag, flag: -c }
+      - { name: exclude_cpg, type: flag, flag: -C }
 
   - id: psmc.splitfa
     name: Split PSMC FASTA (Bootstrap)
     category: Format Conversion
     bin: splitfa
-    description: Split a PSMC-format FASTA into chunks for bootstrap resampling. Output is fed back into psmc with the -b flag to produce confidence intervals.
+    description: Split the sequences of a PSMC FASTA into segments of 500,000 bins, so that Fit PSMC Model with bootstrap (-b) can resample them to give confidence intervals.
     io:
       inputs:
         - { name: in, types: [FASTA, Multi-FASTA], mode: file }
       outputs:
         - { name: out, types: [FASTA, Multi-FASTA], mode: stdout }
-    parameters:
-      - { name: chunk_size, type: integer, flag: -s, default: 500000 }
+    parameters: []
 
   - id: psmc.cntcpg
     name: Count CpG Sites
     category: Sequence Analysis
     bin: cntcpg
-    description: Count CpG dinucleotide sites along the input sequence. Output feeds into psmc.fit via the -c flag for CpG-aware mutation modeling.
+    description: Count, in bins along a diploid consensus FASTA, the called CpG and non-CpG sites and the heterozygous transitions and transversions at each. The binary counts are the CpG input (-c) of Fit PSMC Model.
     io:
       inputs:
         - { name: in, types: [FASTA, Multi-FASTA], mode: file }
       outputs:
-        - { name: out, types: [TEXT], mode: stdout }
-    parameters: []
+        - { name: out, types: [PSMC_CPG], mode: file, flag: -o, filename: "counts.cpg" }
+    parameters:
+      - { name: bin_size, type: integer, flag: -s, default: 100 }
+      - { name: max_missing_ratio, type: float, flag: -n, default: 0.9 }
+      - { name: presence_only, type: flag, flag: -b }
 
   - id: psmc.calD
-    name: Compute Tajima's D
-    category: Sequence Analysis
+    name: Patterson's D (ABBA-BABA)
+    category: Phylogenetics
     bin: calD
-    description: Compute Tajima's D — a summary statistic measuring deviation from neutral evolution. Negative values suggest population expansion or purifying selection; positive values suggest balancing selection or population contraction.
+    description: Compute Patterson's D statistic (the ABBA-BABA test for gene flow) from four aligned genomes U, V, X and Y, given as consensus FASTA in the same coordinates, with a block jackknife standard error and Z score. Prints D, its standard error and Z. With a BED mask (-M), only the sites inside its regions count; with FASTQ inputs, bases below the quality threshold (-q) are skipped.
     io:
       inputs:
-        - { name: in, types: [FASTA, Multi-FASTA], mode: file }
+        - { name: U, types: [FASTA, Multi-FASTA, FASTQ], mode: file }
+        - { name: V, types: [FASTA, Multi-FASTA, FASTQ], mode: file }
+        - { name: X, types: [FASTA, Multi-FASTA, FASTQ], mode: file }
+        - { name: Y, types: [FASTA, Multi-FASTA, FASTQ], mode: file }
+        - { name: mask, types: [BED], mode: file, flag: -M }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
-    parameters: []
+    parameters:
+      - { name: window_size, type: integer, flag: -w, default: 1000000 }
+      - { name: min_quality, type: integer, flag: -q, default: 0 }
 
   - id: psmc.mutDiff
     name: Mutation Differences
-    category: Sequence Analysis
+    category: Phylogenetics
     bin: mutDiff
-    description: Compute pairwise mutation differences between sequences in the input FASTA. Useful for sanity-checking input data before running PSMC inference.
+    description: Compare two aligned genomes against an outgroup, counting the sites where only the first or only the second differs from the outgroup, with a block jackknife estimate of their normalised difference and its standard error and Z score. With list (-l) it prints each of those sites instead.
     io:
       inputs:
-        - { name: in, types: [FASTA, Multi-FASTA], mode: file }
+        - { name: seq1, types: [FASTA, Multi-FASTA], mode: file }
+        - { name: seq2, types: [FASTA, Multi-FASTA], mode: file }
+        - { name: outgroup, types: [FASTA, Multi-FASTA], mode: file }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
-    parameters: []
+    parameters:
+      - { name: list, type: flag, flag: -l }
