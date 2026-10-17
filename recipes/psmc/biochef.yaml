@@ -1,0 +1,136 @@
+apiVersion: v1
+
+id: app.biochef.psmc
+name: PSMC
+description: PSMC, the Pairwise Sequentially Markovian Coalescent model, infers the history of effective population size from a single diploid genome, using the density of heterozygous sites along its chromosomes. Its input is a PSMC FASTA, made with fq2psmcfa from a diploid consensus FASTQ such as samtools consensus or vcfutils vcf2fq output.
+
+version: 0.6.5-bc.1
+homepage: https://github.com/lh3/psmc
+license:
+  spdx: MIT
+  files: [LICENSE.txt]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/lh3/psmc
+  commit: "82fa2ada83ee463fe1251b562ae3d60e82d7ad6a"
+  version: "0.6.5"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+
+runtime:
+  modes: [wasm, remote]
+
+operations:
+  - id: psmc.fit
+    name: Fit PSMC Model
+    category: Phylogenetics
+    bin: psmc
+    description: Fit the PSMC model to a PSMC FASTA from fq2psmcfa. The output lists, for each EM iteration, the estimated theta and rho and the coalescent rate of each time interval, which psmc_plot.pl turns into a population size history. With bootstrap (-b) the input must come from Split PSMC FASTA.
+    io:
+      inputs:
+        - { name: in, types: [FASTA, Multi-FASTA], mode: file }
+        - { name: cpg_counts, types: [PSMC_CPG], mode: file, flag: -c }
+        - { name: init_params, types: [PSMC_PARAMS], mode: file, flag: -i }
+      outputs:
+        - { name: out, types: [PSMC], mode: file, flag: -o, filename: "psmc.out" }
+    parameters:
+      - { name: pattern, type: string, flag: -p, default: "4+5*3+4" }
+      - { name: max_coal_time, type: float, flag: -t, default: 15 }
+      - { name: max_iterations, type: integer, flag: -N, default: 30 }
+      - { name: theta_rho_ratio, type: float, flag: -r, default: 4 }
+      - { name: divergence_time, type: float, flag: -T }
+      - { name: bootstrap, type: flag, flag: -b }
+      - { name: decode, type: flag, flag: -d }
+      - { name: full_posterior, type: flag, flag: -D }
+      - { name: simulate, type: flag, flag: -S }
+      - { name: print_prob, type: flag, flag: -s }
+      - { name: cap_transition, type: integer, flag: -C }
+
+  - id: psmc.fq2psmcfa
+    name: FASTQ to PSMC FASTA
+    category: Format Conversion
+    bin: fq2psmcfa
+    description: Convert a diploid consensus FASTQ, where heterozygous sites are IUPAC codes, into PSMC FASTA, with one character per bin of 100 bp marking it as homozygous (T), heterozygous (K) or missing (N). Bases below the quality threshold are treated as missing. This is the input of Fit PSMC Model.
+    io:
+      inputs:
+        - { name: in, types: [FASTQ], mode: file }
+      outputs:
+        - { name: out, types: [FASTA, Multi-FASTA], mode: stdout }
+    parameters:
+      - { name: bin_size, type: integer, flag: -s, default: 100 }
+      - { name: min_quality, type: integer, flag: -q, default: 20 }
+      - { name: min_good_bases, type: integer, flag: -g, default: 10000 }
+      - { name: mask_chrx_par, type: flag, flag: -x }
+      - { name: transversions_only, type: flag, flag: -v }
+      - { name: transitions_without_cpg, type: flag, flag: -n }
+      - { name: cpg_transitions_only, type: flag, flag: -c }
+      - { name: exclude_cpg, type: flag, flag: -C }
+
+  - id: psmc.splitfa
+    name: Split PSMC FASTA (Bootstrap)
+    category: Format Conversion
+    bin: splitfa
+    description: Split the sequences of a PSMC FASTA into segments of 500,000 bins, so that Fit PSMC Model with bootstrap (-b) can resample them to give confidence intervals.
+    io:
+      inputs:
+        - { name: in, types: [FASTA, Multi-FASTA], mode: file }
+      outputs:
+        - { name: out, types: [FASTA, Multi-FASTA], mode: stdout }
+    parameters: []
+
+  - id: psmc.cntcpg
+    name: Count CpG Sites
+    category: Sequence Analysis
+    bin: cntcpg
+    description: Count, in bins along a diploid consensus FASTA, the called CpG and non-CpG sites and the heterozygous transitions and transversions at each. The binary counts are the CpG input (-c) of Fit PSMC Model.
+    io:
+      inputs:
+        - { name: in, types: [FASTA, Multi-FASTA], mode: file }
+      outputs:
+        - { name: out, types: [PSMC_CPG], mode: file, flag: -o, filename: "counts.cpg" }
+    parameters:
+      - { name: bin_size, type: integer, flag: -s, default: 100 }
+      - { name: max_missing_ratio, type: float, flag: -n, default: 0.9 }
+      - { name: presence_only, type: flag, flag: -b }
+
+  - id: psmc.calD
+    name: Patterson's D (ABBA-BABA)
+    category: Phylogenetics
+    bin: calD
+    description: Compute Patterson's D statistic (the ABBA-BABA test for gene flow) from four aligned genomes U, V, X and Y, given as consensus FASTA in the same coordinates, with a block jackknife standard error and Z score. Prints D, its standard error and Z. With a BED mask (-M), only the sites inside its regions count; with FASTQ inputs, bases below the quality threshold (-q) are skipped.
+    io:
+      inputs:
+        - { name: U, types: [FASTA, Multi-FASTA, FASTQ], mode: file }
+        - { name: V, types: [FASTA, Multi-FASTA, FASTQ], mode: file }
+        - { name: X, types: [FASTA, Multi-FASTA, FASTQ], mode: file }
+        - { name: Y, types: [FASTA, Multi-FASTA, FASTQ], mode: file }
+        - { name: mask, types: [BED], mode: file, flag: -M }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: window_size, type: integer, flag: -w, default: 1000000 }
+      - { name: min_quality, type: integer, flag: -q, default: 0 }
+
+  - id: psmc.mutDiff
+    name: Mutation Differences
+    category: Phylogenetics
+    bin: mutDiff
+    description: Compare two aligned genomes against an outgroup, counting the sites where only the first or only the second differs from the outgroup, with a block jackknife estimate of their normalised difference and its standard error and Z score. With list (-l) it prints each of those sites instead.
+    io:
+      inputs:
+        - { name: seq1, types: [FASTA, Multi-FASTA], mode: file }
+        - { name: seq2, types: [FASTA, Multi-FASTA], mode: file }
+        - { name: outgroup, types: [FASTA, Multi-FASTA], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: list, type: flag, flag: -l }
