@@ -2,7 +2,7 @@ apiVersion: v1
 
 id: app.biochef.bhtsne
 name: bhtsne
-description: Barnes-Hut t-SNE — non-linear dimensionality reduction for high-dimensional embeddings (e.g. scRNA-seq expression matrices, k-mer signatures, MSA profiles). Fast O(n log n) approximation of full t-SNE. Input is an SND table (one row per sample, a name followed by tab-separated values); output is the 2D/3D embedding in the same format.
+description: "Barnes-Hut t-SNE: non-linear dimensionality reduction of high-dimensional data, such as single-cell expression matrices, k-mer signatures or alignment profiles, in O(n log n). Input is an SND table, one row per sample with a name followed by tab-separated values; output is the embedding in the same format. A seed gives the same embedding natively and in the browser."
 
 version: 2016.08.22-bc.1
 homepage: https://github.com/lh3/bhtsne
@@ -26,16 +26,19 @@ build:
       emscriptenVersion: 4.0.18
       outputDir: out
       buildScript: build-wasm.sh
+  native:
+    buildScript: build-native.sh
+    buildTools: [make, gcc]
 
 runtime:
-  modes: [wasm]
+  modes: [wasm, native]
 
 operations:
   - id: bhtsne.embed
     name: t-SNE Embedding (bhtsne)
     category: Sequence Analysis
     bin: bhtsne
-    description: Compute a Barnes-Hut t-SNE embedding from an SND table, which is an optional '#' header followed by one row per sample with a name and tab-separated values. Output is an SND table with one row per sample (first column = row name, remaining columns = embedded coordinates).
+    description: "Embed the samples of an SND table (lines starting with '#' are skipped, then one row per sample: a name and tab-separated values, as many in every row) with Barnes-Hut t-SNE. The output is an SND table with one row per sample: its name and its coordinates. The table needs more than three times the perplexity samples. A theta of 0 runs exact t-SNE, for small tables; with theta above 0 the output dimension is at most 8."
     io:
       inputs:
         - { name: in, types: [SND], mode: file }
