@@ -2,7 +2,7 @@ apiVersion: v1
 
 id: app.biochef.cdhit
 name: CD-HIT
-description: CD-HIT — fast clustering of protein or DNA sequences. Greedy incremental clustering algorithm that groups sequences sharing identity above a user-set threshold. Ships six related binaries for protein clustering (cd-hit), nucleotide clustering (cd-hit-est), 2-way comparison (cd-hit-2d / cd-hit-est-2d), redundancy filtering of 454 reads (cd-hit-454), and diversity selection (cd-hit-div).
+description: "CD-HIT clusters protein or nucleotide sequences: it groups those that share at least a set identity, greedily from the longest, and keeps the longest of each group as its representative. Each clustering writes the representatives and the clusters (.clstr), with each member's identity to its representative. Cluster Proteins and Cluster Nucleotides cluster one file; Compare Proteins and Compare Nucleotides keep the sequences of a second file that are in no cluster of a first; 454 Duplicate Removal finds duplicate reads; Divide splits a file into parts of about the same total length."
 
 version: 4.8.1-bc.1
 homepage: http://weizhongli-lab.org/cd-hit/
@@ -26,103 +26,205 @@ build:
       outputDir: out
       emscriptenVersion: 4.0.18
       buildScript: build-wasm.sh
+  native:
+    buildScript: build-native.sh
+    buildTools: [make, gcc]
 
 runtime:
-  modes: [wasm, remote]
+  modes: [wasm, native]
 
 operations:
   - id: cdhit.cluster
     name: Cluster Proteins (cd-hit)
     category: Sequence Analysis
     bin: cd-hit
-    description: Cluster protein sequences by global or local identity. Output contains the representative sequence per cluster plus a .clstr file listing cluster members.
+    description: "Cluster protein sequences, in FASTA, plain or gzipped. Writes the representative of each cluster and the clusters."
     io:
       inputs:
         - { name: in, types: [FASTA, Multi-FASTA], mode: file, flag: -i }
       outputs:
-        - { name: out, types: [FASTA, Multi-FASTA], mode: file, flag: -o }
+        - &representatives { name: out, types: [FASTA, Multi-FASTA], mode: file, flag: -o }
+        - &clusters { name: clusters, types: [CDHIT_CLSTR], mode: file, flag: --bc-clusters }
     parameters:
       - { name: identity_threshold, type: float, flag: -c, default: 0.9 }
-      - { name: global_identity, type: integer, flag: -G }
+      - &global_identity { name: global_identity, type: integer, flag: -G }
+      - &band_width { name: band_width, type: integer, flag: -b }
+      - &max_memory_mb { name: max_memory_mb, type: integer, flag: -M }
       - { name: word_length, type: integer, flag: -n }
-      - { name: max_memory_mb, type: integer, flag: -M }
-      - { name: length_diff_cutoff, type: float, flag: -s }
-      - { name: alignment_coverage_shorter, type: float, flag: -aS }
-      - { name: alignment_coverage_longer, type: float, flag: -aL }
-      - { name: descriptions, type: integer, flag: -d }
-      - { name: cluster_all, type: integer, flag: -g }
+      - &min_length { name: min_length, type: integer, flag: -l }
+      - &tolerance { name: tolerance, type: integer, flag: -t }
+      - &description_length { name: description_length, type: integer, flag: -d }
+      - &length_diff_cutoff { name: length_diff_cutoff, type: float, flag: -s }
+      - &length_diff_cutoff_residues { name: length_diff_cutoff_residues, type: integer, flag: -S }
+      - &coverage_longer { name: coverage_longer, type: float, flag: -aL }
+      - &coverage_longer_max_unaligned { name: coverage_longer_max_unaligned, type: integer, flag: -AL }
+      - &coverage_shorter { name: coverage_shorter, type: float, flag: -aS }
+      - &coverage_shorter_max_unaligned { name: coverage_shorter_max_unaligned, type: integer, flag: -AS }
+      - &min_aligned { name: min_aligned, type: integer, flag: -A }
+      - &max_unmatched_longer { name: max_unmatched_longer, type: float, flag: -uL }
+      - &max_unmatched_shorter { name: max_unmatched_shorter, type: float, flag: -uS }
+      - &max_unmatched_length { name: max_unmatched_length, type: integer, flag: -U }
+      - &print_overlap { name: print_overlap, type: integer, flag: -p }
+      - &most_similar_cluster { name: most_similar_cluster, type: integer, flag: -g }
+      - &sort_clusters_by_size { name: sort_clusters_by_size, type: integer, flag: -sc }
+      - &sort_sequences_by_cluster_size { name: sort_sequences_by_cluster_size, type: integer, flag: -sf }
 
   - id: cdhit.cluster.nucleotide
     name: Cluster Nucleotides (cd-hit-est)
     category: Sequence Analysis
     bin: cd-hit-est
-    description: Cluster nucleotide sequences (DNA/RNA) by identity. Like cd-hit but optimised for nucleotide alphabets.
+    description: "Cluster DNA or RNA sequences, in FASTA or FASTQ, plain or gzipped, on both strands unless strand_both is 0. Writes the representative of each cluster, in the input's format, and the clusters."
     io:
       inputs:
-        - { name: in, types: [FASTA, Multi-FASTA], mode: file, flag: -i }
+        - { name: in, types: [FASTA, Multi-FASTA, FASTQ], mode: file, flag: -i }
       outputs:
-        - { name: out, types: [FASTA, Multi-FASTA], mode: file, flag: -o }
+        - &representatives_nucleotide { name: out, types: [FASTA, Multi-FASTA, FASTQ], mode: file, flag: -o }
+        - *clusters
     parameters:
-      - { name: identity_threshold, type: float, flag: -c, default: 0.95 }
-      - { name: word_length, type: integer, flag: -n }
-      - { name: max_memory_mb, type: integer, flag: -M }
-      - { name: length_diff_cutoff, type: float, flag: -s }
-      - { name: strand_compare, type: integer, flag: -r }
+      - &identity_threshold_nucleotide { name: identity_threshold, type: float, flag: -c, default: 0.9 }
+      - *global_identity
+      - *band_width
+      - *max_memory_mb
+      - &word_length_nucleotide { name: word_length, type: integer, flag: -n }
+      - *min_length
+      - *description_length
+      - *length_diff_cutoff
+      - *length_diff_cutoff_residues
+      - *coverage_longer
+      - *coverage_longer_max_unaligned
+      - *coverage_shorter
+      - *coverage_shorter_max_unaligned
+      - *min_aligned
+      - *max_unmatched_longer
+      - *max_unmatched_shorter
+      - *max_unmatched_length
+      - &trim_length { name: trim_length, type: integer, flag: -cx }
+      - { name: align_from_start, type: integer, flag: -ap }
+      - *print_overlap
+      - *most_similar_cluster
+      - &strand_both { name: strand_both, type: integer, flag: -r }
+      - &mask_letters { name: mask_letters, type: string, flag: -mask }
+      - &match_score { name: match_score, type: integer, flag: -match }
+      - &mismatch_score { name: mismatch_score, type: integer, flag: -mismatch }
+      - &gap_open_score { name: gap_open_score, type: integer, flag: -gap }
+      - &gap_extend_score { name: gap_extend_score, type: integer, flag: -gap-ext }
+      - *sort_clusters_by_size
+      - *sort_sequences_by_cluster_size
 
   - id: cdhit.compare.proteins
     name: Compare Proteins (cd-hit-2d)
     category: Sequence Analysis
     bin: cd-hit-2d
-    description: Compare two protein FASTA files; report sequences in file 2 that are not redundant against file 1.
+    description: "Compare two sets of protein sequences, in FASTA, plain or gzipped. Writes the sequences of the second set that are in no cluster of the first, and the clusters: each sequence of the first set with the sequences of the second like it."
     io:
       inputs:
         - { name: in1, types: [FASTA, Multi-FASTA], mode: file, flag: -i }
-        - { name: in2, types: [FASTA, Multi-FASTA], mode: file, flag: -i2 }
+        - { name: in2, types: [Multi-FASTA, FASTA], mode: file, flag: -i2 }
       outputs:
-        - { name: out, types: [FASTA, Multi-FASTA], mode: file, flag: -o }
+        - *representatives
+        - *clusters
     parameters:
       - { name: identity_threshold, type: float, flag: -c, default: 0.9 }
+      - *global_identity
+      - *band_width
+      - *max_memory_mb
       - { name: word_length, type: integer, flag: -n }
+      - *min_length
+      - *tolerance
+      - *description_length
+      - *length_diff_cutoff
+      - *length_diff_cutoff_residues
+      - &length_diff_cutoff_first { name: length_diff_cutoff_first, type: float, flag: -s2 }
+      - &length_diff_cutoff_first_residues { name: length_diff_cutoff_first_residues, type: integer, flag: -S2 }
+      - *coverage_longer
+      - *coverage_longer_max_unaligned
+      - *coverage_shorter
+      - *coverage_shorter_max_unaligned
+      - *min_aligned
+      - *max_unmatched_longer
+      - *max_unmatched_shorter
+      - *max_unmatched_length
+      - *print_overlap
+      - *most_similar_cluster
 
   - id: cdhit.compare.nucleotide
     name: Compare Nucleotides (cd-hit-est-2d)
     category: Sequence Analysis
     bin: cd-hit-est-2d
-    description: Compare two nucleotide FASTA files; report sequences in file 2 that are not redundant against file 1.
+    description: "Compare two sets of DNA or RNA sequences, in FASTA or FASTQ, plain or gzipped. Writes the sequences of the second set that are in no cluster of the first, in its format, and the clusters: each sequence of the first set with the sequences of the second like it."
     io:
       inputs:
-        - { name: in1, types: [FASTA, Multi-FASTA], mode: file, flag: -i }
-        - { name: in2, types: [FASTA, Multi-FASTA], mode: file, flag: -i2 }
+        - { name: in1, types: [FASTA, Multi-FASTA, FASTQ], mode: file, flag: -i }
+        - { name: in2, types: [Multi-FASTA, FASTA, FASTQ], mode: file, flag: -i2 }
       outputs:
-        - { name: out, types: [FASTA, Multi-FASTA], mode: file, flag: -o }
+        - *representatives_nucleotide
+        - *clusters
     parameters:
-      - { name: identity_threshold, type: float, flag: -c, default: 0.95 }
-      - { name: word_length, type: integer, flag: -n }
-      - { name: strand_compare, type: integer, flag: -r }
+      - *identity_threshold_nucleotide
+      - *global_identity
+      - *band_width
+      - *max_memory_mb
+      - *word_length_nucleotide
+      - *min_length
+      - *description_length
+      - *length_diff_cutoff
+      - *length_diff_cutoff_residues
+      - *length_diff_cutoff_first
+      - *length_diff_cutoff_first_residues
+      - *coverage_longer
+      - *coverage_longer_max_unaligned
+      - *coverage_shorter
+      - *coverage_shorter_max_unaligned
+      - *min_aligned
+      - *max_unmatched_longer
+      - *max_unmatched_shorter
+      - *max_unmatched_length
+      - *trim_length
+      - *print_overlap
+      - *most_similar_cluster
+      - *strand_both
+      - *mask_letters
+      - *match_score
+      - *mismatch_score
+      - *gap_open_score
+      - *gap_extend_score
 
   - id: cdhit.div
     name: Divide (cd-hit-div)
     category: Sequence Analysis
     bin: cd-hit-div
-    description: Divide a FASTA file into N segments by length or similarity, for parallel downstream processing.
+    description: "Divide sequences, in FASTA or FASTQ, plain or gzipped, into parts of about the same total length, from the longest sequence to the shortest, for example to cluster them in parts. Writes the parts, as part-1.fa, part-2.fa and so on (.fq for FASTQ), in a tar; a part that would be empty is left out."
     io:
       inputs:
-        - { name: in, types: [FASTA, Multi-FASTA], mode: file, flag: -i }
+        - { name: in, types: [FASTA, Multi-FASTA, FASTQ], mode: file, flag: -i }
       outputs:
-        - { name: out, types: [FASTA, Multi-FASTA], mode: file, flag: -o }
+        - { name: parts, types: [SEQUENCE_TAR], mode: file, flag: --bc-parts }
     parameters:
-      - { name: num_divisions, type: integer, flag: -div }
+      - { name: num_divisions, type: integer, flag: -div, default: 2, required: true }
 
   - id: cdhit.dup.454
     name: 454 Duplicate Removal (cd-hit-454)
     category: Sequence Analysis
     bin: cd-hit-454
-    description: Detect and remove duplicate or near-duplicate 454 / Roche reads.
+    description: "Find the artificial duplicates of 454 reads, in FASTA or FASTQ, plain or gzipped: reads that start at the same base and differ only by sequencing errors. Writes the longest read of each group, in the input's format, and the groups."
     io:
       inputs:
         - { name: in, types: [FASTA, Multi-FASTA, FASTQ], mode: file, flag: -i }
       outputs:
-        - { name: out, types: [FASTA, Multi-FASTA, FASTQ], mode: file, flag: -o }
+        - *representatives_nucleotide
+        - *clusters
     parameters:
       - { name: identity_threshold, type: float, flag: -c, default: 0.98 }
-      - { name: word_length, type: integer, flag: -n }
+      - *band_width
+      - *max_memory_mb
+      - *word_length_nucleotide
+      - *coverage_longer
+      - *coverage_longer_max_unaligned
+      - *coverage_shorter
+      - *coverage_shorter_max_unaligned
+      - *most_similar_cluster
+      - { name: max_indel, type: integer, flag: -D }
+      - *match_score
+      - *mismatch_score
+      - *gap_open_score
+      - *gap_extend_score
