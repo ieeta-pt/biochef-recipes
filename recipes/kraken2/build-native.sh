@@ -2,9 +2,535 @@ set -eo pipefail
 
 cd src
 
+# BioChef passes the database between operations as one tar. This entry
+# point, linked in place of the main of classify, build_db and dump_table,
+# writes that tar after build_db, and checks and unpacks it before classify
+# and dump_table. The same entry point is in build-wasm.sh.
+cat > biochef_main.cpp <<'SHIM_EOF'
+/* The build names kraken2's own main kraken2_tool_main, for this one to wrap */
+#undef main
+
+#include <limits.h>
+#include <stdarg.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+#if !defined(BC_CLASSIFY) && !defined(BC_BUILD) && !defined(BC_DUMP)
+#error "define BC_CLASSIFY, BC_BUILD or BC_DUMP"
+#endif
+int kraken2_tool_main(int argc, char **argv);
+
+/* A Kraken 2 database is three files: hash.k2d, opts.k2d and taxo.k2d.
+ * Between operations it travels as one tar holding them under those names,
+ * so that a single input carries the whole database and it can be unpacked
+ * outside BioChef into a directory that kraken2 reads. */
+#define N_MEMBERS 3
+enum { HASH, OPTS, TAXO };
+static const char *members[N_MEMBERS + 1] = { "hash.k2d", "opts.k2d", "taxo.k2d", NULL };
+#define PREFIX "_bc_k2_"
+#define TAXONOMY_DIR "_bc_k2_taxonomy"
+
+static void fail(const char *format, ...) __attribute__((noreturn, format(printf, 1, 2)));
+static void fail(const char *format, ...)
+{
+	va_list ap;
+	fputs("[kraken2] ", stderr);
+	va_start(ap, format);
+	vfprintf(stderr, format, ap);
+	va_end(ap);
+	fputc('\n', stderr);
+	exit(1);
+}
+
+static void *xmalloc(size_t size)
+{
+	void *p = malloc(size ? size : 1);
+	if (!p) fail("out of memory");
+	return p;
+}
+
+static unsigned char *read_file(const char *path, long *size)
+{
+	FILE *fp = fopen(path, "rb");
+	unsigned char *buf;
+	if (!fp) fail("cannot read %s", path);
+	if (fseek(fp, 0, SEEK_END) || (*size = ftell(fp)) < 0 || fseek(fp, 0, SEEK_SET)) fail("cannot read %s", path);
+	buf = (unsigned char *)xmalloc(*size + 1);
+	if (fread(buf, 1, *size, fp) != (size_t)*size) fail("cannot read %s", path);
+	buf[*size] = 0;
+	fclose(fp);
+	return buf;
+}
+
+static const char *member_file(int i)
+{
+	static char name[64];
+	snprintf(name, sizeof name, PREFIX "%s", members[i]);
+	return name;
+}
+
+/* ---- tar (POSIX ustar), only regular files ---- */
+
+static unsigned tar_checksum(const unsigned char *h)
+{
+	unsigned sum = 0;
+	int i;
+	for (i = 0; i < 512; ++i) sum += (i >= 148 && i < 156) ? ' ' : h[i];
+	return sum;
+}
+
+#ifdef BC_BUILD
+/* Writes the database files as a tar with fixed owner, mode and time, so the
+ * same index always gives the same bytes. */
+static void tar_write(const char *path)
+{
+	FILE *out = fopen(path, "wb");
+	static unsigned char zero[1024];
+	int i;
+	if (!out) fail("cannot write %s", path);
+	for (i = 0; members[i]; ++i) {
+		unsigned char h[512];
+		long size, pad;
+		unsigned char *data = read_file(member_file(i), &size);
+		memset(h, 0, sizeof h);
+		memcpy(h, members[i], strlen(members[i]));
+		memcpy(h + 100, "0000644", 7);
+		memcpy(h + 108, "0000000", 7);
+		memcpy(h + 116, "0000000", 7);
+		snprintf((char *)h + 124, 12, "%011lo", size);
+		memcpy(h + 136, "00000000000", 11);
+		h[156] = '0';
+		memcpy(h + 257, "ustar", 6);
+		memcpy(h + 263, "00", 2);
+		snprintf((char *)h + 148, 8, "%06o", tar_checksum(h));
+		h[155] = ' ';
+		pad = (512 - size % 512) % 512;
+		if (fwrite(h, 1, 512, out) != 512 || fwrite(data, 1, size, out) != (size_t)size
+		    || fwrite(zero, 1, pad, out) != (size_t)pad)
+			fail("cannot write %s", path);
+		free(data);
+	}
+	if (fwrite(zero, 1, 1024, out) != 1024 || fclose(out)) fail("cannot write %s", path);
+}
+#else
+
+static long octal(const unsigned char *p, int len, const char *path)
+{
+	long v = 0;
+	int i = 0;
+	while (i < len && p[i] == ' ') ++i;
+	if (i == len || p[i] < '0' || p[i] > '7') fail("%s is not a Kraken 2 database: a broken tar header", path);
+	for (; i < len && p[i] >= '0' && p[i] <= '7'; ++i) {
+		if (v > (LONG_MAX - 7) / 8) fail("%s is not a Kraken 2 database: a member is too large", path);
+		v = v * 8 + (p[i] - '0');
+	}
+	for (; i < len; ++i)
+		if (p[i] != ' ' && p[i] != 0) fail("%s is not a Kraken 2 database: a broken tar header", path);
+	return v;
+}
+
+/* A pax header (typeflag x or g) may carry attributes such as times or
+ * extended attributes, which do not matter here. One that renames the next
+ * member or changes its size would make it a different file: refused. */
+static void check_pax(const unsigned char *p, long len, const char *path)
+{
+	const unsigned char *end = p + len;
+	while (p < end && *p) {
+		long n = 0;
+		const unsigned char *q = p, *key;
+		while (q < end && *q >= '0' && *q <= '9' && n < len) n = n * 10 + (*q++ - '0');
+		if (q == p || q >= end || *q != ' ' || n <= q - p + 1 || n > end - p || p[n - 1] != '\n')
+			fail("%s is not a Kraken 2 database: a broken pax header", path);
+		key = q + 1;
+		if (!strncmp((const char *)key, "path=", 5) || !strncmp((const char *)key, "linkpath=", 9)
+		    || !strncmp((const char *)key, "size=", 5) || !strncmp((const char *)key, "GNU.sparse", 10))
+			fail("%s is not a Kraken 2 database: a pax header changes a member", path);
+		p += n;
+	}
+}
+
+struct index { const unsigned char *data[N_MEMBERS]; uint64_t size[N_MEMBERS]; unsigned char *buf; int found; };
+
+/* Reads a tar that must hold the three database files, each once, as regular
+ * files. Nothing in it names a path. */
+static void tar_read(const char *path, struct index *x)
+{
+	long size, off = 0;
+	int i;
+	memset(x, 0, sizeof *x);
+	x->buf = read_file(path, &size);
+	for (;;) {
+		const unsigned char *h = x->buf + off;
+		long len;
+		if (off + 512 > size) fail("%s is not a Kraken 2 database: it ends inside a tar header", path);
+		for (i = 0; i < 512 && !h[i]; ++i);
+		if (i == 512) break;
+		if (memcmp(h + 257, "ustar", 5)) fail("%s is not a Kraken 2 database: not a tar file", path);
+		if (octal(h + 148, 8, path) != (long)tar_checksum(h)) fail("%s is not a Kraken 2 database: a tar header checksum is wrong", path);
+		len = octal(h + 124, 12, path);
+		if (len > size - off - 512) fail("%s is not a Kraken 2 database: %.100s is cut short", path, (const char *)h);
+		if (h[156] == 'x' || h[156] == 'g') {
+			check_pax(h + 512, len, path);
+			off += 512 + (len + 511) / 512 * 512;
+			continue;
+		}
+		if (h[156] != '0' && h[156] != 0) fail("%s is not a Kraken 2 database: it holds something other than files", path);
+		if (h[345]) fail("%s is not a Kraken 2 database: a member has a path", path);
+		/* macOS tar adds the extended attributes of a file as ._file */
+		for (i = 0; members[i]; ++i)
+			if (!strncmp((const char *)h, "._", 2) && !strncmp((const char *)h + 2, members[i], 98) && !h[2 + strlen(members[i])]) break;
+		if (members[i]) {
+			off += 512 + (len + 511) / 512 * 512;
+			continue;
+		}
+		for (i = 0; members[i]; ++i)
+			if (!strncmp((const char *)h, members[i], 100) && !h[strlen(members[i])]) break;
+		if (!members[i]) fail("%s is not a Kraken 2 database: it holds %.100s", path, (const char *)h);
+		if (x->found & 1 << i) fail("%s is not a Kraken 2 database: it holds %s twice", path, members[i]);
+		x->found |= 1 << i;
+		x->data[i] = h + 512;
+		x->size[i] = len;
+		off += 512 + (len + 511) / 512 * 512;
+	}
+	for (i = 0; members[i]; ++i)
+		if (!(x->found & 1 << i)) fail("%s is not a Kraken 2 database: it lacks %s", path, members[i]);
+}
+#endif
+
+/* opts.k2d is kraken2's IndexOptions as it lies in memory: k and l, the
+ * spaced seed and toggle masks, whether the database is of nucleotides, the
+ * minimum hash value, then three ints for versions and type. The bytes
+ * after the bool and after the last int are padding, which build_db writes
+ * from whatever was in memory: zeroed here, so the same input gives the
+ * same database. */
+#define OPTS_SIZE 64
+
+#ifndef BC_BUILD
+static uint64_t le64(const unsigned char *p)
+{
+	uint64_t v = 0;
+	int i;
+	for (i = 7; i >= 0; --i) v = v << 8 | p[i];
+	return v;
+}
+
+static const char *db_path;
+
+static void bad(const char *format, ...) __attribute__((noreturn, format(printf, 1, 2)));
+static void bad(const char *format, ...)
+{
+	va_list ap;
+	fprintf(stderr, "[kraken2] %s is not a Kraken 2 database: ", db_path);
+	va_start(ap, format);
+	vfprintf(stderr, format, ap);
+	va_end(ap);
+	fputc('\n', stderr);
+	exit(1);
+}
+
+/* The files must belong together, as kraken2 assumes when it reads them:
+ * taxo.k2d is a taxonomy tree, hash.k2d maps minimizers to taxa of that
+ * tree, and opts.k2d holds plausible options. */
+static void check_db(const struct index *x)
+{
+	const unsigned char *t = x->data[TAXO], *h = x->data[HASH], *o = x->data[OPTS];
+	uint64_t n, name_len, rank_len, i, c, capacity, size, key_bits, value_bits, filled = 0, k, l;
+
+	/* taxo.k2d: "K2TAXDAT", the number of nodes, the lengths of the names
+	 * and ranks, the nodes (parent, first child, number of children, name
+	 * and rank offsets, external ID, godparent), then the names and ranks,
+	 * each ending with a NUL. Node 0 is unused, node 1 is the root; a
+	 * node's parent comes before it and its children are together after
+	 * it. */
+	if (x->size[TAXO] < 32 || memcmp(t, "K2TAXDAT", 8)) bad("taxo.k2d is not a Kraken 2 taxonomy");
+	n = le64(t + 8);
+	name_len = le64(t + 16);
+	rank_len = le64(t + 24);
+	if (n < 2 || n > (x->size[TAXO] - 32) / 56 || name_len > x->size[TAXO] || rank_len > x->size[TAXO]
+	    || x->size[TAXO] != 32 + 56 * n + name_len + rank_len)
+		bad("taxo.k2d is not whole");
+	{
+		const unsigned char *nodes = t + 32, *names = nodes + 56 * n, *ranks = names + name_len;
+		if (!name_len || names[name_len - 1] || !rank_len || ranks[rank_len - 1]) bad("taxo.k2d has broken names");
+		for (i = 1; i < n; ++i) {
+			const unsigned char *node = nodes + 56 * i;
+			uint64_t parent = le64(node), first = le64(node + 8), count = le64(node + 16);
+			if ((i == 1 ? parent != 0 : parent < 1 || parent >= i) || (count && first <= i) || first > n || count > n - first)
+				bad("taxo.k2d has a broken tree");
+			if (le64(node + 24) >= name_len || le64(node + 32) >= rank_len) bad("taxo.k2d has broken names");
+			for (c = first; c < first + count; ++c)
+				if (le64(nodes + 56 * c) != i) bad("taxo.k2d has a broken tree");
+		}
+	}
+
+	/* hash.k2d: capacity, size, key and value bits, then capacity cells of
+	 * 32 bits. A cell's low value bits are the taxon of its minimizer, or 0
+	 * where it is empty; size is the number of cells that are not. */
+	if (x->size[HASH] < 32) bad("hash.k2d is cut short");
+	capacity = le64(h);
+	size = le64(h + 8);
+	key_bits = le64(h + 16);
+	value_bits = le64(h + 24);
+	if (!capacity || capacity > (x->size[HASH] - 32) / 4 || x->size[HASH] != 32 + 4 * capacity)
+		bad("hash.k2d is not whole");
+	if (value_bits < 1 || value_bits > 31 || key_bits + value_bits != 32) bad("hash.k2d has broken parameters");
+	for (i = 0; i < capacity; ++i) {
+		const unsigned char *cell = h + 32 + 4 * i;
+		uint64_t v = (cell[0] | cell[1] << 8 | cell[2] << 16 | (uint64_t)cell[3] << 24) & (((uint64_t)1 << value_bits) - 1);
+		if (!v) continue;
+		if (v >= n) bad("hash.k2d holds taxa that taxo.k2d does not");
+		++filled;
+	}
+	if (filled != size) bad("hash.k2d is not whole");
+
+	/* opts.k2d: minimizers of l bases in k-mers of k, at most 31 bases of
+	 * nucleotides or 15 amino acids, which kraken2 packs into 64 bits */
+	if (x->size[OPTS] != OPTS_SIZE) bad("opts.k2d is not whole");
+	k = le64(o);
+	l = le64(o + 8);
+	if (o[32] > 1 || l < 1 || l > k || k > 255 || l > (o[32] ? 31u : 15u)) bad("opts.k2d has broken options");
+}
+
+static void unpack(const char *path)
+{
+	struct index x;
+	int i;
+	db_path = path;
+	tar_read(path, &x);
+	check_db(&x);
+	for (i = 0; members[i]; ++i) {
+		FILE *fp = fopen(member_file(i), "wb");
+		if (!fp || fwrite(x.data[i], 1, x.size[i], fp) != x.size[i] || fclose(fp)) fail("cannot write %s", member_file(i));
+	}
+	free(x.buf);
+}
+#endif
+
+static void cleanup(void)
+{
+	int i;
+	for (i = 0; members[i]; ++i) unlink(member_file(i));
+#ifdef BC_BUILD
+	unlink(TAXONOMY_DIR "/nodes.dmp");
+	unlink(TAXONOMY_DIR "/names.dmp");
+	rmdir(TAXONOMY_DIR);
+#endif
+#ifdef BC_CLASSIFY
+	unlink(PREFIX "c_1");
+	unlink(PREFIX "c_2");
+	unlink(PREFIX "u_1");
+	unlink(PREFIX "u_2");
+#endif
+}
+
+#ifdef BC_BUILD
+static void copy_file(const char *from, const char *to)
+{
+	long size;
+	unsigned char *data = read_file(from, &size);
+	FILE *fp = fopen(to, "wb");
+	if (!fp || fwrite(data, 1, size, fp) != (size_t)size || fclose(fp)) fail("cannot write %s", to);
+	free(data);
+}
+#endif
+
+#ifdef BC_CLASSIFY
+/* Where the reads start: classify takes its options first, as getopt
+ * without reordering reads them */
+static int first_file(int n, char **args)
+{
+	static const char *with_value = "HtoTpRCUOQg";
+	int i;
+	for (i = 1; i < n; ++i) {
+		const char *a = args[i];
+		if (a[0] != '-' || !a[1]) return i;
+		if (!strcmp(a, "--")) return i + 1;
+		for (++a; *a; ++a)
+			if (strchr(with_value, *a)) {
+				if (!a[1]) ++i;
+				break;
+			}
+	}
+	return n;
+}
+
+static int has_option(int n, char **args, char c)
+{
+	int i, end = first_file(n, args);
+	for (i = 1; i < end; ++i)
+		if (args[i][0] == '-' && args[i][1] == c && !args[i][2]) return 1;
+	return 0;
+}
+
+/* An output the operation declares must exist, even when kraken2 had
+ * nothing to write to it */
+static void move_or_create(const char *from, const char *to)
+{
+	FILE *fp;
+	if (!access(from, F_OK)) {
+		if (rename(from, to)) fail("cannot write %s", to);
+		return;
+	}
+	if (!(fp = fopen(to, "wb")) || fclose(fp)) fail("cannot write %s", to);
+}
+#endif
+
+/* --bc-db FILE         the database to read: classify and dump_table
+ * --bc-out FILE        build_db writes the database here
+ * --bc-nodes FILE      build_db: NCBI's nodes.dmp
+ * --bc-names FILE      build_db: NCBI's names.dmp
+ * --bc-classified FILE, --bc-unclassified FILE, and --bc-classified2 FILE,
+ * --bc-unclassified2 FILE for the second reads of pairs given as two files:
+ *                      classify writes the reads it classified, or did not,
+ *                      there */
+int main(int argc, char *argv[])
+{
+	char **args = (char **)calloc(argc + 12, sizeof(char *));
+	const char *db = NULL, *out = NULL, *nodes = NULL, *names = NULL;
+	const char *classified = NULL, *unclassified = NULL, *classified2 = NULL, *unclassified2 = NULL;
+	int i, n = 0, rc;
+
+	if (!args) fail("out of memory");
+	/* Working files, of this run or one before it in the same file system */
+	cleanup();
+	if (atexit(cleanup)) fail("cannot register the clean-up");
+
+	args[n++] = argv[0];
+	for (i = 1; i < argc; ++i) {
+		const char *a = argv[i], **slot;
+		if (!strcmp(a, "--bc-db")) slot = &db;
+		else if (!strcmp(a, "--bc-out")) slot = &out;
+		else if (!strcmp(a, "--bc-nodes")) slot = &nodes;
+		else if (!strcmp(a, "--bc-names")) slot = &names;
+		else if (!strcmp(a, "--bc-classified")) slot = &classified;
+		else if (!strcmp(a, "--bc-unclassified")) slot = &unclassified;
+		else if (!strcmp(a, "--bc-classified2")) slot = &classified2;
+		else if (!strcmp(a, "--bc-unclassified2")) slot = &unclassified2;
+		else {
+			args[n++] = argv[i];
+			continue;
+		}
+		if (i + 1 >= argc) fail("%s needs a file", a);
+		if (*slot) fail("%s given twice", a);
+		*slot = argv[++i];
+	}
+	args[n] = NULL;
+
+#ifdef BC_BUILD
+	if (db || classified || unclassified || classified2 || unclassified2) fail("only --bc-out, --bc-nodes and --bc-names go with build_db");
+	if (!out) return kraken2_tool_main(n, args);
+	if (!nodes || !names) fail("build_db needs the taxonomy: nodes.dmp and names.dmp");
+	/* build_db reads them by name from a directory, and writes the three
+	 * files where -H, -o and -t say; its options come before nothing else */
+	if (mkdir(TAXONOMY_DIR, 0755)) fail("cannot make %s", TAXONOMY_DIR);
+	copy_file(nodes, TAXONOMY_DIR "/nodes.dmp");
+	copy_file(names, TAXONOMY_DIR "/names.dmp");
+	{
+		static char h[64], o[64], t[64];
+		snprintf(h, sizeof h, "%s", member_file(HASH));
+		snprintf(o, sizeof o, "%s", member_file(OPTS));
+		snprintf(t, sizeof t, "%s", member_file(TAXO));
+		args[n++] = (char *)"-n";
+		args[n++] = (char *)TAXONOMY_DIR;
+		args[n++] = (char *)"-H";
+		args[n++] = h;
+		args[n++] = (char *)"-o";
+		args[n++] = o;
+		args[n++] = (char *)"-t";
+		args[n++] = t;
+		args[n] = NULL;
+	}
+	rc = kraken2_tool_main(n, args);
+	if (rc != 0) return rc;
+	{
+		long size;
+		unsigned char *opts = read_file(member_file(OPTS), &size);
+		FILE *fp;
+		if (size != OPTS_SIZE) fail("build_db wrote options of %ld bytes", size);
+		memset(opts + 33, 0, 7);
+		memset(opts + 60, 0, 4);
+		if (!(fp = fopen(member_file(OPTS), "wb")) || fwrite(opts, 1, size, fp) != (size_t)size || fclose(fp))
+			fail("cannot write %s", member_file(OPTS));
+		free(opts);
+	}
+	tar_write(out);
+	return 0;
+#else
+	if (out || nodes || names) fail("--bc-out, --bc-nodes and --bc-names go with build_db only");
+#ifdef BC_DUMP
+	if (classified || unclassified || classified2 || unclassified2) fail("only --bc-db goes with dump_table");
+#endif
+	if (!db) return kraken2_tool_main(n, args);
+	unpack(db);
+	{
+		/* the database files and the options for split reads go before the
+		 * other options, which come before the reads */
+		static char h[64], o[64], t[64];
+		int at = 1, k, files, pairs = 0;
+		char *front[10];
+		int m = 0;
+		snprintf(h, sizeof h, "%s", member_file(HASH));
+		snprintf(o, sizeof o, "%s", member_file(OPTS));
+		snprintf(t, sizeof t, "%s", member_file(TAXO));
+		front[m++] = (char *)"-H";
+		front[m++] = h;
+		front[m++] = (char *)"-o";
+		front[m++] = o;
+		front[m++] = (char *)"-t";
+		front[m++] = t;
+#ifdef BC_CLASSIFY
+		files = n - first_file(n, args);
+		for (k = first_file(n, args); k < n; ++k)
+			if (strchr(args[k], ',')) fail("the name %s has a comma", args[k]);
+		/* two files of reads are the two ends of pairs */
+		if (files == 2 && !has_option(n, args, 'P') && !has_option(n, args, 'S')) front[m++] = (char *)"-P";
+		pairs = files == 2 || has_option(n, args, 'P') || has_option(n, args, 'S');
+		/* kraken2 names the files of pairs by putting _1 and _2 for the #
+		 * of the name it is given */
+		if (classified) {
+			front[m++] = (char *)"-C";
+			front[m++] = (char *)(pairs ? PREFIX "c#" : PREFIX "c_1");
+		}
+		if (unclassified) {
+			front[m++] = (char *)"-U";
+			front[m++] = (char *)(pairs ? PREFIX "u#" : PREFIX "u_1");
+		}
+#else
+		(void)files;
+		(void)pairs;
+		(void)k;
+#endif
+		memmove(args + at + m, args + at, (n - at + 1) * sizeof(char *));
+		memcpy(args + at, front, m * sizeof(char *));
+		n += m;
+	}
+	rc = kraken2_tool_main(n, args);
+#ifdef BC_CLASSIFY
+	if (rc == 0) {
+		if (classified) move_or_create(PREFIX "c_1", classified);
+		if (unclassified) move_or_create(PREFIX "u_1", unclassified);
+		if (classified2) move_or_create(PREFIX "c_2", classified2);
+		if (unclassified2) move_or_create(PREFIX "u_2", unclassified2);
+	}
+#endif
+	return rc;
+#endif
+}
+SHIM_EOF
+
 # A lookup line without a tab makes lookup_accession_numbers read past the end
 # of its fields and crash; skip such lines instead.
 sed -i.bak 's|^    auto fields = SplitString(line, "\\t", 2);$|&\n    if (fields.size() < 2) continue;|' lookup_accession_numbers.cc
 grep -q '^    if (fields.size() < 2) continue;$' lookup_accession_numbers.cc
 
-make -j4 estimate_capacity build_db classify dump_table lookup_accession_numbers k2mask
+CXXFLAGS="-fopenmp -Wall -std=c++11 -O3 -fPIC -DLINEAR_PROBING"
+make -j4 CXXFLAGS="$CXXFLAGS" estimate_capacity lookup_accession_numbers k2mask
+for tool in classify build_db dump_table; do
+  define=$(case $tool in classify) echo BC_CLASSIFY ;; build_db) echo BC_BUILD ;; dump_table) echo BC_DUMP ;; esac)
+  g++ $CXXFLAGS -D$define -c biochef_main.cpp -o "bc_$tool.o"
+  make CXXFLAGS="$CXXFLAGS -Dmain=kraken2_tool_main" LDFLAGS="bc_$tool.o" "$tool"
+done
