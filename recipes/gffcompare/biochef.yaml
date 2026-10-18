@@ -2,7 +2,7 @@ apiVersion: v1
 
 id: app.biochef.gffcompare
 name: GffCompare
-description: GffCompare — classification, matching, and comparison of GFF/GTF transcript files against a reference annotation. Standard downstream tool after StringTie / Cufflinks / scallop — answers "how do my assembled transcripts compare to the reference annotation" (which are novel? which match perfectly? which are intron-chain variants?). Also clusters and tracks transcripts across multiple samples for differential expression workflows. Ships with `trmap` — a sister tool for transcript-to-reference overlap classification on a per-transcript basis.
+description: "GffCompare compares transcripts assembled from RNA-seq, by StringTie, Cufflinks or Scallop, with a reference annotation: it gives each one a class code (= for a match, j for a new isoform, u for a new locus, and so on) and reports sensitivity and precision at the base, exon, intron, transcript and locus levels. It also collapses redundant transcripts. trmap, shipped with it, classifies how each query transcript overlaps the reference."
 
 version: 0.12.10-bc.1
 homepage: https://github.com/gpertea/gffcompare
@@ -28,7 +28,7 @@ build:
       buildScript: build-wasm.sh
   native:
     buildScript: build-native.sh
-    buildTools: [make]
+    buildTools: [make, gcc]
 
 runtime:
   modes: [wasm, native, remote]
@@ -38,43 +38,122 @@ operations:
     name: Compare Transcripts (GffCompare)
     category: Genomic Operations
     bin: gffcompare
-    description: Compare one or more GTF/GFF transcript assemblies against a reference annotation. Produces per-transcript classification codes (=, c, j, e, o, p, etc. — see gffcompare docs) and summary statistics (sensitivity / precision at the base, exon, intron, intron-chain, transcript, and locus levels). Multi-sample input also produces a cross-sample tracking file plus a merged non-redundant transcript GTF.
+    description: "Compare a GTF or GFF of transcripts with a reference annotation. Writes the accuracy statistics, the transcripts annotated with their class code and closest reference transcript, the loci, the tracking table, the tmap (each query transcript and its closest reference) and the refmap (each reference transcript and the queries that match it), and the splice junctions not in the reference. With the options that collapse or rename transcripts, the transcripts are written as a combined, non-redundant set instead."
     io:
       inputs:
-        - { name: in, types: [GFF], mode: file }
-        - { name: reference, types: [GFF], mode: file, flag: -r }
-        - { name: input_list, types: [TEXT], mode: file, flag: -i }
-        - { name: seq_path, types: [FASTA, Multi-FASTA], mode: file, flag: -s }
+        - &query { name: query, types: [GFF, GTF], mode: file }
+        - &reference { name: reference, types: [GFF, GTF], mode: file, flag: -r }
       outputs:
-        - { name: out, types: [TEXT], mode: file, flag: -o, filename: "gffcmp" }
+        - &stats { name: stats, types: [TEXT], mode: file, flag: --bc-stats, filename: gffcmp.stats }
+        - &gtf { name: transcripts, types: [GTF], mode: file, flag: --bc-gtf, filename: gffcmp.gtf }
+        - &loci { name: loci, types: [TEXT], mode: file, flag: --bc-loci, filename: gffcmp.loci }
+        - &tracking { name: tracking, types: [TEXT], mode: file, flag: --bc-tracking, filename: gffcmp.tracking }
+        - &tmap { name: tmap, types: [TEXT], mode: file, flag: --bc-tmap, filename: gffcmp.tmap }
+        - { name: refmap, types: [TEXT], mode: file, flag: --bc-refmap, filename: gffcmp.refmap }
+        - { name: novel_junctions, types: [TEXT], mode: file, flag: -j, filename: gffcmp.novel_junctions.tab }
+    parameters: &compare_parameters
+      - { name: reduce_references, type: flag, flag: -R }
+      - { name: reduce_queries, type: flag, flag: -Q }
+      - { name: multi_exon_only, type: flag, flag: -M }
+      - { name: multi_exon_references_only, type: flag, flag: -N }
+      - &end_range { name: exon_end_range, type: integer, flag: -e, default: 100 }
+      - &tss_distance { name: tss_distance, type: integer, flag: -d, default: 100 }
+      - &strict_match { name: strict_match, type: flag, flag: --strict-match }
+      - { name: cds_match, type: flag, flag: --cds-match }
+      - { name: chromosome_stats, type: flag, flag: --chr-stats }
+      - &no_merge { name: no_exon_merge, type: flag, flag: --no-merge }
+      - &discard_duplicates { name: discard_duplicates, type: flag, flag: -D }
+      - &strict_duplicates { name: strict_duplicates, type: flag, flag: -S }
+      - &collapse { name: collapse_contained, type: flag, flag: -C }
+      - &collapse_tss { name: collapse_keep_alt_tss, type: flag, flag: -A }
+      - &collapse_sticking { name: collapse_sticking_out, type: flag, flag: -X }
+      - &collapse_single { name: collapse_single_exon, type: flag, flag: --cset }
+      - { name: keep_reference_matching, type: flag, flag: -K }
+      - &prefix { name: transcript_prefix, type: string, flag: -p }
+
+  - id: gffcompare.compare.genome
+    name: Compare Transcripts with Genome (GffCompare)
+    category: Genomic Operations
+    bin: gffcompare
+    description: "Compare transcripts with a reference annotation as Compare Transcripts does, with the genome in FASTA: transcripts that lie mostly in soft-masked (lower-case) repeats get the class code r."
+    io:
+      inputs:
+        - *query
+        - *reference
+        - { name: genome, types: [FASTA, Multi-FASTA], mode: file, flag: -s }
+      outputs:
+        - *stats
+        - *gtf
+        - *loci
+        - *tracking
+        - *tmap
+        - { name: refmap, types: [TEXT], mode: file, flag: --bc-refmap, filename: gffcmp.refmap }
+        - { name: novel_junctions, types: [TEXT], mode: file, flag: -j, filename: gffcmp.novel_junctions.tab }
+    parameters: *compare_parameters
+
+  - id: gffcompare.collapse
+    name: Collapse Transcripts (GffCompare)
+    category: Genomic Operations
+    bin: gffcompare
+    description: "Cluster the transcripts of a GTF or GFF into loci without a reference, and write them as a non-redundant set: transcripts with the same intron chain are written once, and with the collapse options, so are transcripts contained in others. Also writes the statistics, the loci, the tracking table and the tmap."
+    io:
+      inputs:
+        - *query
+      outputs:
+        - *stats
+        - *gtf
+        - *loci
+        - *tracking
+        - *tmap
     parameters:
-      - { name: prefix, type: string, flag: -p }
-      - { name: discard_single_exon_reftxs, type: flag, flag: -R }
-      - { name: discard_single_exon_querytxs, type: flag, flag: -Q }
-      - { name: precision_recall, type: flag, flag: -T }
-      - { name: verbose, type: flag, flag: -V }
-      - { name: debug, type: flag, flag: -D }
-      - { name: chr_stats, type: flag, flag: -C }
-      - { name: keep_attrs, type: flag, flag: -K }
-      - { name: keep_dup_introns, type: flag, flag: -X }
-      - { name: max_dist, type: integer, flag: -d }
-      - { name: min_overlap, type: float, flag: -F }
+      - { name: discard_duplicates, type: flag, flag: -D, required: true, hidden: true }
+      - *end_range
+      - *tss_distance
+      - *strict_match
+      - *no_merge
+      - *strict_duplicates
+      - *collapse
+      - *collapse_tss
+      - *collapse_sticking
+      - *collapse_single
+      - *prefix
 
   - id: gffcompare.trmap
     name: Transcript Overlap Map (trmap)
     category: Genomic Operations
     bin: trmap
-    description: Per-transcript overlap classification — for each query transcript, report which reference transcripts overlap and the classification code (same as gffcompare codes). Lighter-weight than full gffcompare when you only need per-record overlap classification rather than summary stats and clustering.
+    description: "For each query transcript, list the reference transcripts it overlaps with their class codes, or with the table options one line per overlap or per query. The table options, -T, -J and -S, are exclusive, and best_only needs the overlap table."
     io:
       inputs:
-        - { name: reference, types: [GFF], mode: file }
-        - { name: query, types: [GFF], mode: file }
+        - { name: reference, types: [GFF, GTF], mode: file }
+        - { name: query, types: [GFF, GTF], mode: file }
       outputs:
-        - { name: out, types: [TEXT], mode: file, flag: -o, filename: "trmap.tsv" }
-    parameters:
-      - { name: codes_filter, type: string, flag: -c }
-      - { name: tab_output, type: flag, flag: -T }
-      - { name: json_output, type: flag, flag: -J }
-      - { name: short_output, type: flag, flag: -S }
-      - { name: self_compare, type: flag, flag: --self }
+        - &trmap_out { name: out, types: [TEXT], mode: file, flag: -o, filename: trmap.txt }
+    parameters: &trmap_parameters
+      - { name: class_codes, type: string, flag: -c }
+      - { name: overlap_table, type: flag, flag: -T }
+      - { name: junction_table, type: flag, flag: -J }
+      - { name: simple_overlap, type: flag, flag: -S }
       - { name: best_only, type: flag, flag: -B }
+      - { name: strict_match, type: flag, flag: --strict-match }
+      - { name: show_cds, type: flag, flag: --show-cds }
+
+  - id: gffcompare.trmap.self
+    name: Transcript Self-Overlap Map (trmap)
+    category: Genomic Operations
+    bin: trmap
+    description: "Map the transcripts of one GTF or GFF against each other, as Transcript Overlap Map does with a reference."
+    io:
+      inputs:
+        - { name: annotation, types: [GFF, GTF], mode: file }
+      outputs:
+        - *trmap_out
+    parameters:
+      - { name: self, type: flag, flag: --self, required: true, hidden: true }
+      - { name: class_codes, type: string, flag: -c }
+      - { name: overlap_table, type: flag, flag: -T }
+      - { name: junction_table, type: flag, flag: -J }
+      - { name: simple_overlap, type: flag, flag: -S }
+      - { name: best_only, type: flag, flag: -B }
+      - { name: strict_match, type: flag, flag: --strict-match }
+      - { name: show_cds, type: flag, flag: --show-cds }

@@ -1,1 +1,499 @@
-make release
+set -eo pipefail
+
+# gclib skips, without a word, features it cannot place in a transcript,
+# lines with too few columns and coordinates it cannot read. This entry
+# point, linked in front of gffcompare's and trmap's mains, reads every
+# annotation and sequence file first and refuses those; for gffcompare,
+# --bc-* options name the files its outputs are moved to. The same entry
+# point is in build-wasm.sh.
+cat > biochef_main.cpp <<'SHIM_EOF'
+// The entry point of gffcompare and trmap: it reads every annotation and
+// sequence file first, as gclib does, and refuses what gclib would skip
+// without a word or misread, then runs the tool. For gffcompare, --bc-*
+// options name the files its outputs are moved to.
+#include <ctype.h>
+#include <errno.h>
+#include <limits.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <map>
+#include <set>
+#include <string>
+#include <vector>
+
+int biochef_upstream_main(int argc, char *argv[]);
+
+static void fail(const char *format, ...)
+{
+	va_list ap;
+	va_start(ap, format);
+#ifdef BIOCHEF_TRMAP
+	fputs("[trmap] ", stderr);
+#else
+	fputs("[gffcompare] ", stderr);
+#endif
+	vfprintf(stderr, format, ap);
+	fputc('\n', stderr);
+	va_end(ap);
+	exit(1);
+}
+
+static std::string shown(int c)
+{
+	char s[8];
+	if (c >= 33 && c <= 126) snprintf(s, sizeof s, "'%c'", c);
+	else snprintf(s, sizeof s, "0x%02X", c);
+	return s;
+}
+
+// Reads a file line by line, without the line ends
+struct Lines {
+	FILE *in;
+	const char *path, *what;
+	long number;
+	std::string line;
+	Lines(const char *path, const char *what) : path(path), what(what), number(0)
+	{
+		struct stat st;
+		if (stat(path, &st) != 0) fail("cannot open %s, %s (%s)", path, what, strerror(errno));
+		if (!S_ISREG(st.st_mode)) fail("%s, %s, is not a file", path, what);
+		in = fopen(path, "rb");
+		if (!in) fail("cannot open %s, %s (%s)", path, what, strerror(errno));
+		int a = getc(in), b = getc(in);
+		if (a == 0x1f && b == 0x8b) fail("%s, %s, is compressed with gzip: it is read uncompressed", path, what);
+		rewind(in);
+	}
+	~Lines() { fclose(in); }
+	bool next()
+	{
+		line.clear();
+		int c;
+		while ((c = getc(in)) != EOF && c != '\n') line += (char)c;
+		if (ferror(in)) fail("cannot read %s, %s", path, what);
+		if (c == EOF && line.empty()) return false;
+		number++;
+		if (!line.empty() && line[line.size() - 1] == '\r') line.erase(line.size() - 1);
+		if (memchr(line.data(), 0, line.size())) fail("line %ld of %s, %s, holds a NUL byte", number, path, what);
+		return true;
+	}
+};
+
+static std::vector<std::string> fields(const std::string &s, char separator)
+{
+	std::vector<std::string> out(1);
+	for (size_t i = 0; i < s.size(); i++) {
+		if (s[i] == separator) out.push_back("");
+		else out.back() += s[i];
+	}
+	return out;
+}
+
+static bool whole(const std::string &s, long long low, long long high, long long &value)
+{
+	if (s.empty() || s.size() > 12 || s.find_first_not_of("0123456789") != std::string::npos) return false;
+	value = strtoll(s.c_str(), NULL, 10);
+	return value >= low && value <= high;
+}
+
+static bool real(const std::string &s)
+{
+	if (s.empty()) return false;
+	char *end;
+	errno = 0;
+	strtod(s.c_str(), &end);
+	return !*end && !errno && !isspace((unsigned char)s[0]);
+}
+
+static bool name_char(unsigned char c) { return c > 32 && c < 127; }
+
+// The value of a GFF3 attribute key=value, or of a GTF attribute key "value"
+static bool attribute(const std::string &attributes, bool gff3, const char *key, std::string &value)
+{
+	std::vector<std::string> parts = fields(attributes, ';');
+	for (size_t i = 0; i < parts.size(); i++) {
+		std::string p = parts[i];
+		size_t a = p.find_first_not_of(' ');
+		if (a == std::string::npos) continue;
+		p = p.substr(a);
+		size_t k = strlen(key);
+		if (gff3) {
+			if (p.compare(0, k, key) == 0 && p.size() > k && p[k] == '=') {
+				value = p.substr(k + 1);
+				return true;
+			}
+		} else if (p.compare(0, k, key) == 0 && p.size() > k && p[k] == ' ') {
+			value = p.substr(k + 1);
+			while (!value.empty() && value[value.size() - 1] == ' ') value.erase(value.size() - 1);
+			if (value.size() >= 2 && value[0] == '"' && value[value.size() - 1] == '"') value = value.substr(1, value.size() - 2);
+			return true;
+		}
+	}
+	return false;
+}
+
+static std::string lower(std::string s)
+{
+	for (size_t i = 0; i < s.size(); i++) s[i] = tolower((unsigned char)s[i]);
+	return s;
+}
+
+static bool ends(const std::string &s, const char *suffix)
+{
+	size_t n = strlen(suffix);
+	return s.size() >= n && s.compare(s.size() - n, n, suffix) == 0;
+}
+
+// Reads a GFF3 or GTF annotation as gclib does: a feature it takes for part
+// of a transcript must say which transcript, and the format is that of the
+// first feature to name one
+static void check_annotation(const char *path, const char *what)
+{
+	std::string name = path;
+	if (lower(name.size() >= 4 ? name.substr(name.size() - 4) : name) == ".bed")
+		fail("%s, %s, is named .bed, which is read as BED: GFF and GTF files are expected", path, what);
+	Lines in(path, what);
+	int format = 0; // 1 GFF3, 2 GTF
+	long transcripts = 0;
+	std::set<std::string> ids;
+	std::map<std::string, long> parents;
+	while (in.next()) {
+		const std::string &l = in.line;
+		if (l.compare(0, 7, "##FASTA") == 0) break;
+		if (l.empty() || l[0] == '#' || l.find_first_not_of(" \t") == std::string::npos) continue;
+		std::vector<std::string> f = fields(l, '\t');
+		if (f.size() != 9) {
+			if (in.number == 1 && l[0] == '>') fail("%s, %s, is FASTA: GFF or GTF is expected", path, what);
+			fail("line %ld of %s, %s, has %zu tab-separated columns: a GFF or GTF feature has 9", in.number, path, what, f.size());
+		}
+		for (int k = 0; k < 3; k++) {
+			if (f[k].empty()) fail("line %ld of %s, %s, has an empty column %d", in.number, path, what, k + 1);
+			for (size_t i = 0; i < f[k].size(); i++)
+				if (!name_char(f[k][i]) && (k == 0 || f[k][i] != ' ')) fail("line %ld of %s, %s, has %s in column %d", in.number, path, what, shown((unsigned char)f[k][i]).c_str(), k + 1);
+		}
+		long long start, end;
+		if (!whole(f[3], 1, INT_MAX, start)) fail("line %ld of %s, %s, has \"%s\" for its start, which should be a whole number from 1", in.number, path, what, f[3].c_str());
+		if (!whole(f[4], 1, INT_MAX, end)) fail("line %ld of %s, %s, has \"%s\" for its end, which should be a whole number from 1", in.number, path, what, f[4].c_str());
+		if (end < start) fail("line %ld of %s, %s, ends at %lld, before it starts at %lld", in.number, path, what, end, start);
+		if (f[5] != "." && !real(f[5])) fail("line %ld of %s, %s, has \"%s\" for its score, which should be a number or '.'", in.number, path, what, f[5].c_str());
+		if (f[6] != "+" && f[6] != "-" && f[6] != ".") fail("line %ld of %s, %s, has \"%s\" for its strand, which should be +, - or '.'", in.number, path, what, f[6].c_str());
+		if (f[7] != "." && f[7] != "0" && f[7] != "1" && f[7] != "2") fail("line %ld of %s, %s, has \"%s\" for its phase, which should be 0, 1, 2 or '.'", in.number, path, what, f[7].c_str());
+		if (f[8].empty()) fail("line %ld of %s, %s, has no attributes", in.number, path, what);
+		for (size_t i = 0; i < f[8].size(); i++)
+			if ((unsigned char)f[8][i] < 32) fail("line %ld of %s, %s, has %s in its attributes", in.number, path, what, shown((unsigned char)f[8][i]).c_str());
+
+		// gclib's feature kinds, by the type's name
+		std::string type = lower(f[2]);
+		if (ends(type, "match")) continue;
+		bool part = type.find("utr") != std::string::npos || ends(type, "exon") || type == "cds" ||
+			((type.find("stop") != std::string::npos || type.find("start") != std::string::npos) &&
+			 (type.find("codon") != std::string::npos || type.find("cds") != std::string::npos));
+		bool transcript = ends(type, "rna") || ends(type, "transcript") || ends(type, "_gene_segment");
+		bool gene = !transcript && (ends(type, "gene") || type.compare(0, 4, "gene") == 0);
+
+		std::string id, parent, tid, gid;
+		bool has_id = attribute(f[8], true, "ID", id), has_parent = attribute(f[8], true, "Parent", parent);
+		bool has_tid = attribute(f[8], false, "transcript_id", tid), has_gid = attribute(f[8], false, "gene_id", gid);
+		if (!format) {
+			if (has_id || has_parent) format = 1;
+			else if (has_tid || has_gid) format = 2;
+		}
+		if (format == 1) {
+			if (has_id) {
+				if (id.empty()) fail("line %ld of %s, %s, has an empty ID", in.number, path, what);
+				ids.insert(id);
+			}
+			if (has_parent) {
+				if (parent.empty()) fail("line %ld of %s, %s, has an empty Parent", in.number, path, what);
+				std::vector<std::string> p = fields(parent, ',');
+				for (size_t i = 0; i < p.size(); i++)
+					if (!parents.count(p[i])) parents[p[i]] = in.number;
+			}
+			if ((part || transcript || gene) && !has_id && !has_parent)
+				fail("line %ld of %s, %s, is a GFF3 %s with neither ID nor Parent, which gclib leaves out", in.number, path, what, f[2].c_str());
+			if (part && !has_parent) fail("line %ld of %s, %s, is a GFF3 %s with no Parent: its transcript is not named", in.number, path, what, f[2].c_str());
+		} else if (format == 2) {
+			if (has_id || has_parent) fail("line %ld of %s, %s, has GFF3 attributes in a GTF file", in.number, path, what);
+			if ((part || transcript) && (!has_tid || tid.empty())) fail("line %ld of %s, %s, is a GTF %s with no transcript_id, which gclib leaves out", in.number, path, what, f[2].c_str());
+			if (gene && (!has_gid || gid.empty())) fail("line %ld of %s, %s, is a GTF gene with no gene_id", in.number, path, what);
+		} else if (part || transcript || gene) {
+			fail("line %ld of %s, %s, is a %s with none of ID, Parent, transcript_id or gene_id, which gclib leaves out", in.number, path, what, f[2].c_str());
+		}
+		if (part || transcript) transcripts++;
+	}
+	for (std::map<std::string, long>::const_iterator p = parents.begin(); p != parents.end(); ++p)
+		if (!ids.count(p->first)) fail("line %ld of %s, %s, names Parent %s, which no feature has as its ID", p->second, path, what, p->first.c_str());
+	if (!transcripts) fail("%s, %s, holds no transcripts: no exon, CDS or transcript features", path, what);
+}
+
+#ifndef BIOCHEF_TRMAP
+
+static bool exists(const char *path)
+{
+	struct stat st;
+	return stat(path, &st) == 0;
+}
+
+// Reads FASTA as gclib's index does: every line of a sequence as long as
+// the first, but the last
+static void check_fasta(const char *path, const char *what)
+{
+	Lines in(path, what);
+	std::set<std::string> names;
+	std::string name;
+	size_t width = 0, last = 0;
+	long length = 0;
+	bool any = false;
+	while (in.next()) {
+		const std::string &l = in.line;
+		if (!l.empty() && l[0] == '>') {
+			if (any && !length) fail("sequence %s of %s, %s, has no bases", name.c_str(), path, what);
+			size_t e = 1;
+			while (e < l.size() && (unsigned char)l[e] > 32) e++;
+			name = l.substr(1, e - 1);
+			if (name.empty()) fail("line %ld of %s, %s, starts a sequence with no name", in.number, path, what);
+			if (!names.insert(name).second) fail("%s, %s, has two sequences named %s", path, what, name.c_str());
+			any = true;
+			width = last = length = 0;
+			continue;
+		}
+		if (!any) fail("%s, %s, is not FASTA: it should start with '>' and a name", path, what);
+		if (l.empty()) fail("line %ld of %s, %s, is blank", in.number, path, what);
+		for (size_t i = 0; i < l.size(); i++)
+			if (!isalpha((unsigned char)l[i])) fail("line %ld of %s, %s, has %s in sequence %s", in.number, path, what, shown((unsigned char)l[i]).c_str(), name.c_str());
+		if (!width) width = l.size();
+		else if (last != width || l.size() > width)
+			fail("line %ld of %s, %s, in sequence %s: every line of a sequence but its last should be as long as its first, %zu bases", in.number, path, what, name.c_str(), width);
+		last = l.size();
+		length += l.size();
+	}
+	if (!any) fail("%s, %s, holds no sequences", path, what);
+	if (!length) fail("sequence %s of %s, %s, has no bases", name.c_str(), path, what);
+}
+
+static void move(const std::string &from, const char *to)
+{
+	if (!to) return;
+	if (!exists(from.c_str())) fail("%s was not written", from.c_str());
+	if (rename(from.c_str(), to) != 0) fail("cannot move %s to %s (%s)", from.c_str(), to, strerror(errno));
+}
+
+#endif
+
+#ifdef BIOCHEF_TRMAP
+
+int main(int argc, char *argv[])
+{
+	std::vector<const char *> files;
+	bool self = false;
+	for (int i = 1; i < argc; i++) {
+		const char *a = argv[i];
+		if (!strcmp(a, "-h") || !strcmp(a, "--help")) return biochef_upstream_main(argc, argv);
+		if (!strcmp(a, "--self")) self = true;
+		else if (!strcmp(a, "-c") || !strcmp(a, "-t") || !strcmp(a, "-o")) {
+			if (i + 1 >= argc) fail("%s needs a value", a);
+			if (!strcmp(a, "-c")) {
+				const char *c = argv[i + 1];
+				if (!*c) fail("-c needs class codes, such as '=ck'");
+				for (; *c; c++)
+					if (!strchr("=~cjekmnopsuxyirz", *c)) fail("-c has %s, which is not a class code", shown((unsigned char)*c).c_str());
+			} else if (!*argv[i + 1]) fail("%s needs a file name", a);
+			i++;
+		} else if (!strcmp(a, "-T") || !strcmp(a, "-B") || !strcmp(a, "--best") || !strcmp(a, "-J") || !strcmp(a, "-S") ||
+			   !strcmp(a, "--strict-match") || !strcmp(a, "--show-cds")) {
+		} else if (a[0] == '-' && a[1]) fail("unknown option %s", a);
+		else files.push_back(a);
+	}
+	if (files.size() != (self ? 1u : 2u))
+		fail(self ? "--self takes one annotation, compared with itself" : "a reference annotation and a query annotation are needed");
+	check_annotation(files[0], self ? "the annotation" : "the reference");
+	if (!self) check_annotation(files[1], "the query");
+	return biochef_upstream_main(argc, argv);
+}
+
+#else
+
+int main(int argc, char *argv[])
+{
+	struct Output { const char *flag, *to; };
+	Output outputs[] = { { "--bc-stats", NULL }, { "--bc-gtf", NULL }, { "--bc-loci", NULL }, { "--bc-tracking", NULL },
+		{ "--bc-tmap", NULL }, { "--bc-refmap", NULL } };
+	const int n_outputs = sizeof outputs / sizeof *outputs;
+	std::vector<char *> args(1, (char *)"gffcompare");
+	std::vector<const char *> queries;
+	const char *reference = NULL, *genome = NULL, *prefix_given = NULL;
+	bool managed = false, no_tmap = false;
+	for (int i = 1; i < argc; i++) {
+		const char *a = argv[i];
+		if (!strcmp(a, "-h") || !strcmp(a, "--help") || !strcmp(a, "-v") || !strcmp(a, "--version")) return biochef_upstream_main(argc, argv);
+		bool output = false;
+		for (int k = 0; k < n_outputs; k++)
+			if (!strcmp(a, outputs[k].flag)) {
+				if (i + 1 >= argc || !*argv[i + 1]) fail("%s needs a file name", a);
+				if (outputs[k].to) fail("%s is given twice", a);
+				outputs[k].to = argv[++i];
+				managed = output = true;
+			}
+		if (output) continue;
+		if (!strcmp(a, "-i")) fail("-i reads the names of the query files from a file: give the query files as arguments instead");
+		if (!strcmp(a, "-n")) fail("unknown option -n");
+		if (!strcmp(a, "-r") || !strcmp(a, "-s") || !strcmp(a, "-o") || !strcmp(a, "-p") || !strcmp(a, "-e") || !strcmp(a, "-d") || !strcmp(a, "-j")) {
+			if (i + 1 >= argc || !*argv[i + 1]) fail("%s needs a value", a);
+			const char *v = argv[i + 1];
+			long long n;
+			if (!strcmp(a, "-r")) { if (reference) fail("-r is given twice"); reference = v; }
+			if (!strcmp(a, "-s")) { if (genome) fail("-s is given twice"); genome = v; }
+			if (!strcmp(a, "-o")) prefix_given = v;
+			if ((!strcmp(a, "-e") || !strcmp(a, "-d")) && !whole(v, 0, 1000000000, n))
+				fail("%s should be a whole number of bases from 0, and is \"%s\"", a, v);
+			if (!strcmp(a, "-p"))
+				for (const char *c = v; *c; c++)
+					if (!name_char((unsigned char)*c) || *c == ';' || *c == '"') fail("-p has %s, which cannot be in a transcript name", shown((unsigned char)*c).c_str());
+			args.push_back(argv[i]);
+			args.push_back(argv[++i]);
+			continue;
+		}
+		static const char *const flags[] = { "-A", "-C", "-D", "-S", "-K", "-M", "-N", "-Q", "-R", "-T", "-V", "-X",
+			"--debug", "--cset", "--no-exon-merge", "--no-merge", "--strict-match", "--cds-match", "--chr-stats", NULL };
+		bool known = false;
+		for (const char *const *f = flags; *f && !known; f++) known = !strcmp(a, *f);
+		if (known) {
+			if (!strcmp(a, "-T")) no_tmap = true;
+			args.push_back(argv[i]);
+			continue;
+		}
+		if (a[0] == '-' && a[1]) fail("unknown option %s", a);
+		queries.push_back(a);
+		args.push_back(argv[i]);
+	}
+	if (queries.empty()) fail("a query annotation is needed");
+	static const char *const need_reference[] = { "-M", "-N", "-R", "-Q", NULL };
+	for (const char *const *f = need_reference; *f && !reference; f++)
+		for (size_t i = 1; i < args.size(); i++)
+			if (!strcmp(args[i], *f)) fail("%s works with a reference, given with -r", *f);
+	if (reference) check_annotation(reference, "the reference (-r)");
+	for (size_t q = 0; q < queries.size(); q++) {
+		char what[64];
+		snprintf(what, sizeof what, queries.size() > 1 ? "query %zu" : "the query", q + 1);
+		check_annotation(queries[q], what);
+	}
+	if (genome) check_fasta(genome, "the genome (-s)");
+	if (!managed) {
+		args.push_back(NULL);
+		return biochef_upstream_main((int)args.size() - 1, &args[0]);
+	}
+
+	// The outputs are written as gffcmp.* in the working directory, and
+	// the tmap and refmap files next to the query, then moved
+	if (prefix_given) fail("-o and --bc-* options name the outputs two ways: give one");
+	for (size_t i = 1; i < args.size(); i++)
+		if (!strcmp(args[i], "--debug")) fail("--debug writes files the --bc-* options do not name");
+	if (queries.size() != 1) fail("the --bc-* options name the outputs of one query");
+	std::string query = queries[0];
+	size_t slash = query.rfind('/');
+	std::string dir = slash == std::string::npos ? "" : query.substr(0, slash + 1);
+	std::string base = slash == std::string::npos ? query : query.substr(slash + 1);
+	std::string written[] = { "gffcmp.stats", "", "gffcmp.loci", "gffcmp.tracking", dir + "gffcmp." + base + ".tmap", dir + "gffcmp." + base + ".refmap" };
+	if (outputs[4].to && no_tmap) fail("-T writes no tmap file, which --bc-tmap names");
+	if (outputs[5].to && (no_tmap || !reference)) fail("the refmap file is written with a reference (-r) and without -T, and --bc-refmap names it");
+	const char *candidates[] = { "gffcmp.annotated.gtf", "gffcmp.combined.gtf" };
+	for (int k = 0; k < n_outputs; k++)
+		if (!written[k].empty() && exists(written[k].c_str())) fail("%s exists, and gffcompare would overwrite it", written[k].c_str());
+	const char *also[] = { "gffcmp.annotated.gtf", "gffcmp.combined.gtf", "gffcmp.redundant.gtf" };
+	for (int k = 0; k < 3; k++)
+		if (exists(also[k])) fail("%s exists, and gffcompare would overwrite it", also[k]);
+	args.insert(args.begin() + 1, (char *)"gffcmp");
+	args.insert(args.begin() + 1, (char *)"-o");
+	args.push_back(NULL);
+	int status = biochef_upstream_main((int)args.size() - 1, &args[0]);
+	if (status) return status;
+	written[1] = exists(candidates[0]) ? candidates[0] : candidates[1];
+	// The collapse options also write the transcripts they leave out
+	remove("gffcmp.redundant.gtf");
+	// The outputs no --bc-* option names are removed
+	for (int k = 0; k < n_outputs; k++) {
+		if (outputs[k].to) move(written[k], outputs[k].to);
+		else remove(written[k].c_str());
+	}
+	return 0;
+}
+
+#endif
+SHIM_EOF
+sed -i 's/^int main(int argc, char\* argv\[\]) {$/int biochef_upstream_main(int argc, char* argv[]) {/' gffcompare.cpp trmap.cpp
+[ "$(cat gffcompare.cpp trmap.cpp | grep -c '^int biochef_upstream_main(int argc, char\* argv\[\]) {$')" -eq 2 ]
+# gffcompare's main ends without a return, which only main may do.
+sed -i 's|^} //main ends here$|  return 0;\n&|' gffcompare.cpp
+grep -q '^  return 0;$' gffcompare.cpp
+sed -i -e 's|^gffcompare: ${OBJS} ./gtf_tracking.o ./gffcompare.o$|& ./biochef_main.o|' \
+  -e 's|^trmap: ${OBJS} ./trmap.o$|& ./biochef_trmap.o|' Makefile
+printf '\n./biochef_trmap.o : ./biochef_main.cpp\n\t$''{CXX} $''{CXXFLAGS} -DBIOCHEF_TRMAP -c $< -o $@\n' >> Makefile
+grep -q 'gffcompare.o ./biochef_main.o$' Makefile
+grep -q 'trmap.o ./biochef_trmap.o$' Makefile
+
+# The loci of each locus across files, and the transcripts found the same
+# in several files, were ordered by their addresses in memory, which differ
+# from one runtime to another, and so did the .loci and .tracking files.
+# They are now ordered by place, file and transcript names.
+sed -i -e 's|^int cmpByPtr(const pointer p1, const pointer p2);$|&\nint biochef_cmpTxByKey(const pointer p1, const pointer p2);\nint biochef_cmpLocusByKey(const pointer p1, const pointer p2);|' \
+  -e 's|CEqList():GList<GffObj>((GCompareProc\*)cmpByPtr,|CEqList():GList<GffObj>((GCompareProc*)biochef_cmpTxByKey,|' \
+  -e 's|^\( *\)\([rq]loci\)((GCompareProc\*)cmpByPtr,|\1\2((GCompareProc*)biochef_cmpLocusByKey,|' gtf_tracking.h
+[ "$(grep -c 'biochef_cmp[A-Za-z]*ByKey' gtf_tracking.h)" -eq 5 ]
+[ "$(grep -c 'cmpByPtr' gtf_tracking.h)" -eq 1 ]
+cat >> gtf_tracking.cpp <<'ORDER_EOF'
+
+// Loci and transcripts in the same place are ordered by what they hold,
+// where cmpByPtr ordered them by their addresses in memory, which differ
+// from one runtime to another
+static int biochef_cmpInt(long a, long b) { return a < b ? -1 : (a > b ? 1 : 0); }
+
+int biochef_cmpTxByKey(const pointer p1, const pointer p2) {
+  if (p1==p2) return 0;
+  GffObj* a=(GffObj*)p1;
+  GffObj* b=(GffObj*)p2;
+  int c;
+  if ((c=biochef_cmpInt(a->gseq_id, b->gseq_id))) return c;
+  if ((c=biochef_cmpInt(a->start, b->start))) return c;
+  if ((c=biochef_cmpInt(a->end, b->end))) return c;
+  int qa=a->uptr ? ((CTData*)a->uptr)->qset : -2;
+  int qb=b->uptr ? ((CTData*)b->uptr)->qset : -2;
+  if ((c=biochef_cmpInt(qa, qb))) return c;
+  if ((c=strcmp(a->getID(), b->getID()))) return c;
+  return cmpByPtr(p1, p2);
+}
+
+int biochef_cmpLocusByKey(const pointer p1, const pointer p2) {
+  if (p1==p2) return 0;
+  GLocus* a=(GLocus*)p1;
+  GLocus* b=(GLocus*)p2;
+  int c;
+  if ((c=biochef_cmpInt(a->gseq_id, b->gseq_id))) return c;
+  if ((c=biochef_cmpInt(a->start, b->start))) return c;
+  if ((c=biochef_cmpInt(a->end, b->end))) return c;
+  if ((c=biochef_cmpInt(a->qfidx, b->qfidx))) return c;
+  for (int i=0; i<a->mrnas.Count() && i<b->mrnas.Count(); i++)
+    if ((c=biochef_cmpTxByKey(a->mrnas[i], b->mrnas[i]))) return c;
+  if ((c=biochef_cmpInt(a->mrnas.Count(), b->mrnas.Count()))) return c;
+  return cmpByPtr(p1, p2);
+}
+ORDER_EOF
+
+# trmap -J --self added each transcript's own gene name without checking
+# it has one, and compared it as a string, so a GTF with gene_id but no
+# gene_name crashed it. It now falls back to the gene ID, as for the
+# reference transcripts.
+sed -i 's|^\tif (selfMap) geneAdd(genes, d.t->getGeneName());$|\tif (selfMap \&\& (d.t->getGeneName() \|\| d.t->getGeneID())) geneAdd(genes, d.t->getGeneName() ? d.t->getGeneName() : d.t->getGeneID());|' trmap.cpp
+grep -q 'if (selfMap && (d.t->getGeneName() || d.t->getGeneID()))' trmap.cpp
+
+# gffcompare loaded a FASTA index left next to the genome, or one of the
+# same name in the working directory, which may be another file's, and
+# wrote one there. The index is now built in memory from the genome.
+sed -i -e 's|faIdx=new GFastaIndex(fastaPath,fainame.chars());|faIdx=new GFastaIndex(fastaPath,NULL);|' \
+  -e 's|faIdx->loadIndex(fainamecwd.chars());|;|' \
+  -e '/FILE\* fcreate=fopen(fainame.chars(), "w");/,/GMessage("Warning: error writing the index file!\\n");/d' gtf_tracking.h
+grep -q 'faIdx=new GFastaIndex(fastaPath,NULL);' gtf_tracking.h
+! grep -q 'loadIndex\|fcreate\|storeIndex' gtf_tracking.h
+
+make release -j4
