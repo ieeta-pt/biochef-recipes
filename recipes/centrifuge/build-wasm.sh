@@ -1,8 +1,607 @@
+set -eo pipefail
+
+# BioChef passes the index between operations as one tar. This entry point,
+# linked in place of centrifuge's own main in each program, writes that tar
+# after centrifuge-build, and checks and unpacks it before centrifuge-class
+# and centrifuge-inspect. The same entry point is in build-native.sh.
+cat > biochef_main.cpp <<'SHIM_EOF'
+/* The build names centrifuge's own main centrifuge_tool_main, for this one to wrap */
+#undef main
+
+#include <limits.h>
+#include <stdarg.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+#if defined(BC_CLASS) || defined(BC_BUILD)
+typedef const char **tool_argv;
+#elif defined(BC_INSPECT)
+typedef char **tool_argv;
+#else
+#error "define BC_CLASS, BC_BUILD or BC_INSPECT"
+#endif
+int centrifuge_tool_main(int argc, tool_argv argv);
+
+/* A Centrifuge index is four files sharing a prefix, .1.cf to .4.cf. Between
+ * operations it travels as one tar holding them under the prefix "ref", so
+ * that a single input carries the whole index and it can be unpacked
+ * outside BioChef. */
+#define N_MEMBERS 4
+static const char *members[N_MEMBERS + 1] = { "ref.1.cf", "ref.2.cf", "ref.3.cf", "ref.4.cf", NULL };
+#define PREFIX "_bc_cf"
+
+static void fail(const char *format, ...) __attribute__((noreturn, format(printf, 1, 2)));
+static void fail(const char *format, ...)
+{
+	va_list ap;
+	fputs("[centrifuge] ", stderr);
+	va_start(ap, format);
+	vfprintf(stderr, format, ap);
+	va_end(ap);
+	fputc('\n', stderr);
+	exit(1);
+}
+
+static void *xmalloc(size_t size)
+{
+	void *p = malloc(size ? size : 1);
+	if (!p) fail("out of memory");
+	return p;
+}
+
+static unsigned char *read_file(const char *path, long *size)
+{
+	FILE *fp = fopen(path, "rb");
+	unsigned char *buf;
+	if (!fp) fail("cannot read %s", path);
+	if (fseek(fp, 0, SEEK_END) || (*size = ftell(fp)) < 0 || fseek(fp, 0, SEEK_SET)) fail("cannot read %s", path);
+	buf = (unsigned char *)xmalloc(*size + 1);
+	if (fread(buf, 1, *size, fp) != (size_t)*size) fail("cannot read %s", path);
+	buf[*size] = 0;
+	fclose(fp);
+	return buf;
+}
+
+static const char *member_file(int i)
+{
+	static char name[64];
+	snprintf(name, sizeof name, PREFIX "%s", members[i] + 3);
+	return name;
+}
+
+/* ---- tar (POSIX ustar), only regular files ---- */
+
+static unsigned tar_checksum(const unsigned char *h)
+{
+	unsigned sum = 0;
+	int i;
+	for (i = 0; i < 512; ++i) sum += (i >= 148 && i < 156) ? ' ' : h[i];
+	return sum;
+}
+
+#ifdef BC_BUILD
+/* Writes the index files as a tar with fixed owner, mode and time, so the
+ * same index always gives the same bytes. */
+static void tar_write(const char *path)
+{
+	FILE *out = fopen(path, "wb");
+	static unsigned char zero[1024];
+	int i;
+	if (!out) fail("cannot write %s", path);
+	for (i = 0; members[i]; ++i) {
+		unsigned char h[512];
+		long size, pad;
+		unsigned char *data = read_file(member_file(i), &size);
+		memset(h, 0, sizeof h);
+		memcpy(h, members[i], strlen(members[i]));
+		memcpy(h + 100, "0000644", 7);
+		memcpy(h + 108, "0000000", 7);
+		memcpy(h + 116, "0000000", 7);
+		snprintf((char *)h + 124, 12, "%011lo", size);
+		memcpy(h + 136, "00000000000", 11);
+		h[156] = '0';
+		memcpy(h + 257, "ustar", 6);
+		memcpy(h + 263, "00", 2);
+		snprintf((char *)h + 148, 8, "%06o", tar_checksum(h));
+		h[155] = ' ';
+		pad = (512 - size % 512) % 512;
+		if (fwrite(h, 1, 512, out) != 512 || fwrite(data, 1, size, out) != (size_t)size
+		    || fwrite(zero, 1, pad, out) != (size_t)pad)
+			fail("cannot write %s", path);
+		free(data);
+	}
+	if (fwrite(zero, 1, 1024, out) != 1024 || fclose(out)) fail("cannot write %s", path);
+}
+#else
+
+static long octal(const unsigned char *p, int len, const char *path)
+{
+	long v = 0;
+	int i = 0;
+	while (i < len && p[i] == ' ') ++i;
+	if (i == len || p[i] < '0' || p[i] > '7') fail("%s is not a Centrifuge index: a broken tar header", path);
+	for (; i < len && p[i] >= '0' && p[i] <= '7'; ++i) {
+		if (v > (LONG_MAX - 7) / 8) fail("%s is not a Centrifuge index: a member is too large", path);
+		v = v * 8 + (p[i] - '0');
+	}
+	for (; i < len; ++i)
+		if (p[i] != ' ' && p[i] != 0) fail("%s is not a Centrifuge index: a broken tar header", path);
+	return v;
+}
+
+/* A pax header (typeflag x or g) may carry attributes such as times or
+ * extended attributes, which do not matter here. One that renames the next
+ * member or changes its size would make it a different file: refused. */
+static void check_pax(const unsigned char *p, long len, const char *path)
+{
+	const unsigned char *end = p + len;
+	while (p < end && *p) {
+		long n = 0;
+		const unsigned char *q = p, *key;
+		while (q < end && *q >= '0' && *q <= '9' && n < len) n = n * 10 + (*q++ - '0');
+		if (q == p || q >= end || *q != ' ' || n <= q - p + 1 || n > end - p || p[n - 1] != '\n')
+			fail("%s is not a Centrifuge index: a broken pax header", path);
+		key = q + 1;
+		if (!strncmp((const char *)key, "path=", 5) || !strncmp((const char *)key, "linkpath=", 9)
+		    || !strncmp((const char *)key, "size=", 5) || !strncmp((const char *)key, "GNU.sparse", 10))
+			fail("%s is not a Centrifuge index: a pax header changes a member", path);
+		p += n;
+	}
+}
+
+struct index { const unsigned char *data[N_MEMBERS]; uint64_t size[N_MEMBERS]; unsigned char *buf; int found; };
+
+/* Reads a tar that must hold the four index files, each once, as regular
+ * files. Nothing in it names a path. */
+static void tar_read(const char *path, struct index *x)
+{
+	long size, off = 0;
+	int i;
+	memset(x, 0, sizeof *x);
+	x->buf = read_file(path, &size);
+	for (;;) {
+		const unsigned char *h = x->buf + off;
+		long len;
+		if (off + 512 > size) fail("%s is not a Centrifuge index: it ends inside a tar header", path);
+		for (i = 0; i < 512 && !h[i]; ++i);
+		if (i == 512) break;
+		if (memcmp(h + 257, "ustar", 5)) fail("%s is not a Centrifuge index: not a tar file", path);
+		if (octal(h + 148, 8, path) != (long)tar_checksum(h)) fail("%s is not a Centrifuge index: a tar header checksum is wrong", path);
+		len = octal(h + 124, 12, path);
+		if (len > size - off - 512) fail("%s is not a Centrifuge index: %.100s is cut short", path, (const char *)h);
+		if (h[156] == 'x' || h[156] == 'g') {
+			check_pax(h + 512, len, path);
+			off += 512 + (len + 511) / 512 * 512;
+			continue;
+		}
+		if (h[156] != '0' && h[156] != 0) fail("%s is not a Centrifuge index: it holds something other than files", path);
+		if (h[345]) fail("%s is not a Centrifuge index: a member has a path", path);
+		/* macOS tar adds the extended attributes of a file as ._file */
+		for (i = 0; members[i]; ++i)
+			if (!strncmp((const char *)h, "._", 2) && !strncmp((const char *)h + 2, members[i], 98) && !h[2 + strlen(members[i])]) break;
+		if (members[i]) {
+			off += 512 + (len + 511) / 512 * 512;
+			continue;
+		}
+		for (i = 0; members[i]; ++i)
+			if (!strncmp((const char *)h, members[i], 100) && !h[strlen(members[i])]) break;
+		if (!members[i]) fail("%s is not a Centrifuge index: it holds %.100s", path, (const char *)h);
+		if (x->found & 1 << i) fail("%s is not a Centrifuge index: it holds %s twice", path, members[i]);
+		x->found |= 1 << i;
+		x->data[i] = h + 512;
+		x->size[i] = len;
+		off += 512 + (len + 511) / 512 * 512;
+	}
+	for (i = 0; members[i]; ++i)
+		if (!(x->found & 1 << i)) fail("%s is not a Centrifuge index: it lacks %s", path, members[i]);
+}
+/* ---- the index files ---- */
+
+static const char *index_path;
+
+static void bad(const char *format, ...) __attribute__((noreturn, format(printf, 1, 2)));
+static void bad(const char *format, ...)
+{
+	va_list ap;
+	fprintf(stderr, "[centrifuge] %s is not a Centrifuge index: ", index_path);
+	va_start(ap, format);
+	vfprintf(stderr, format, ap);
+	va_end(ap);
+	fputc('\n', stderr);
+	exit(1);
+}
+
+/* A reader over one member, which refuses to read past its end */
+struct rd { const unsigned char *p; uint64_t n, o; const char *name; };
+
+static void need(struct rd *r, uint64_t n)
+{
+	if (n > r->n - r->o) bad("%s is cut short", r->name);
+}
+
+static uint64_t at(const unsigned char *p, int w)
+{
+	uint64_t v = 0;
+	int i;
+	for (i = w - 1; i >= 0; --i) v = v << 8 | p[i];
+	return v;
+}
+
+static uint64_t num(struct rd *r, int w)
+{
+	need(r, w);
+	r->o += w;
+	return at(r->p + r->o - w, w);
+}
+
+/* Returns where an array of n w-byte numbers starts, and skips it */
+static const unsigned char *arr(struct rd *r, uint64_t w, uint64_t n)
+{
+	const unsigned char *p = r->p + r->o;
+	if (n > (r->n - r->o) / w) bad("%s is cut short", r->name);
+	r->o += w * n;
+	return p;
+}
+
+/* Every Centrifuge index file starts with 1, which says it is little-endian */
+static void start(struct rd *r, const struct index *x, int i)
+{
+	r->p = x->data[i];
+	r->n = x->size[i];
+	r->o = 0;
+	r->name = members[i];
+	if (num(r, 4) != 1) bad("%s is not a Centrifuge index file of this byte order", r->name);
+}
+
+/* The BWT of .1, as Bowtie 2 lays it out (EbwtParams::init): sides of
+ * 2^lineRate bytes, each two bits a row and then the counts of the four
+ * bases in the sides before it. The row of the end of the text, zoff, holds
+ * an A that is not counted. */
+struct bwt {
+	const unsigned char *p;
+	uint64_t len, rows, side, data, side_rows, sides, zoff, fchr[5];
+};
+
+static int bwt_base(const struct bwt *b, uint64_t row)
+{
+	uint64_t s = row / b->side_rows, i = row % b->side_rows;
+	return b->p[s * b->side + i / 4] >> (i & 3) * 2 & 3;
+}
+
+/* The number of c in the rows before row */
+static uint64_t occ(const struct bwt *b, int c, uint64_t row)
+{
+	uint64_t s = row / b->side_rows, i, n = at(b->p + s * b->side + b->data + 8 * c, 8);
+	for (i = s * b->side_rows; i < row; ++i)
+		n += i != b->zoff && bwt_base(b, i) == c;
+	return n;
+}
+
+/* The row of the suffix one position before that of row */
+static uint64_t lf(const struct bwt *b, uint64_t row)
+{
+	int c = bwt_base(b, row);
+	return b->fchr[c] + occ(b, c, row);
+}
+
+/* The counts at the end of each side must be those of the BWT, and add up
+ * to fchr */
+static void check_bwt(const struct bwt *b)
+{
+	uint64_t cnt[4] = { 0, 0, 0, 0 }, s, i, row = 0;
+	for (s = 0; s < b->sides; ++s) {
+		for (i = 0; i < 4; ++i)
+			if (at(b->p + s * b->side + b->data + 8 * i, 8) != cnt[i]) bad("ref.1.cf has broken counts");
+		for (i = 0; i < b->side_rows && row < b->rows; ++i, ++row)
+			if (row != b->zoff) ++cnt[bwt_base(b, row)];
+	}
+	for (i = 0; i < 4; ++i)
+		if (cnt[i] != b->fchr[i + 1] - b->fchr[i]) bad("ref.1.cf has broken counts");
+}
+
+/* The first word of a sequence name, or up to its second |: what centrifuge
+ * calls its ID (get_uid) */
+static size_t uid_len(const unsigned char *name, size_t n)
+{
+	size_t j, bars = 0;
+	for (j = 0; j < n; ++j) {
+		if (name[j] == ' ') break;
+		if (name[j] == '|' && ++bars == 2) break;
+	}
+	return j;
+}
+
+/* The files must belong together, as centrifuge assumes when it reads
+ * them: .2 samples the suffix array of .1, naming the sequence of each
+ * sample; .3 holds the taxonomy of the sequences of .1; .4 marks where in
+ * the suffix array each sequence starts. */
+static void check_index(const struct index *x)
+{
+	struct rd r;
+	struct bwt b;
+	const unsigned char *plen, *rstarts, *ftab, *eftab, *names, *offs;
+	uint64_t n_pat, n_frag, k, i, ftab_len, eftab_len, offs_len, joined = 0, ref = 0, mismatches = 0;
+	int32_t line_rate, off_rate, ftab_chars;
+	int w;
+
+	/* .1: the BWT of the joined sequences */
+	start(&r, x, 0);
+	b.len = num(&r, 8);
+	line_rate = (int32_t)num(&r, 4);
+	num(&r, 4);
+	off_rate = (int32_t)num(&r, 4);
+	ftab_chars = (int32_t)num(&r, 4);
+	num(&r, 4);
+	if (b.len < 1 || b.len > ((uint64_t)1 << 48)) bad("ref.1.cf indexes no sequence");
+	if (line_rate < 6 || line_rate > 24 || off_rate < 0 || off_rate > 31 || ftab_chars < 1 || ftab_chars > 15)
+		bad("ref.1.cf has broken parameters");
+	b.rows = b.len + 1;
+	b.side = (uint64_t)1 << line_rate;
+	b.data = b.side - 32;
+	b.side_rows = b.data * 4;
+	b.sides = (b.len / 4 + 1 + b.data - 1) / b.data;
+	offs_len = (b.rows + ((uint64_t)1 << off_rate) - 1) >> off_rate;
+	ftab_len = ((uint64_t)1 << 2 * ftab_chars) + 1;
+	eftab_len = (uint64_t)ftab_chars * 2;
+	n_pat = num(&r, 8);
+	if (n_pat < 1) bad("ref.1.cf indexes no sequence");
+	plen = arr(&r, 8, n_pat);
+	n_frag = num(&r, 8);
+	rstarts = arr(&r, 24, n_frag);
+	b.p = arr(&r, b.side, b.sides);
+	b.zoff = num(&r, 8);
+	if (b.zoff >= b.rows) bad("ref.1.cf has broken offsets");
+	for (i = 0; i < 5; ++i) b.fchr[i] = num(&r, 8);
+	if (b.fchr[0] != 0 || b.fchr[4] != b.len) bad("ref.1.cf has broken counts");
+	for (i = 0; i < 4; ++i)
+		if (b.fchr[i] > b.fchr[i + 1]) bad("ref.1.cf has broken counts");
+	check_bwt(&b);
+	/* ftab gives the first row of each prefix of ftabChars bases; an entry
+	 * beyond the rows names a pair of rows in eftab instead */
+	ftab = arr(&r, 8, ftab_len);
+	eftab = arr(&r, 8, eftab_len);
+	for (i = 0; i < ftab_len; ++i) {
+		uint64_t v = at(ftab + 8 * i, 8);
+		if (v > b.len && (~v) * 2 + 1 >= eftab_len) bad("ref.1.cf has broken prefix tables");
+	}
+	for (i = 0; i < eftab_len; ++i)
+		if (at(eftab + 8 * i, 8) > b.rows) bad("ref.1.cf has broken prefix tables");
+	/* The stretches that are not N, in order: where each starts in the
+	 * joined text, its sequence, and where it starts in that sequence */
+	for (k = 0; k < n_frag; ++k) {
+		uint64_t j = at(rstarts + 24 * k, 8), t = at(rstarts + 24 * k + 8, 8), o = at(rstarts + 24 * k + 16, 8);
+		if ((k && j <= joined) || j >= b.len || t >= n_pat || t < ref || o >= at(plen + 8 * t, 8))
+			bad("ref.1.cf has broken sequence stretches");
+		joined = j;
+		ref = t;
+	}
+	/* then the names of the sequences, a line each, and a NUL */
+	names = r.p + r.o;
+	for (i = k = 0; r.o + i + 1 < r.n; ++i) {
+		if (!names[i]) bad("ref.1.cf has broken sequence names");
+		k += names[i] == '\n';
+	}
+	if (r.o == r.n || names[r.n - r.o - 1] || (r.n - r.o > 1 && names[r.n - r.o - 2] != '\n') || k != n_pat)
+		bad("ref.1.cf has broken sequence names");
+
+	/* .2: for every 2^offRate rows of the suffix array, the sequence its
+	 * suffix is in; 2 bytes each, or 4 with more than 65535 sequences */
+	start(&r, x, 1);
+	w = n_pat > 65535 ? 4 : 2;
+	if (r.n - r.o != w * offs_len) bad("ref.2.cf is not of ref.1.cf");
+	offs = arr(&r, w, offs_len);
+	for (k = 0; k < offs_len; ++k)
+		if (at(offs + w * k, w) >= n_pat) bad("ref.2.cf is not of ref.1.cf");
+	/* Walking back through the text from each sample, LF reaches the next
+	 * sample in the same sequence, unless it crossed into the one before
+	 * it. Each position of the text is on one walk, so at most one walk
+	 * crosses each start of a sequence. (Centrifuge counts the last 11
+	 * bases of a sequence as the next one's, which moves those starts but
+	 * not their number.) */
+	if (n_pat > 1) {
+		for (k = 0; k < offs_len; ++k) {
+			uint64_t row = k << off_rate, steps = 0;
+			while (row != b.zoff && steps++ <= b.rows) {
+				row = lf(&b, row);
+				if (!(row & (((uint64_t)1 << off_rate) - 1))) {
+					mismatches += at(offs + w * (row >> off_rate), w) != at(offs + w * k, w);
+					break;
+				}
+			}
+		}
+		if (mismatches > n_pat) bad("ref.2.cf is not of ref.1.cf");
+	}
+
+	/* .3: the ID and taxonomic ID of each sequence, the taxonomy tree, the
+	 * names and the genome sizes */
+	start(&r, x, 2);
+	if (num(&r, 8) != n_pat) bad("ref.3.cf is not of ref.1.cf");
+	/* .1's names each end with a newline, and the last with the NUL */
+	for (k = 0, i = 0; k < n_pat; ++k) {
+		const unsigned char *name = names + i, *end = (const unsigned char *)strchr((const char *)name, '\n');
+		const unsigned char *uid = r.p + r.o, *nul = (const unsigned char *)memchr(uid, 0, r.n - r.o);
+		size_t n = uid_len(name, end - name);
+		if (!nul || (size_t)(nul - uid) != n || memcmp(uid, name, n)) bad("ref.3.cf is not of ref.1.cf");
+		r.o += n + 1;
+		num(&r, 8);
+		i = end + 1 - names;
+	}
+	k = num(&r, 8);
+	arr(&r, 18, k);
+	k = num(&r, 8);
+	for (i = 0; i < k; ++i) {
+		const unsigned char *nl;
+		num(&r, 8);
+		nl = (const unsigned char *)memchr(r.p + r.o, '\n', r.n - r.o);
+		if (!nl || memchr(r.p + r.o, 0, nl - (r.p + r.o))) bad("ref.3.cf has broken names");
+		r.o = nl + 1 - r.p;
+	}
+	k = num(&r, 8);
+	arr(&r, 16, k);
+	if (r.o != r.n) bad("ref.3.cf is not whole");
+
+	/* .4: the rows of the suffix array where sequences start */
+	start(&r, x, 3);
+	k = num(&r, 8);
+	{
+		const unsigned char *e = arr(&r, 12, k);
+		for (i = 0; i < k; ++i)
+			if (at(e + 12 * i, 8) > b.len || at(e + 12 * i + 8, 4) >= n_pat) bad("ref.4.cf is not of ref.1.cf");
+	}
+	if (r.o != r.n) bad("ref.4.cf is not whole");
+}
+
+static void write_file(const char *path, const void *data, long size)
+{
+	FILE *fp = fopen(path, "wb");
+	if (!fp || fwrite(data, 1, size, fp) != (size_t)size || fclose(fp)) fail("cannot write %s", path);
+}
+
+static void unpack(const char *path)
+{
+	struct index x;
+	int i;
+	index_path = path;
+	tar_read(path, &x);
+	check_index(&x);
+	for (i = 0; members[i]; ++i) write_file(member_file(i), x.data[i], x.size[i]);
+	free(x.buf);
+}
+
+#endif
+
+static void remove_index(void)
+{
+	int i;
+	for (i = 0; members[i]; ++i) unlink(member_file(i));
+}
+
+#ifdef BC_CLASS
+/* centrifuge reads FASTQ unless told the reads are FASTA: returns '>' or '@'
+ * after the blank lines that start a reads file, or 0 for an empty one */
+static int reads_kind(const char *path)
+{
+	FILE *fp = fopen(path, "rb");
+	int c;
+	if (!fp) fail("cannot read %s", path);
+	while ((c = getc(fp)) == '\n' || c == '\r' || c == ' ' || c == '\t');
+	fclose(fp);
+	if (c == EOF) return 0;
+	if (c != '>' && c != '@') fail("%s is neither FASTA nor FASTQ", path);
+	return c;
+}
+#endif
+
+/* --bc-index FILE  an index to read
+ * --bc-out FILE    centrifuge-build writes the index here
+ *
+ * class and build take lists of files separated by commas, so a file name
+ * with a comma would be read as two. */
+int main(int argc, char *argv[])
+{
+	const char **args = (const char **)calloc(argc + 4, sizeof(char *));
+	const char *index = NULL, *out = NULL;
+	int i, n = 0, rc;
+
+	if (!args) fail("out of memory");
+	/* Working files, of this run or one before it in the same file system */
+	remove_index();
+	if (atexit(remove_index)) fail("cannot register the clean-up");
+
+	args[n++] = argv[0];
+	for (i = 1; i < argc; ++i) {
+		const char *a = argv[i], **slot;
+		if (!strcmp(a, "--bc-index")) slot = &index;
+		else if (!strcmp(a, "--bc-out")) slot = &out;
+		else {
+			args[n++] = argv[i];
+			continue;
+		}
+		if (i + 1 >= argc) fail("%s needs a file", a);
+		if (*slot) fail("%s given twice", a);
+		*slot = argv[++i];
+	}
+	args[n] = NULL;
+
+#ifdef BC_BUILD
+	if (index) fail("--bc-index goes with class and inspect only");
+	if (!out) return centrifuge_tool_main(n, (tool_argv)args);
+	/* the reference comes last; the index prefix follows it */
+	if (n < 2 || args[n - 1][0] == '-') fail("no reference given");
+	if (strchr(args[n - 1], ',')) fail("the name %s has a comma", args[n - 1]);
+	args[n++] = PREFIX;
+	args[n] = NULL;
+	rc = centrifuge_tool_main(n, (tool_argv)args);
+	if (rc != 0) return rc;
+	tar_write(out);
+	return 0;
+#else
+	if (out) fail("--bc-out goes with build only");
+	if (!index) return centrifuge_tool_main(n, (tool_argv)args);
+	unpack(index);
+#ifdef BC_CLASS
+	{
+		int fasta = 0, fastq = 0, has_f = 0;
+		for (i = 1; i < n; ++i) {
+			if (!strcmp(args[i], "-f")) has_f = 1;
+			if ((!strcmp(args[i], "-U") || !strcmp(args[i], "-1") || !strcmp(args[i], "-2")) && i + 1 < n) {
+				int kind;
+				if (strchr(args[++i], ',')) fail("the name %s has a comma", args[i]);
+				kind = reads_kind(args[i]);
+				fasta |= kind == '>';
+				fastq |= kind == '@';
+			}
+		}
+		if (fasta && fastq) fail("the reads are FASTA and FASTQ: give them in one format");
+		args[n++] = "-x";
+		args[n++] = PREFIX;
+		if (fasta && !has_f) args[n++] = "-f";
+		args[n] = NULL;
+		rc = centrifuge_tool_main(n, (tool_argv)args);
+	}
+#else
+	/* inspect: the index prefix is its one argument */
+	args[n++] = PREFIX;
+	args[n] = NULL;
+	rc = centrifuge_tool_main(n, (tool_argv)args);
+#endif
+	return rc;
+#endif
+}
+SHIM_EOF
+
 # macOS APFS case-insensitivity collides VERSION with libc++'s <version>
 # header; rename so clang's #include <version> resolves to libc++. On
 # Linux CI this rename is harmless (filesystem already case-sensitive).
 mv VERSION VERSION_FILE && sed -i.bak "s|cat VERSION|cat VERSION_FILE|g" Makefile
 
-emmake make centrifuge-build-bin centrifuge-class centrifuge-inspect-bin CXX=em++ CC=emcc RELEASE_FLAGS="-O2 -msimd128 -msse4.2 -std=c++11" EXTRA_FLAGS="-std=c++11 $EM_FLAGS -sSTACK_SIZE=8MB" NO_TBB=1 -j4
+# Under wasm there are no threads to run the search workers: run each in
+# place.
+sed -i 's|^\t\t\tthreads\[i\] = new tthread::thread(multiseedSearchWorker, (void\*)&tids\[i\]);$|#ifdef __EMSCRIPTEN__\n\t\t\tmultiseedSearchWorker((void*)\&tids[i]);\n\t\t\tthreads[i] = NULL;\n#else\n&\n#endif|; s|^\t\t\tthreads\[i\]->join();$|\t\t\tif (threads[i] != NULL) threads[i]->join();|' centrifuge.cpp
+grep -q 'multiseedSearchWorker((void\*)&tids\[i\]);' centrifuge.cpp
+grep -q 'if (threads\[i\] != NULL) threads\[i\]->join();' centrifuge.cpp
 
-for b in centrifuge-build-bin centrifuge-class centrifuge-inspect-bin; do mv "$b" "$b.js"; done
+# centrifuge-build's threads wait on each other, which wasm cannot run:
+# build with one. The index is the same for any number of threads.
+sed -i 's|^\t\t\tcase .p.: nthreads = parseNumber<int>(1, "-p arg must be at least 1");$|&\n#ifdef __EMSCRIPTEN__\n\t\t\t\tnthreads = 1;\n#endif|' centrifuge_build.cpp
+grep -qP '^\t\t\t\tnthreads = 1;$' centrifuge_build.cpp
+
+# centrifuge reports errors by throwing, and catches them to exit with a
+# message and a status; centrifuge-build catches running out of memory to
+# try again with less. Both need C++ exceptions, which emscripten leaves off.
+for tool in class build inspect; do
+  case $tool in
+    class) bin=centrifuge-class ;;
+    *) bin=centrifuge-$tool-bin ;;
+  esac
+  emmake make "$bin" \
+    CXX=em++ \
+    CC=emcc \
+    RELEASE_FLAGS="-O2 -msimd128 -msse4.2 -std=c++11" \
+    EXTRA_FLAGS="-std=c++11 -fwasm-exceptions $EM_FLAGS -sSTACK_SIZE=8MB -Dmain=centrifuge_tool_main -DBC_${tool^^} biochef_main.cpp" \
+    NO_TBB=1
+  mv "$bin" "$bin.js"
+done
