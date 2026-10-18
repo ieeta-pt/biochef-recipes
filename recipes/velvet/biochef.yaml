@@ -2,7 +2,7 @@ apiVersion: v1
 
 id: app.biochef.velvet
 name: Velvet
-description: Velvet — de novo short-read assembler using de Bruijn graphs. Two-stage workflow — velveth hashes input reads at a chosen k-mer length, then velvetg constructs and resolves the assembly graph. Classic assembler from EBI; complements fermi-lite (overlap-based) for browser-scale assembly. Workable for small genomes (viral, plasmid, single-chromosome). MAXKMERLENGTH baked at compile time to 31; for longer k recompile with a different value.
+description: "Velvet assembles short reads with de Bruijn graphs, for genomes as small as fit in a browser: viruses, plasmids, bacteria. Hash the reads with one of the Hash Reads (Velvet) operations, then assemble them with one of the Assemble (Velvet) operations. The hashed reads pass between them as one VELVET_HASH file, a tar of the Sequences and Roadmaps files velveth writes. k-mers can be up to 63 long, and reads and references longer than 32 kb."
 
 version: 1.2.10-bc.1
 homepage: https://github.com/dzerbino/velvet
@@ -28,52 +28,161 @@ build:
       buildScript: build-wasm.sh
   native:
     buildScript: build-native.sh
-    buildTools: [make]
+    buildTools: [make, gcc]
 
 runtime:
   modes: [wasm, native]
 
 operations:
   - id: velvet.velveth
-    name: Hash Reads (velveth)
+    name: Hash Reads (Velvet)
     category: Genomic Operations
     bin: velveth
-    description: First stage of velvet assembly — hash input reads at a chosen k-mer length into a `<output_dir>/Roadmaps` file consumed by velvetg. Accepts FASTA / FASTQ (optionally gzipped), single-end or paired-end. The chosen k must be odd and ≤ MAXKMERLENGTH (31 by default in this build).
+    description: "Hash short reads, in FASTA or FASTQ, for Assemble (Velvet). Set interleaved pairs for pairs one after the other in one file. The k-mer length must be odd; an even one is lowered by one."
     io:
       inputs:
-        - { name: reads, types: [FASTA, FASTQ], mode: file }
+        - { name: reads, types: [FASTA, FASTQ, Multi-FASTA], mode: file, flag: --bc-reads }
       outputs:
-        - { name: outdir, types: [TEXT], mode: file, filename: "velvet_out" }
+        - { name: hash, types: [VELVET_HASH], mode: file, flag: --bc-out }
     parameters:
-      - { name: hash_length, type: integer, required: true }
-      - { name: file_format, type: string, flag: -fasta, default: -fastq }
-      - { name: read_type, type: string, flag: -short, default: -short }
-      - { name: strand_specific, type: flag, flag: -strand_specific }
-      - { name: reuse_sequences, type: flag, flag: -reuse_Sequences }
-      - { name: noHash, type: flag, flag: -noHash }
+      - &hash_length { name: hash_length, type: integer, flag: --bc-k, default: 31, required: true }
+      - &interleaved_pairs { name: interleaved_pairs, type: flag, flag: --bc-paired }
+      - &strand_specific { name: strand_specific, type: flag, flag: -strand_specific }
+
+  - id: velvet.velveth.paired
+    name: Hash Paired Reads (Velvet)
+    category: Genomic Operations
+    bin: velveth
+    description: "Hash paired short reads, the first reads of the pairs in one file and the second reads in another, for Assemble (Velvet)."
+    io:
+      inputs:
+        - { name: reads, types: [FASTA, FASTQ, Multi-FASTA], mode: file, flag: --bc-reads }
+        - { name: mates, types: [FASTA, FASTQ, Multi-FASTA], mode: file, flag: --bc-mates }
+      outputs:
+        - { name: hash, types: [VELVET_HASH], mode: file, flag: --bc-out }
+    parameters:
+      - *hash_length
+      - *strand_specific
+
+  - id: velvet.velveth.long
+    name: Hash Short and Long Reads (Velvet)
+    category: Genomic Operations
+    bin: velveth
+    description: "Hash short reads together with long reads or contigs, which Assemble (Velvet) uses to resolve repeats. Set interleaved pairs for short reads that are pairs one after the other."
+    io:
+      inputs:
+        - { name: reads, types: [FASTA, FASTQ, Multi-FASTA], mode: file, flag: --bc-reads }
+        - { name: long_reads, types: [FASTA, FASTQ, Multi-FASTA], mode: file, flag: --bc-long }
+      outputs:
+        - { name: hash, types: [VELVET_HASH], mode: file, flag: --bc-out }
+    parameters:
+      - *hash_length
+      - *interleaved_pairs
+      - *strand_specific
+
+  - id: velvet.velveth.reference
+    name: Hash Reads with a Reference (Velvet)
+    category: Genomic Operations
+    bin: velveth
+    description: "Hash short reads together with reference sequences, as Columbus does, so that Assemble (Velvet) follows the references through repeats and Assemble, Contig Alignments (Velvet) can place the contigs on them. Set interleaved pairs for reads that are pairs one after the other."
+    io:
+      inputs:
+        - { name: reference, types: [FASTA, Multi-FASTA], mode: file, flag: --bc-reference }
+        - { name: reads, types: [FASTA, FASTQ, Multi-FASTA], mode: file, flag: --bc-reads }
+      outputs:
+        - { name: hash, types: [VELVET_HASH], mode: file, flag: --bc-out }
+    parameters:
+      - *hash_length
+      - *interleaved_pairs
+      - *strand_specific
 
   - id: velvet.velvetg
-    name: Build Assembly Graph (velvetg)
+    name: Assemble (Velvet)
     category: Genomic Operations
     bin: velvetg
-    description: Second stage of velvet assembly — read the Roadmaps file produced by velveth, build the de Bruijn graph, perform error correction and repeat resolution, and emit the final contigs FASTA plus optional AFG / LastGraph diagnostics.
+    description: "Assemble hashed reads into contigs. Writes the contigs, the statistics of the nodes of the graph (to choose the coverage cutoffs) and the final graph. Give the insert length to use pairs, and set the expected coverage (or auto) to resolve repeats with them."
     io:
       inputs:
-        - { name: outdir, types: [TEXT], mode: file }
+        - &hash_input { name: hash, types: [VELVET_HASH], mode: file, flag: --bc-hash }
       outputs:
-        - { name: contigs, types: [FASTA], mode: file, filename: "contigs.fa" }
-    parameters:
-      - { name: cov_cutoff, type: float, flag: -cov_cutoff }
+        - &contigs { name: contigs, types: [FASTA, Multi-FASTA], mode: file, flag: --bc-contigs }
+        - { name: stats, types: [VELVET_STATS], mode: file, flag: --bc-stats }
+        - { name: graph, types: [VELVET_GRAPH], mode: file, flag: --bc-graph }
+    parameters: &velvetg_parameters
+      - { name: cov_cutoff, type: string, flag: -cov_cutoff }
+      - { name: exp_cov, type: string, flag: -exp_cov }
       - { name: min_contig_lgth, type: integer, flag: -min_contig_lgth }
       - { name: ins_length, type: integer, flag: -ins_length }
+      - { name: ins_length_sd, type: integer, flag: -ins_length_sd }
+      - { name: ins_length2, type: integer, flag: -ins_length2 }
+      - { name: ins_length2_sd, type: integer, flag: -ins_length2_sd }
+      - { name: ins_length_long, type: integer, flag: -ins_length_long }
+      - { name: ins_length_long_sd, type: integer, flag: -ins_length_long_sd }
       - { name: read_trkg, type: string, flag: -read_trkg }
-      - { name: amos_file, type: string, flag: -amos_file }
-      - { name: alignments, type: string, flag: -alignments }
-      - { name: exp_cov, type: string, flag: -exp_cov }
+      - { name: scaffolding, type: string, flag: -scaffolding }
       - { name: long_cov_cutoff, type: float, flag: -long_cov_cutoff }
+      - { name: max_coverage, type: float, flag: -max_coverage }
+      - { name: coverage_mask, type: integer, flag: -coverage_mask }
       - { name: max_branch_length, type: integer, flag: -max_branch_length }
       - { name: max_divergence, type: float, flag: -max_divergence }
       - { name: max_gap_count, type: integer, flag: -max_gap_count }
       - { name: min_pair_count, type: integer, flag: -min_pair_count }
-      - { name: scaffolding, type: string, flag: -scaffolding }
-      - { name: unused_reads, type: string, flag: -unused_reads }
+      - { name: long_mult_cutoff, type: integer, flag: -long_mult_cutoff }
+      - { name: paired_exp_fraction, type: float, flag: -paired_exp_fraction }
+      - { name: shortMatePaired, type: string, flag: -shortMatePaired }
+      - { name: shortMatePaired2, type: string, flag: -shortMatePaired2 }
+      - { name: conserveLong, type: string, flag: -conserveLong }
+      - { name: accel_bits, type: integer, flag: -accel_bits }
+
+  - id: velvet.velvetg.amos
+    name: Assemble, AMOS File (Velvet)
+    category: Genomic Operations
+    bin: velvetg
+    description: "Assemble hashed reads as Assemble (Velvet) does, and write the assembly as an AMOS file (-amos_file): the reads, the contigs and where each read lies in them."
+    io:
+      inputs:
+        - *hash_input
+      outputs:
+        - *contigs
+        - { name: amos, types: [AFG], mode: file, flag: --bc-afg }
+    parameters: *velvetg_parameters
+
+  - id: velvet.velvetg.unused
+    name: Assemble, Unused Reads (Velvet)
+    category: Genomic Operations
+    bin: velvetg
+    description: "Assemble hashed reads as Assemble (Velvet) does, and write the reads that are in no contig (-unused_reads)."
+    io:
+      inputs:
+        - *hash_input
+      outputs:
+        - *contigs
+        - { name: unused_reads, types: [FASTA, Multi-FASTA], mode: file, flag: --bc-unused }
+    parameters: *velvetg_parameters
+
+  - id: velvet.velvetg.alignments
+    name: Assemble, Contig Alignments (Velvet)
+    category: Genomic Operations
+    bin: velvetg
+    description: "Assemble reads hashed with a reference as Assemble (Velvet) does, and write where each contig lies on the references (-alignments). Without references the alignments are empty."
+    io:
+      inputs:
+        - *hash_input
+      outputs:
+        - *contigs
+        - { name: alignments, types: [VELVET_ALIGNMENTS], mode: file, flag: --bc-alignments }
+    parameters: *velvetg_parameters
+
+  - id: velvet.velvetg.filtered
+    name: Assemble, Filtered Contigs (Velvet)
+    category: Genomic Operations
+    bin: velvetg
+    description: "Assemble hashed reads as Assemble (Velvet) does, and write the long nodes that the coverage cutoffs removed (-exportFiltered): those below cov_cutoff or long_cov_cutoff, and those above max_coverage."
+    io:
+      inputs:
+        - *hash_input
+      outputs:
+        - *contigs
+        - { name: low_coverage, types: [FASTA, Multi-FASTA], mode: file, flag: --bc-low-coverage }
+        - { name: high_coverage, types: [FASTA, Multi-FASTA], mode: file, flag: --bc-high-coverage }
+    parameters: *velvetg_parameters
