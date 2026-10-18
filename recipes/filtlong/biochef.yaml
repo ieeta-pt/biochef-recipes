@@ -2,9 +2,9 @@ apiVersion: v1
 
 id: app.biochef.filtlong
 name: Filtlong
-description: Filtlong — quality filtering for long reads (Nanopore, PacBio). Reads FASTQ, scores each read by length and per-base quality, and outputs only the best subset by a chosen target (total bases, percentage of input, length threshold, mean-quality threshold). Optional reference- or short-read-guided quality assessment via k-mer match rate. Standard preprocessing step before long-read assembly (Flye, hifiasm) or polishing.
+description: "Filtlong filters long reads, Nanopore or PacBio, by quality: it scores each read by its length, its mean quality and its worst window, and keeps the best reads up to a share or a number of bases, or those past length and quality thresholds. With a reference, an assembly or Illumina reads of the same genome, it scores the bases by whether the reference has their k-mers instead, and can trim or split the reads where it does not. The reads it keeps come out in their order, in FASTQ (or FASTA)."
 
-version: 0.2.1-bc.1
+version: 0.3.1-bc.1
 homepage: https://github.com/rrwick/Filtlong
 license:
   spdx: GPL-3.0-or-later
@@ -15,7 +15,7 @@ maintainers:
 source:
   repo: https://github.com/rrwick/Filtlong
   commit: "83893671ed26a271880973e87dfd3f3088ea9c09"
-  version: "0.2.1"
+  version: "0.3.1"
 
 status: experimental
 
@@ -26,35 +26,73 @@ build:
       emscriptenVersion: 4.0.18
       outputDir: out
       buildScript: build-wasm.sh
+  native:
+    buildScript: build-native.sh
+    buildTools: [make, gcc]
 
 runtime:
-  modes: [wasm, remote]
+  modes: [wasm, native]
 
 operations:
   - id: filtlong.filter
     name: Filter Long Reads (Filtlong)
     category: Sequence Analysis
     bin: filtlong
-    description: Quality-filter a long-read FASTQ. Scores each read by length and per-base quality, then keeps the best subset by either total bases (-t), percentage (-p), or simple length/quality thresholds. Optional external reference (-a / -1 / -2) lets Filtlong use a higher-accuracy assembly or short-read set to refine its quality estimates.
+    description: "Keep the best long reads, in FASTQ, plain or gzipped: the best keep_percent of the bases, at most target_bases, and only reads past the length and quality thresholds set. The score weighs length, mean quality and the worst window's quality."
     io:
       inputs:
         - { name: in, types: [FASTQ], mode: file }
-        - { name: assembly, types: [FASTA, Multi-FASTA], mode: file, flag: -a }
-        - { name: illumina_1, types: [FASTQ], mode: file, flag: "-1" }
-        - { name: illumina_2, types: [FASTQ], mode: file, flag: "-2" }
       outputs:
         - { name: out, types: [FASTQ], mode: stdout }
-    parameters:
-      - { name: target_bases, type: integer, flag: -t }
-      - { name: keep_percent, type: float, flag: -p }
-      - { name: min_length, type: integer, flag: --min_length }
-      - { name: max_length, type: integer, flag: --max_length }
-      - { name: min_mean_q, type: float, flag: --min_mean_q }
-      - { name: min_window_q, type: float, flag: --min_window_q }
-      - { name: length_weight, type: float, flag: --length_weight, default: 1 }
-      - { name: mean_q_weight, type: float, flag: --mean_q_weight, default: 1 }
-      - { name: window_q_weight, type: float, flag: --window_q_weight, default: 1 }
-      - { name: window_size, type: integer, flag: --window_size, default: 250 }
+    parameters: &parameters
+      - &keep_percent { name: keep_percent, type: float, flag: --keep_percent, default: 90, required: true }
+      - &target_bases { name: target_bases, type: integer, flag: --target_bases }
+      - &min_length { name: min_length, type: integer, flag: --min_length }
+      - &max_length { name: max_length, type: integer, flag: --max_length }
+      - &min_mean_q { name: min_mean_q, type: float, flag: --min_mean_q }
+      - &min_window_q { name: min_window_q, type: float, flag: --min_window_q }
+      - &length_weight { name: length_weight, type: float, flag: --length_weight, default: 1 }
+      - &mean_q_weight { name: mean_q_weight, type: float, flag: --mean_q_weight, default: 1 }
+      - &window_q_weight { name: window_q_weight, type: float, flag: --window_q_weight, default: 1 }
+      - &window_size { name: window_size, type: integer, flag: --window_size, default: 250 }
+      - &verbose { name: verbose, type: flag, flag: --verbose }
+
+  - id: filtlong.filter.assembly
+    name: Filter Long Reads by an Assembly (Filtlong)
+    category: Sequence Analysis
+    bin: filtlong
+    description: "Keep the best long reads as Filter Long Reads does, scoring each base by whether the assembly has its 16-mer instead of by its quality. The reads can be FASTQ or FASTA. Trim cuts off the ends the assembly does not have; split cuts reads where that many bases in a row are missing from it."
+    io:
+      inputs:
+        - &reads { name: in, types: [FASTQ, FASTA, Multi-FASTA], mode: file }
+        - { name: assembly, types: [FASTA, Multi-FASTA], mode: file, flag: --assembly }
+      outputs:
+        - &reads_out { name: out, types: [FASTQ, FASTA, Multi-FASTA], mode: stdout }
+    parameters: &reference_parameters
+      - *keep_percent
+      - *target_bases
+      - *min_length
+      - *max_length
+      - *min_mean_q
+      - *min_window_q
+      - *length_weight
+      - *mean_q_weight
+      - *window_q_weight
+      - *window_size
       - { name: trim, type: flag, flag: --trim }
       - { name: split, type: integer, flag: --split }
-      - { name: verbose, type: flag, flag: --verbose }
+      - *verbose
+
+  - id: filtlong.filter.illumina
+    name: Filter Long Reads by Illumina Reads (Filtlong)
+    category: Sequence Analysis
+    bin: filtlong
+    description: "Keep the best long reads as Filter Long Reads by an Assembly does, with the 16-mers seen several times in paired Illumina reads of the same genome in place of an assembly."
+    io:
+      inputs:
+        - *reads
+        - { name: illumina_1, types: [FASTQ], mode: file, flag: --short_1 }
+        - { name: illumina_2, types: [FASTQ], mode: file, flag: --short_2 }
+      outputs:
+        - *reads_out
+    parameters: *reference_parameters
