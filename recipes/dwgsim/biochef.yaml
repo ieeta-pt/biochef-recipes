@@ -2,7 +2,7 @@ apiVersion: v1
 
 id: app.biochef.dwgsim
 name: dwgsim
-description: dwgsim — short-read sequencing simulator. Generates paired-end FASTQ from a reference FASTA with configurable error rates, insert size distributions, and a mutation table (SNPs and indels) for benchmarking variant callers. Drop-in successor to wgsim with realistic error profiles for Illumina/Ion Torrent platforms.
+description: "dwgsim simulates sequencing reads, Illumina, SOLiD or Ion Torrent, from a reference in FASTA: it mutates the reference with SNPs and indels, then draws reads from it with sequencing errors. It writes the reads in FASTQ and the mutations in VCF, to benchmark mappers and variant callers. Give a seed to get the same reads again, natively or in the browser."
 
 version: 0.1.17-bc.1
 homepage: https://github.com/nh13/DWGSIM
@@ -24,37 +24,154 @@ build:
     strategy: emscripten
     emscripten:
       emscriptenVersion: 4.0.18
-      outputDir: src
+      outputDir: out
       buildScript: build-wasm.sh
+  native:
+    buildScript: build-native.sh
+    buildTools: [make, gcc]
 
 runtime:
-  modes: [wasm, remote]
+  modes: [wasm, native]
 
 operations:
   - id: dwgsim.simulate
-    name: Simulate (dwgsim)
+    name: Simulate Paired Reads (dwgsim)
     category: Genomic Operations
     bin: dwgsim
-    description: Simulate paired-end short reads from a reference FASTA. Output prefix is positional after the reference and produces .bwa.read1.fastq + .bwa.read2.fastq plus a truth mutations VCF.
+    description: "Simulate read pairs from a reference: fragments of about the outer distance (-d, give or take -s), read from both ends. A sequence shorter than the fragment gives no reads. Writes the first and second reads of each pair, and the mutations."
     io:
       inputs:
-        - { name: reference, types: [FASTA, Multi-FASTA], mode: file }
+        - &reference { name: reference, types: [FASTA, Multi-FASTA], mode: file }
       outputs:
-        - { name: out_prefix, types: [TEXT], mode: file, filename: "dwgsim.out" }
+        - &read1 { name: read1, types: [FASTQ], mode: file, flag: --bc-read1 }
+        - &read2 { name: read2, types: [FASTQ], mode: file, flag: --bc-read2 }
+        - &mutations { name: mutations, types: [VCF], mode: file, flag: --bc-vcf }
+    parameters: &paired_parameters
+      - &num_pairs { name: num_pairs, type: integer, flag: -N }
+      - &coverage { name: coverage, type: float, flag: -C, default: 100 }
+      - &read1_length { name: read1_length, type: integer, flag: "-1", default: 70 }
+      - { name: read2_length, type: integer, flag: "-2", default: 70 }
+      - &distance { name: outer_distance, type: integer, flag: -d, default: 500 }
+      - &std_dev { name: distance_std_dev, type: float, flag: -s, default: 50 }
+      - &inner_distance { name: inner_distance, type: flag, flag: -i }
+      - &error_rate_1 { name: error_rate_1, type: string, flag: -e, default: "0.02" }
+      - &error_rate_2 { name: error_rate_2, type: string, flag: -E, default: "0.02" }
+      - &mutation_rate { name: mutation_rate, type: float, flag: -r, default: 0.001 }
+      - &mutation_frequency { name: mutation_frequency, type: float, flag: -F, default: 0.5 }
+      - &indel_fraction { name: indel_fraction, type: float, flag: -R, default: 0.1 }
+      - &indel_extend { name: indel_extend, type: float, flag: -X, default: 0.3 }
+      - &indel_min { name: indel_min_length, type: integer, flag: -I, default: 1 }
+      - &haploid { name: haploid, type: flag, flag: -H }
+      - &random_read_probability { name: random_read_probability, type: float, flag: -y, default: 0.05 }
+      - &max_n { name: max_n, type: integer, flag: -n, default: 0 }
+      - &platform { name: platform, type: integer, flag: -c, default: 0 }
+      - &strandedness { name: strandedness, type: integer, flag: -S, default: 0 }
+      - &read1_strand { name: read1_strand, type: integer, flag: -A, default: 0 }
+      - &flow_order { name: flow_order, type: string, flag: -f }
+      - &base_error { name: per_base_error, type: flag, flag: -B }
+      - &read_prefix { name: read_name_prefix, type: string, flag: -P }
+      - &fixed_quality { name: fixed_quality, type: string, flag: -q }
+      - &quality_std_dev { name: quality_std_dev, type: float, flag: -Q, default: 2 }
+      - &seed { name: random_seed, type: integer, flag: -z }
+
+  - id: dwgsim.simulate.single
+    name: Simulate Single Reads (dwgsim)
+    category: Genomic Operations
+    bin: dwgsim
+    description: "Simulate single-end reads from a reference. A sequence shorter than the reads gives none. Writes the reads and the mutations."
+    io:
+      inputs:
+        - *reference
+      outputs:
+        - { name: reads, types: [FASTQ], mode: file, flag: --bc-read1 }
+        - *mutations
     parameters:
-      - { name: error_rate_1, type: float, flag: -e }
-      - { name: error_rate_2, type: float, flag: -E }
-      - { name: outer_distance, type: integer, flag: -d, default: 500 }
-      - { name: std_dev, type: float, flag: -s }
-      - { name: inner_distance, type: flag, flag: -i }
-      - { name: num_pairs, type: integer, flag: -N }
-      - { name: coverage, type: float, flag: -C }
-      - { name: read1_length, type: integer, flag: "-1" }
-      - { name: read2_length, type: integer, flag: "-2" }
-      - { name: mutation_rate, type: float, flag: -r }
-      - { name: indel_fraction, type: float, flag: -R }
-      - { name: indel_extend, type: float, flag: -X }
-      - { name: random_dna, type: flag, flag: -y }
-      - { name: random_probability, type: float, flag: -P }
-      - { name: random_seed, type: integer, flag: -z }
-      - { name: haplotype, type: flag, flag: -H }
+      - { name: single_end, type: integer, flag: "-2", default: 0, required: true, hidden: true }
+      - *num_pairs
+      - *coverage
+      - { name: read_length, type: integer, flag: "-1", default: 70 }
+      - *error_rate_1
+      - *mutation_rate
+      - *mutation_frequency
+      - *indel_fraction
+      - *indel_extend
+      - *indel_min
+      - *haploid
+      - *random_read_probability
+      - *max_n
+      - *platform
+      - *read1_strand
+      - *flow_order
+      - *base_error
+      - *read_prefix
+      - *fixed_quality
+      - *quality_std_dev
+      - *seed
+
+  - id: dwgsim.simulate.amplicons
+    name: Simulate Amplicon Reads (dwgsim)
+    category: Genomic Operations
+    bin: dwgsim
+    description: "Simulate read pairs from amplicons: each sequence of the reference is one amplicon, read whole from both ends. An amplicon shorter than the reads gives none. Writes the first and second reads of each pair, and the mutations."
+    io:
+      inputs:
+        - *reference
+      outputs:
+        - *read1
+        - *read2
+        - *mutations
+    parameters:
+      - { name: amplicons, type: integer, flag: --bc-amplicons, default: 1, required: true, hidden: true }
+      - *num_pairs
+      - *coverage
+      - *read1_length
+      - { name: read2_length, type: integer, flag: "-2", default: 70 }
+      - *error_rate_1
+      - *error_rate_2
+      - *mutation_rate
+      - *mutation_frequency
+      - *indel_fraction
+      - *indel_extend
+      - *indel_min
+      - *haploid
+      - *random_read_probability
+      - *max_n
+      - *platform
+      - *strandedness
+      - *read1_strand
+      - *flow_order
+      - *base_error
+      - *read_prefix
+      - *fixed_quality
+      - *quality_std_dev
+      - *seed
+
+  - id: dwgsim.simulate.vcf
+    name: Simulate Paired Reads with Given Mutations (dwgsim)
+    category: Genomic Operations
+    bin: dwgsim
+    description: "Simulate read pairs as Simulate Paired Reads does, with the mutations of a VCF instead of random ones: for example the mutations another simulation wrote, to simulate the same genome again. Each record has one ALT of A, C, G and T, a REF that is the reference's bases there, and the strands in its pl tag (1, 2 or 3 for both); records are sorted as the reference and do not overlap."
+    io:
+      inputs:
+        - *reference
+        - { name: mutations_in, types: [VCF], mode: file, flag: -v }
+      outputs:
+        - *read1
+        - *read2
+        - *mutations
+    parameters: *paired_parameters
+
+  - id: dwgsim.simulate.regions
+    name: Simulate Paired Reads in Regions (dwgsim)
+    category: Genomic Operations
+    bin: dwgsim
+    description: "Simulate read pairs as Simulate Paired Reads does, only from the regions of a BED, sorted as the reference, such as the targets of a capture panel: each fragment lies within one region."
+    io:
+      inputs:
+        - *reference
+        - { name: regions, types: [BED], mode: file, flag: -x }
+      outputs:
+        - *read1
+        - *read2
+        - *mutations
+    parameters: *paired_parameters
