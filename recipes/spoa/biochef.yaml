@@ -2,9 +2,9 @@ apiVersion: v1
 
 id: app.biochef.spoa
 name: spoa
-description: SPOA — SIMD-accelerated Partial Order Alignment. Builds a partial-order graph from a set of input sequences and reports either the consensus or the multiple-sequence alignment. Commonly used inside long-read consensus and error-correction pipelines (medaka, racon).
+description: "spoa aligns a set of sequences into a partial order graph, one after another, each to the graph of those before it. From the graph it takes their consensus, their multiple sequence alignment, or the graph itself in GFA. It is the aligner racon polishes with, and suits sequences of the same region, such as long reads of an amplicon or homologous genes or proteins."
 
-version: 4.1.4-bc.1
+version: 4.1.6-bc.1
 homepage: https://github.com/rvaser/spoa
 license:
   spdx: MIT
@@ -14,8 +14,8 @@ maintainers:
 
 source:
   repo: https://github.com/rvaser/spoa
-  commit: "167bdcc41a25e397cbd4487b6338989266d815d8"
-  version: "4.1.4"
+  commit: "c987896674564519a580fba9f51b6f81ddc66e4d"
+  version: "4.1.6"
 
 status: experimental
 
@@ -26,43 +26,77 @@ build:
       outputDir: build/bin
       emscriptenVersion: 4.0.18
       buildScript: build-wasm.sh
+  native:
+    outputDir: build/bin
+    buildScript: build-native.sh
+    buildTools: [make, gcc]
 
 runtime:
-  modes: [wasm, remote]
+  modes: [wasm, native, remote]
 
 operations:
   - id: spoa.consensus
-    name: Consensus (SPOA)
+    name: Consensus (spoa)
     category: Sequence Analysis
     bin: spoa
-    description: Build a partial-order graph from a set of input sequences and emit the consensus.
+    description: "Align sequences into a partial order graph and write their consensus, in FASTA, as the heaviest path through the graph. With min_coverage, the consensus leaves out its bases that fewer sequences than that go through."
     io:
       inputs:
-        - { name: in, types: [FASTA, Multi-FASTA, FASTQ], mode: file }
+        - &sequences { name: sequences, types: [Multi-FASTA, FASTA, FASTQ, LONG_READS], mode: file }
       outputs:
-        - { name: out, types: [FASTA], mode: stdout }
+        - { name: consensus, types: [FASTA], mode: stdout }
     parameters:
-      - { name: match_score, type: integer, flag: -m, default: 5 }
-      - { name: mismatch_score, type: integer, flag: -n, default: -4 }
-      - { name: gap_open, type: integer, flag: -g, default: -8 }
-      - { name: gap_extend, type: integer, flag: -e, default: -6 }
-      - { name: alignment_algorithm, type: integer, flag: -l }
-      - { name: dot_graph, type: string, flag: -d }
+      - { name: result, type: integer, flag: -r, default: 0, required: true, hidden: true }
+      - &algorithm { name: alignment_mode, type: integer, flag: -l, default: 0 }
+      - &strand { name: strand_ambiguous, type: flag, flag: -s }
+      - &match { name: match, type: integer, flag: -m, default: 5 }
+      - &mismatch { name: mismatch, type: integer, flag: -n, default: -4 }
+      - &gap_open { name: gap_open, type: integer, flag: -g, default: -8 }
+      - &gap_extend { name: gap_extend, type: integer, flag: -e, default: -6 }
+      - &gap_open2 { name: second_gap_open, type: integer, flag: -q, default: -10 }
+      - &gap_extend2 { name: second_gap_extend, type: integer, flag: -c, default: -4 }
+      - { name: min_coverage, type: integer, flag: --min-coverage }
 
   - id: spoa.msa
-    name: MSA (SPOA)
+    name: Multiple Sequence Alignment (spoa)
     category: Sequence Analysis
     bin: spoa
-    description: Emit a multiple-sequence alignment from a partial-order graph instead of just the consensus.
+    description: "Align sequences into a partial order graph and write their multiple sequence alignment, in FASTA, each sequence with gaps as -. With include_consensus, the consensus is aligned with them, last."
     io:
       inputs:
-        - { name: in, types: [FASTA, Multi-FASTA, FASTQ], mode: file }
+        - *sequences
       outputs:
-        - { name: out, types: [Multi-FASTA], mode: stdout }
+        - { name: alignment, types: [Multi-FASTA], mode: stdout }
     parameters:
-      - { name: result, type: integer, flag: -r, default: 1, hidden: true }
-      - { name: match_score, type: integer, flag: -m, default: 5 }
-      - { name: mismatch_score, type: integer, flag: -n, default: -4 }
-      - { name: gap_open, type: integer, flag: -g, default: -8 }
-      - { name: gap_extend, type: integer, flag: -e, default: -6 }
-      - { name: alignment_algorithm, type: integer, flag: -l }
+      - { name: result, type: integer, flag: -r, default: 1, required: true, hidden: true }
+      - &with_consensus { name: include_consensus, type: flag, flag: --bc-with-consensus }
+      - *algorithm
+      - *strand
+      - *match
+      - *mismatch
+      - *gap_open
+      - *gap_extend
+      - *gap_open2
+      - *gap_extend2
+
+  - id: spoa.graph
+    name: Partial Order Graph (spoa)
+    category: Sequence Analysis
+    bin: spoa
+    description: "Align sequences into a partial order graph and write the graph in GFA: a segment for each base, a link for each edge with its weight, and a path for each sequence, with the consensus's segments and links tagged ic:Z:true. With include_consensus, the consensus is a path too."
+    io:
+      inputs:
+        - *sequences
+      outputs:
+        - { name: graph, types: [GFA], mode: stdout }
+    parameters:
+      - { name: result, type: integer, flag: -r, default: 3, required: true, hidden: true }
+      - *with_consensus
+      - *algorithm
+      - *strand
+      - *match
+      - *mismatch
+      - *gap_open
+      - *gap_extend
+      - *gap_open2
+      - *gap_extend2

@@ -1,7 +1,309 @@
+set -eo pipefail
+
+# spoa fetches its libraries while it configures, by tag. They are fetched
+# by commit instead, the commits the tags name.
+sed -i -e 's/^\(      GIT_TAG\) 3\.1\.0)$/\1 4fa7126293d2a0eb90125b58fb704f0eed33ffe0)/' \
+  -e 's/^\(      GIT_TAG\) 0\.11\.0)$/\1 3e31aa1d9039a2689241aebd18c45933b2d0f5e3)/' \
+  -e 's/^\(    GIT_TAG\) v0\.7\.6)$/\1 fefc7857ff3e785b988a61a8f5f3c5bd5eb24342)/' CMakeLists.txt
+grep -q 'GIT_TAG 4fa7126293d2a0eb90125b58fb704f0eed33ffe0)' CMakeLists.txt
+grep -q 'GIT_TAG 3e31aa1d9039a2689241aebd18c45933b2d0f5e3)' CMakeLists.txt
+grep -q 'GIT_TAG fefc7857ff3e785b988a61a8f5f3c5bd5eb24342)' CMakeLists.txt
+
+# spoa reads the format of its input from the file name, and refuses any
+# other. This entry point, appended to spoa's main file, reads the
+# sequences first, refuses what spoa would misread or abort on, and gives
+# spoa a copy named by its content.
+sed -i 's/^int main(int argc, char\*\* argv) {$/int biochef_upstream_main(int argc, char** argv) {/' src/main.cpp
+grep -q '^int biochef_upstream_main(int argc, char\*\* argv) {$' src/main.cpp
+cat >> src/main.cpp <<'BIOCHEF_EOF'
+
+// The entry point of spoa. It reads the sequences first, refuses what spoa
+// would misread or abort on, and gives spoa a copy in upper case, as spoa
+// tells bases apart by character, named by its format, as spoa reads the
+// format from the file name.
+#include <ctype.h>
+#include <dirent.h>
+#include <errno.h>
+#include <limits.h>
+#include <stdarg.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <zlib.h>
+#include <map>
+#include <new>
+#include <stdexcept>
+#include <set>
+#include <string>
+#include <vector>
+
+static void biochef_fail(const char *format, ...)
+{
+	va_list ap;
+	va_start(ap, format);
+	fputs("[spoa] ", stderr);
+	vfprintf(stderr, format, ap);
+	fputc('\n', stderr);
+	va_end(ap);
+	exit(1);
+}
+
+static std::string biochef_shown(int c)
+{
+	char s[8];
+	if (c >= 33 && c <= 126) snprintf(s, sizeof s, "'%c'", c);
+	else snprintf(s, sizeof s, "0x%02X", c);
+	return s;
+}
+
+static std::string biochef_dir;
+
+static void biochef_remove(const std::string &path)
+{
+	struct stat st;
+	if (lstat(path.c_str(), &st) != 0) return;
+	if (S_ISDIR(st.st_mode)) {
+		DIR *d = opendir(path.c_str());
+		if (d) {
+			std::vector<std::string> names;
+			for (struct dirent *e; (e = readdir(d));)
+				if (strcmp(e->d_name, ".") && strcmp(e->d_name, "..")) names.push_back(e->d_name);
+			closedir(d);
+			for (size_t i = 0; i < names.size(); i++) biochef_remove(path + "/" + names[i]);
+		}
+		rmdir(path.c_str());
+	} else {
+		unlink(path.c_str());
+	}
+}
+
+static void biochef_remove_dir(void)
+{
+	if (!biochef_dir.empty()) biochef_remove(biochef_dir);
+}
+
+// Lines of a file, plain or gzip, with NUL bytes refused and CR line ends dropped
+struct biochef_lines {
+	gzFile f;
+	const char *path, *what;
+	long number;
+	std::string line;
+	std::vector<char> buf;
+	int len, at;
+	bool eof;
+	biochef_lines(const char *p, const char *w) : path(p), what(w), number(0), buf(65536), len(0), at(0), eof(false) {
+		f = gzopen(p, "rb");
+		if (!f) biochef_fail("cannot open the %s %s (%s)", w, p, strerror(errno));
+	}
+	~biochef_lines() { gzclose(f); }
+	bool next() {
+		line.clear();
+		bool any = false;
+		for (;;) {
+			if (at == len) {
+				if (eof) break;
+				len = gzread(f, &buf[0], (unsigned)buf.size()), at = 0;
+				if (len < 0) {
+					int err;
+					biochef_fail("cannot read the %s %s (%s)", what, path, gzerror(f, &err));
+				}
+				if (len == 0) {
+					eof = true;
+					break;
+				}
+			}
+			any = true;
+			char c = buf[at++];
+			if (c == '\n') break;
+			if (!c) biochef_fail("line %ld of the %s %s holds a NUL byte", number + 1, what, path);
+			line += c;
+		}
+		if (!any) return false;
+		number++;
+		if (!line.empty() && line[line.size() - 1] == '\r') line.erase(line.size() - 1);
+		return true;
+	}
+};
+
+static bool biochef_is_gzip(const char *path)
+{
+	FILE *f = fopen(path, "rb");
+	if (!f) biochef_fail("cannot open %s (%s)", path, strerror(errno));
+	unsigned char m[2] = { 0, 0 };
+	size_t n = fread(m, 1, 2, f);
+	fclose(f);
+	return n == 2 && m[0] == 0x1f && m[1] == 0x8b;
+}
+
+
+// The sequences, in FASTA or FASTQ, plain or gzip, as bioparser reads them,
+// with unique names and bases of letters, written to a copy in upper case
+// with each sequence on one line; returns whether they are FASTQ
+static bool biochef_sequences(const char *path, const std::string &copy)
+{
+	biochef_lines in(path, "sequences");
+	FILE *out = fopen(copy.c_str(), "wb");
+	if (!out) biochef_fail("cannot write %s (%s)", copy.c_str(), strerror(errno));
+	std::set<std::string> names;
+	bool have = in.next();
+	long blank = 0;
+	while (have && in.line.empty()) {
+		if (!blank) blank = in.number;
+		have = in.next();
+	}
+	if (!have) biochef_fail("the sequences %s hold no sequence", path);
+	// spoa's parser throws, uncaught, on an empty line before the first
+	// record, and in FASTQ between records
+	if (blank) biochef_fail("line %ld of the sequences %s is empty, before the first record", blank, path);
+	char kind = in.line[0];
+	if (kind != '>' && kind != '@')
+		biochef_fail("the sequences %s are neither FASTA nor FASTQ: line %ld starts with %s", path, in.number, biochef_shown((unsigned char)kind).c_str());
+	bool fastq = kind == '@';
+	while (have) {
+		if (in.line.empty()) {
+			if (!blank) blank = in.number;
+			have = in.next();
+			continue;
+		}
+		if (blank) biochef_fail("line %ld of the sequences %s is empty, between two records", blank, path);
+		long start = in.number;
+		if (in.line[0] != kind)
+			biochef_fail("line %ld of the sequences %s starts with %s, where a %s record starts with %c", start, path, biochef_shown((unsigned char)in.line[0]).c_str(), fastq ? "FASTQ" : "FASTA", kind);
+		std::string header = in.line;
+		size_t e = 1;
+		while (e < header.size() && !isspace((unsigned char)header[e])) e++;
+		std::string name = header.substr(1, e - 1);
+		if (name.empty()) biochef_fail("line %ld of the sequences %s starts a sequence with no name", start, path);
+		if (names.count(name)) biochef_fail("the sequences %s have two sequences named %s", path, name.c_str());
+		names.insert(name);
+		std::string bases, quals;
+		while ((have = in.next()) && (in.line.empty() || (in.line[0] != kind && !(fastq && in.line[0] == '+')))) {
+			for (size_t i = 0; i < in.line.size(); i++) {
+				unsigned char c = (unsigned char)in.line[i];
+				if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')))
+					biochef_fail("line %ld of the sequences %s has %s in sequence %s", in.number, path, biochef_shown(c).c_str(), name.c_str());
+				bases += (char)toupper(c);
+			}
+		}
+		if (bases.empty()) biochef_fail("sequence %s, line %ld of the sequences %s, has no bases", name.c_str(), start, path);
+		if (bases.size() > UINT32_MAX) biochef_fail("sequence %s of the sequences %s is longer than %u bases", name.c_str(), path, UINT32_MAX);
+		if (fastq) {
+			if (!have) biochef_fail("read %s, line %ld of the sequences %s, has no + line", name.c_str(), start, path);
+			while (quals.size() < bases.size() && (have = in.next())) {
+				for (size_t i = 0; i < in.line.size(); i++) {
+					unsigned char c = (unsigned char)in.line[i];
+					if (c < 33 || c > 126) biochef_fail("line %ld of the sequences %s has %s in the qualities of read %s", in.number, path, biochef_shown(c).c_str(), name.c_str());
+				}
+				quals += in.line;
+			}
+			if (quals.size() != bases.size()) biochef_fail("read %s, line %ld of the sequences %s, has %zu bases and %zu qualities", name.c_str(), start, path, bases.size(), quals.size());
+			have = in.next();
+			fprintf(out, "%s\n%s\n+\n%s\n", header.c_str(), bases.c_str(), quals.c_str());
+		} else {
+			fprintf(out, "%s\n%s\n", header.c_str(), bases.c_str());
+		}
+	}
+	if (fclose(out) != 0) biochef_fail("cannot write %s (%s)", copy.c_str(), strerror(errno));
+	return fastq;
+}
+
+static long biochef_whole(const char *opt, const char *s, long min, long max)
+{
+	char *end;
+	errno = 0;
+	long v = strtol(s, &end, 10);
+	if (!*s || *end || errno || v < min || v > max || strchr(" \t+", *s))
+		biochef_fail("%s should be a whole number from %ld to %ld, and is \"%s\"", opt, min, max, s);
+	return v;
+}
+
+int main(int argc, char *argv[])
+{
+	std::vector<std::string> args(1, argv[0]), files;
+	std::map<std::string, std::string> longs = { { "--algorithm", "-l" }, { "--result", "-r" }, { "--min-coverage", "--min-coverage" }, { "--strand-ambiguous", "-s" } };
+	std::set<std::string> seen;
+	long result = 0;
+	bool with_consensus = false;
+	for (int i = 1; i < argc; i++) {
+		std::string a = argv[i], v;
+		if (a.size() < 2 || a[0] != '-') {
+			files.push_back(a);
+			continue;
+		}
+		size_t eq = a.find('=');
+		if (a.compare(0, 2, "--") == 0 && eq != std::string::npos) v = a.substr(eq + 1), a = a.substr(0, eq);
+		if (longs.count(a)) a = longs[a];
+		if (seen.count(a)) biochef_fail("%s is given twice", a.c_str());
+		seen.insert(a);
+		// MSA (-r 1) and the graph (-r 3) with the consensus are spoa's -r 2 and -r 4
+		if (a == "--bc-with-consensus") {
+			with_consensus = true;
+			continue;
+		}
+		if (a == "-s") {
+			args.push_back(a);
+			continue;
+		}
+		if (a != "-m" && a != "-n" && a != "-g" && a != "-e" && a != "-q" && a != "-c" && a != "-l" && a != "-r" && a != "--min-coverage")
+			biochef_fail("has no option %s here", argv[i]);
+		if (v.empty()) {
+			if (i + 1 >= argc) biochef_fail("%s needs a value", a.c_str());
+			v = argv[++i];
+		}
+		if (a == "-m" || a == "-n") biochef_whole(a.c_str(), v.c_str(), -128, 127);
+		else if (a == "-l") biochef_whole("-l", v.c_str(), 0, 2);
+		else if (a == "-r") {
+			result = biochef_whole("-r", v.c_str(), 0, 3);
+			if (result == 2) biochef_fail("-r should be 0, 1 or 3, and is \"%s\"", v.c_str());
+			continue;
+		} else if (a == "--min-coverage") biochef_whole("--min-coverage", v.c_str(), 0, INT32_MAX);
+		// spoa takes gap scores of 0 or below
+		else biochef_whole(a.c_str(), v.c_str(), -128, 0);
+		args.push_back(a);
+		args.push_back(v);
+	}
+	if (with_consensus && result == 0) biochef_fail("--bc-with-consensus is for the alignment (-r 1) and the graph (-r 3)");
+	if (seen.count("--min-coverage") && result != 0) biochef_fail("--min-coverage is for the consensus (-r 0) only");
+	args.push_back("-r");
+	args.push_back(std::to_string(result + (with_consensus ? 1 : 0)));
+	if (files.size() != 1) biochef_fail("takes one file of sequences, and was given %zu", files.size());
+	const char *tmp = getenv("TMPDIR");
+	std::string base = std::string(tmp && *tmp ? tmp : "/tmp") + "/spoa.XXXXXX";
+	std::vector<char> t(base.begin(), base.end());
+	t.push_back(0);
+	if (!mkdtemp(&t[0])) biochef_fail("cannot make a temporary directory (%s)", strerror(errno));
+	biochef_dir = &t[0];
+	atexit(biochef_remove_dir);
+	std::string copy = biochef_dir + "/sequences";
+	bool fastq = biochef_sequences(files[0].c_str(), copy);
+	std::string named = copy + (fastq ? ".fastq" : ".fasta");
+	if (rename(copy.c_str(), named.c_str()) != 0) biochef_fail("cannot rename %s (%s)", copy.c_str(), strerror(errno));
+	args.push_back(named);
+	std::vector<char *> cargs;
+	for (size_t i = 0; i < args.size(); i++) cargs.push_back(&args[i][0]);
+	cargs.push_back(NULL);
+	// spoa catches only some of what it throws: memory it cannot have, and
+	// in wasm sizes past 32 bits, stopped it with an uncaught exception
+	try {
+		return biochef_upstream_main((int)cargs.size() - 1, &cargs[0]);
+	} catch (const std::bad_alloc &) {
+		biochef_fail("needs more memory than there is to align these sequences");
+	} catch (const std::length_error &) {
+		biochef_fail("needs more memory than there is to align these sequences");
+	} catch (const std::exception &e) {
+		biochef_fail("stopped: %s", e.what());
+	}
+	return 1;
+}
+BIOCHEF_EOF
+
+# spoa reports what it cannot align, such as sequences too long for the
+# memory there is, by catching the exceptions it throws, which wasm builds
+# without -fwasm-exceptions do not catch.
 mkdir -p build && cd build
-
 embuilder build zlib
-
-emcmake cmake -Dspoa_use_simde=ON -Dspoa_optimize_for_native=OFF -Dspoa_build_executable=ON -Dspoa_build_tests=OFF -DCMAKE_EXE_LINKER_FLAGS="$EM_FLAGS" ..
-
+emcmake cmake -Dspoa_build_tests=OFF -Dspoa_use_simde=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="-ffp-contract=off -fwasm-exceptions" -DCMAKE_EXE_LINKER_FLAGS="$EM_FLAGS -fwasm-exceptions" ..
 emmake make -j4 spoa_exe
