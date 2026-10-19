@@ -1,4 +1,466 @@
+set -eo pipefail
+
+# PBSIM2 reads FASTA and FASTQ line by line, taking a CR into the sequence
+# and the quality line of a FASTQ as its fourth line. This entry point,
+# appended to PBSIM2's source, reads them first, refuses what PBSIM2 would
+# misread, and gives PBSIM2 copies of them it reads right. It runs PBSIM2
+# in a temporary directory, with one of the models PBSIM2 ships, and
+# gathers the reads and alignments it writes for each reference sequence
+# into --bc-fastq and --bc-maf. The same entry point is in build-native.sh.
+sed -i 's/^int main (int argc, char\*\* argv) {$/int biochef_upstream_main (int argc, char** argv) {/' src/pbsim.cpp
+grep -q '^int biochef_upstream_main (int argc, char\*\* argv) {$' src/pbsim.cpp
+cat >> src/pbsim.cpp <<'SHIM_EOF'
+
+// The entry point of PBSIM2. It reads the reference, the sample FASTQ and the
+// templates first and refuses what PBSIM2 would misread, writes them to a
+// temporary directory with LF line ends and names of one word, and runs
+// PBSIM2 there with:
+// - --bc-model NAME, one of the HMM models PBSIM2 ships, which are in the
+//   executable;
+// - --seed, 1 by default, and random numbers of PBSIM2's own;
+// - --bc-fastq and --bc-maf, the files the reads and their alignments to the
+//   reference are gathered into, from one file per reference sequence.
+#include <errno.h>
+#include <limits.h>
+#include <stdarg.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <dirent.h>
+#include <algorithm>
+#include <set>
+#include <string>
+#include <vector>
+
+// rand and srand as musl has them, in both runtimes: glibc's give other
+// numbers for the same seed
+static uint64_t biochef_rand_state;
+extern "C" void biochef_srand(unsigned s) { biochef_rand_state = s - 1; }
+extern "C" int biochef_rand(void)
+{
+	biochef_rand_state = 6364136223846793005ULL * biochef_rand_state + 1;
+	return (int)(biochef_rand_state >> 33);
+}
+
+static void biochef_fail(const char *format, ...)
+{
+	va_list ap;
+	va_start(ap, format);
+	fputs("[pbsim] ", stderr);
+	vfprintf(stderr, format, ap);
+	fputc('\n', stderr);
+	va_end(ap);
+	exit(1);
+}
+
+static std::string biochef_dir;
+
+static void biochef_remove(const std::string &path)
+{
+	struct stat st;
+	if (lstat(path.c_str(), &st) != 0) return;
+	if (S_ISDIR(st.st_mode)) {
+		DIR *d = opendir(path.c_str());
+		if (d) {
+			std::vector<std::string> names;
+			for (struct dirent *e; (e = readdir(d));)
+				if (strcmp(e->d_name, ".") && strcmp(e->d_name, "..")) names.push_back(e->d_name);
+			closedir(d);
+			for (size_t i = 0; i < names.size(); i++) biochef_remove(path + "/" + names[i]);
+		}
+		rmdir(path.c_str());
+	} else {
+		unlink(path.c_str());
+	}
+}
+
+static void biochef_remove_dir(void)
+{
+	if (!biochef_dir.empty()) biochef_remove(biochef_dir);
+}
+
+// The copy of an input PBSIM2 reads, under the temporary directory, which
+// PBSIM2 runs in: its own directory and its file name, which PBSIM2 prints
+static std::string biochef_copy_path(const char *dir, const char *path)
+{
+	const char *base = strrchr(path, '/');
+	std::string d = biochef_dir + "/" + dir;
+	if (mkdir(d.c_str(), 0700) != 0) biochef_fail("cannot make %s (%s)", d.c_str(), strerror(errno));
+	return std::string(dir) + "/" + (base ? base + 1 : path);
+}
+
+static std::string biochef_shown(int c)
+{
+	char s[8];
+	if (c >= 33 && c <= 126) snprintf(s, sizeof s, "'%c'", c);
+	else snprintf(s, sizeof s, "0x%02X", c);
+	return s;
+}
+
+// Reads a whole file, refusing NUL bytes, and splits it into lines without
+// their line ends
+static std::vector<std::string> biochef_lines(const char *path, const char *what)
+{
+	FILE *f = fopen(path, "rb");
+	if (!f) biochef_fail("cannot open the %s %s (%s)", what, path, strerror(errno));
+	std::vector<std::string> lines;
+	std::string line;
+	int c;
+	long number = 1;
+	while ((c = getc(f)) != EOF) {
+		if (c == 0) biochef_fail("line %ld of the %s %s holds a NUL byte", number, what, path);
+		if (c == '\n') {
+			if (!line.empty() && line[line.size() - 1] == '\r') line.erase(line.size() - 1);
+			lines.push_back(line);
+			line.clear();
+			number++;
+		} else {
+			line += (char)c;
+		}
+	}
+	if (ferror(f)) biochef_fail("cannot read the %s %s", what, path);
+	fclose(f);
+	if (!line.empty()) {
+		if (line[line.size() - 1] == '\r') line.erase(line.size() - 1);
+		lines.push_back(line);
+	}
+	return lines;
+}
+
+// A FASTA file of sequences of unique names, each of letters, written again
+// with LF line ends and only the first word of each header, which PBSIM2
+// writes into the MAF; returns the names
+static std::vector<std::string> biochef_fasta(const char *path, const char *what, const std::string &out, long min_len, long max_len, long max_seqs, const char *why = "")
+{
+	std::vector<std::string> lines = biochef_lines(path, what), names;
+	std::set<std::string> seen;
+	FILE *o = fopen(out.c_str(), "wb");
+	if (!o) biochef_fail("cannot write %s (%s)", out.c_str(), strerror(errno));
+	long len = 0, start = 0;
+	for (size_t i = 0; i <= lines.size(); i++) {
+		bool end = i == lines.size();
+		const std::string *l = end ? NULL : &lines[i];
+		if (!end && l->empty()) continue;
+		if (end || (*l)[0] == '>') {
+			if (!names.empty()) {
+				if (len < min_len) biochef_fail("sequence %s, line %ld of the %s %s, has %ld bases, and PBSIM2 needs %ld or more", names.back().c_str(), start, what, path, len, min_len);
+				if (len > max_len) biochef_fail("sequence %s, line %ld of the %s %s, has %ld bases, and PBSIM2 takes %ld at most%s", names.back().c_str(), start, what, path, len, max_len, why);
+			}
+			if (end) break;
+			size_t b = l->find_first_not_of(" \t", 1), e = l->find_first_of(" \t", b == std::string::npos ? 1 : b);
+			if (b == std::string::npos) biochef_fail("line %zu of the %s %s starts a sequence with no name", i + 1, what, path);
+			std::string name = l->substr(b, e == std::string::npos ? std::string::npos : e - b);
+			if (b != 1) biochef_fail("line %zu of the %s %s has a space before the name %s", i + 1, what, path, name.c_str());
+			if (name.size() > 128) biochef_fail("the name %s, line %zu of the %s %s, is longer than the 128 characters PBSIM2 keeps", name.c_str(), i + 1, what, path);
+			if (!seen.insert(name).second) biochef_fail("the %s %s has two sequences named %s", what, path, name.c_str());
+			names.push_back(name);
+			if ((long)names.size() > max_seqs) biochef_fail("the %s %s has more than the %ld sequences PBSIM2 takes", what, path, max_seqs);
+			start = (long)i + 1, len = 0;
+			fprintf(o, ">%s\n", name.c_str());
+			continue;
+		}
+		if (names.empty()) biochef_fail("the %s %s is not FASTA: line %zu comes before any > line", what, path, i + 1);
+		for (size_t j = 0; j < l->size(); j++) {
+			unsigned char c = (*l)[j];
+			if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')))
+				biochef_fail("line %zu of the %s %s has %s in sequence %s", i + 1, what, path, biochef_shown(c).c_str(), names.back().c_str());
+		}
+		len += (long)l->size();
+		fprintf(o, "%s\n", l->c_str());
+	}
+	if (names.empty()) biochef_fail("the %s %s holds no sequence", what, path);
+	if (fclose(o) != 0) biochef_fail("cannot write %s", out.c_str());
+	return names;
+}
+
+// FASTQ, written again as PBSIM2 reads it: four lines a read, LF line ends
+static void biochef_fastq(const char *path, const std::string &out)
+{
+	std::vector<std::string> lines = biochef_lines(path, "sample FASTQ");
+	std::set<std::string> seen;
+	FILE *o = fopen(out.c_str(), "wb");
+	if (!o) biochef_fail("cannot write %s (%s)", out.c_str(), strerror(errno));
+	size_t i = 0, reads = 0;
+	while (i < lines.size()) {
+		if (lines[i].empty()) {
+			i++;
+			continue;
+		}
+		size_t start = i + 1;
+		const std::string &h = lines[i++];
+		if (h[0] != '@') biochef_fail("the sample FASTQ %s is not FASTQ: line %zu starts with %s, not @", path, start, biochef_shown((unsigned char)h[0]).c_str());
+		size_t e = h.find_first_of(" \t", 1);
+		std::string name = h.substr(1, e == std::string::npos ? std::string::npos : e - 1);
+		if (name.empty()) biochef_fail("line %zu of the sample FASTQ %s starts a read with no name", start, path);
+		if (!seen.insert(name).second) biochef_fail("the sample FASTQ %s has two reads named %s", path, name.c_str());
+		std::string seq, qual;
+		while (i < lines.size() && (lines[i].empty() || lines[i][0] != '+')) {
+			for (size_t j = 0; j < lines[i].size(); j++) {
+				unsigned char c = lines[i][j];
+				if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')))
+					biochef_fail("line %zu of the sample FASTQ %s has %s in read %s", i + 1, path, biochef_shown(c).c_str(), name.c_str());
+			}
+			seq += lines[i++];
+		}
+		if (i == lines.size()) biochef_fail("read %s, line %zu of the sample FASTQ %s, has no + line", name.c_str(), start, path);
+		i++;
+		while (i < lines.size() && qual.size() < seq.size()) {
+			for (size_t j = 0; j < lines[i].size(); j++) {
+				unsigned char c = lines[i][j];
+				if (c < 33 || c > 126) biochef_fail("line %zu of the sample FASTQ %s has %s in the qualities of read %s", i + 1, path, biochef_shown(c).c_str(), name.c_str());
+			}
+			qual += lines[i++];
+		}
+		if (seq.empty()) biochef_fail("read %s, line %zu of the sample FASTQ %s, has no bases", name.c_str(), start, path);
+		if (qual.size() != seq.size())
+			biochef_fail("read %s, line %zu of the sample FASTQ %s, has %zu bases and %zu qualities", name.c_str(), start, path, seq.size(), qual.size());
+		if (seq.size() > 1000000) biochef_fail("read %s, line %zu of the sample FASTQ %s, has %zu bases, and PBSIM2 takes 1000000 at most", name.c_str(), start, path, seq.size());
+		fprintf(o, "@%s\n%s\n+\n%s\n", name.c_str(), seq.c_str(), qual.c_str());
+		reads++;
+	}
+	if (!reads) biochef_fail("the sample FASTQ %s holds no read", path);
+	if (fclose(o) != 0) biochef_fail("cannot write %s", out.c_str());
+}
+
+static double biochef_number(const char *opt, const char *s, double min, double max, bool open_min)
+{
+	char *end;
+	errno = 0;
+	double v = strtod(s, &end);
+	if (end == s || *end || errno || !(open_min ? v > min : v >= min) || !(v <= max) || strchr(" \t", *s))
+		biochef_fail("%s should be a number %s %g to %g, and is \"%s\"", opt, open_min ? "above" : "from", min, max, s);
+	return v;
+}
+
+static long biochef_whole(const char *opt, const char *s, long min, long max)
+{
+	char *end;
+	errno = 0;
+	long v = strtol(s, &end, 10);
+	if (!*s || *end || errno || v < min || v > max || strchr(" \t+", *s))
+		biochef_fail("%s should be a whole number from %ld to %ld, and is \"%s\"", opt, min, max, s);
+	return v;
+}
+
+#ifndef __EMSCRIPTEN__
+extern "C" const unsigned char biochef_model_P4C2[], biochef_model_P4C2_end[], biochef_model_P5C3[], biochef_model_P5C3_end[],
+	biochef_model_P6C4[], biochef_model_P6C4_end[], biochef_model_R94[], biochef_model_R94_end[],
+	biochef_model_R95[], biochef_model_R95_end[], biochef_model_R103[], biochef_model_R103_end[];
+#endif
+
+// The HMM models PBSIM2 ships, in its data directory: in wasm a file of the
+// module, natively written to the temporary directory from the executable
+static std::string biochef_model(const char *name)
+{
+	static const char *const names[] = { "P4C2", "P5C3", "P6C4", "R94", "R95", "R103" };
+	size_t i;
+	for (i = 0; i < 6; i++)
+		if (!strcmp(name, names[i])) break;
+	if (i == 6) biochef_fail("--bc-model should be P4C2, P5C3 or P6C4 (PacBio), or R94, R95 or R103 (Nanopore), and is \"%s\"", name);
+#ifdef __EMSCRIPTEN__
+	return std::string("/biochef_models/") + names[i] + ".model";
+#else
+	static const unsigned char *const data[][2] = {
+		{ biochef_model_P4C2, biochef_model_P4C2_end }, { biochef_model_P5C3, biochef_model_P5C3_end },
+		{ biochef_model_P6C4, biochef_model_P6C4_end }, { biochef_model_R94, biochef_model_R94_end },
+		{ biochef_model_R95, biochef_model_R95_end }, { biochef_model_R103, biochef_model_R103_end } };
+	std::string path = biochef_dir + "/" + names[i] + ".model";
+	FILE *f = fopen(path.c_str(), "wb");
+	size_t n = (size_t)(data[i][1] - data[i][0]);
+	if (!f || fwrite(data[i][0], 1, n, f) != n || fclose(f) != 0) biochef_fail("cannot write %s (%s)", path.c_str(), strerror(errno));
+	return path;
+#endif
+}
+
+// Appends a file PBSIM2 wrote to an output, naming the reference in its
+// alignments, where PBSIM2 writes "ref"
+static void biochef_gather(FILE *out, const std::string &path, const char *ref)
+{
+	FILE *in = fopen(path.c_str(), "rb");
+	if (!in) biochef_fail("PBSIM2 wrote no %s", path.c_str());
+	char buf[1 << 16];
+	if (ref) {
+		std::string line;
+		int c;
+		while ((c = getc(in)) != EOF) {
+			line += (char)c;
+			if (c != '\n') continue;
+			if (!line.compare(0, 6, "s ref ")) line = std::string("s ") + ref + line.substr(5);
+			fputs(line.c_str(), out);
+			line.clear();
+		}
+		fputs(line.c_str(), out);
+	} else {
+		size_t n;
+		while ((n = fread(buf, 1, sizeof buf, in)) > 0) fwrite(buf, 1, n, out);
+	}
+	fclose(in);
+}
+
+int main(int argc, char *argv[])
+{
+	const char *model = NULL, *fastq = NULL, *maf = NULL, *sample = NULL, *templ = NULL, *ref = NULL, *seed = "1";
+	std::vector<std::string> pass;
+	double acc_min = 0.75, acc_max = 1.0, len_mean = 9000, len_sd = 7000;
+	long len_min = 100, len_max = 1000000;
+	for (int i = 1; i < argc; i++) {
+		std::string a = argv[i];
+		if (a.compare(0, 2, "--") || a == "--") {
+			if (a[0] == '-' && a != "-") biochef_fail("has no option %s", a.c_str());
+			if (ref) biochef_fail("takes one reference, and was given \"%s\" and \"%s\"", ref, argv[i]);
+			ref = argv[i];
+			continue;
+		}
+		size_t eq = a.find('=');
+		std::string name = a.substr(0, eq);
+		const char *v = eq != std::string::npos ? argv[i] + eq + 1 : (i + 1 < argc ? argv[++i] : NULL);
+		if (!v) biochef_fail("%s needs a value", name.c_str());
+		const char *o = name.c_str();
+		if (name == "--bc-model") model = v;
+		else if (name == "--bc-fastq") fastq = v;
+		else if (name == "--bc-maf") maf = v;
+		else if (name == "--sample-fastq") sample = v;
+		else if (name == "--template-fasta") templ = v;
+		else if (name == "--seed") seed = v, biochef_whole(o, v, 0, INT_MAX);
+		else if (name == "--depth") biochef_number(o, v, 0, 1000, true);
+		else if (name == "--length-mean") len_mean = biochef_number(o, v, 1, 1000000, false);
+		else if (name == "--length-sd") len_sd = biochef_number(o, v, 0, 1000000, false);
+		// PBSIM2 places deletions at random among a read's bases but the
+		// last, which a read of 1 base has none of
+		else if (name == "--length-min") len_min = biochef_whole(o, v, 2, 1000000);
+		else if (name == "--length-max") len_max = biochef_whole(o, v, 1, 1000000);
+		else if (name == "--accuracy-mean") biochef_number(o, v, 0, 1, false);
+		else if (name == "--accuracy-min") acc_min = biochef_number(o, v, 0, 1, false);
+		else if (name == "--accuracy-max") acc_max = biochef_number(o, v, 0, 1, false);
+		else if (name == "--difference-ratio") {
+			std::string r = v;
+			long sum = 0;
+			size_t at = 0;
+			for (int k = 0; k < 3; k++) {
+				size_t colon = r.find(':', at);
+				if ((k < 2) != (colon != std::string::npos)) biochef_fail("--difference-ratio should be three whole numbers, substitutions:insertions:deletions, as 6:54:40, and is \"%s\"", v);
+				std::string part = r.substr(at, k < 2 ? colon - at : std::string::npos);
+				sum += biochef_whole("each part of --difference-ratio", part.c_str(), 0, 1000);
+				at = colon + 1;
+			}
+			if (!sum) biochef_fail("--difference-ratio gives no difference at all: \"%s\"", v);
+		} else if (name == "--id-prefix") {
+			if (!*v || strlen(v) > 64) biochef_fail("--id-prefix should be 1 to 64 characters, and is \"%s\"", v);
+			for (const char *c = v; *c; c++)
+				if (*c < 33 || *c > 126) biochef_fail("--id-prefix has %s, and read names take no spaces or control characters", biochef_shown((unsigned char)*c).c_str());
+		} else biochef_fail("has no option %s", o);
+		if (name.compare(0, 5, "--bc-") && name != "--sample-fastq" && name != "--template-fasta") {
+			pass.push_back(name);
+			pass.push_back(v);
+		}
+	}
+	if (len_min > len_max) biochef_fail("--length-min (%ld) is greater than --length-max (%ld)", len_min, len_max);
+	// With a standard deviation of 0, every read is --length-mean long, which
+	// PBSIM2 did not hold to --length-max, and overflowed its buffers
+	if (model && !templ && len_sd == 0 && (len_mean < len_min || len_mean > len_max))
+		biochef_fail("--length-sd 0 makes every read --length-mean (%g) long, which should be from --length-min (%ld) to --length-max (%ld)", len_mean, len_min, len_max);
+	if (acc_min > acc_max) biochef_fail("--accuracy-min (%g) is greater than --accuracy-max (%g)", acc_min, acc_max);
+	if (!fastq || !maf) biochef_fail("needs --bc-fastq and --bc-maf, the files the reads and their alignments go to");
+	if (templ ? (ref || sample || !model) : (!ref || !!sample == !!model))
+		biochef_fail("simulates reads from a reference with --bc-model (model-based) or --sample-fastq (sampling-based), or from --template-fasta with --bc-model");
+
+	char cwd[PATH_MAX];
+	if (!getcwd(cwd, sizeof cwd)) biochef_fail("cannot get the working directory (%s)", strerror(errno));
+	std::string tmp = getenv("TMPDIR") && *getenv("TMPDIR") ? getenv("TMPDIR") : "/tmp";
+	std::vector<char> templ_dir(tmp.begin(), tmp.end());
+	const char *suffix = "/pbsim.XXXXXX";
+	templ_dir.insert(templ_dir.end(), suffix, suffix + strlen(suffix) + 1);
+	if (!mkdtemp(&templ_dir[0])) biochef_fail("cannot make a temporary directory (%s)", strerror(errno));
+	biochef_dir = &templ_dir[0];
+	if (biochef_dir[0] != '/') biochef_dir = std::string(cwd) + "/" + biochef_dir;
+	atexit(biochef_remove_dir);
+
+	std::vector<std::string> args(1, argv[0]), names;
+	if (!std::count(pass.begin(), pass.end(), std::string("--seed"))) pass.push_back("--seed"), pass.push_back(seed);
+	args.insert(args.end(), pass.begin(), pass.end());
+	args.push_back("--prefix");
+	args.push_back("sd");
+	if (model) args.push_back("--hmm_model"), args.push_back(biochef_model(model));
+	if (sample) {
+		std::string copy = biochef_copy_path("sample", sample);
+		biochef_fastq(sample, biochef_dir + "/" + copy);
+		args.push_back("--sample-fastq"), args.push_back(copy);
+	}
+	if (templ) {
+		// PBSIM2 draws twice as many qualities as a template has bases into
+		// a buffer of --length-max, and a longer template overflowed it
+		std::string copy = biochef_copy_path("templates", templ);
+		biochef_fasta(templ, "templates", biochef_dir + "/" + copy, 1, len_max / 2, 100000000, ", half of --length-max");
+		args.push_back("--template-fasta"), args.push_back(copy);
+	} else {
+		std::string copy = biochef_copy_path("reference", ref);
+		names = biochef_fasta(ref, "reference", biochef_dir + "/" + copy, 100, 1000000000, 9999);
+		args.push_back(copy);
+	}
+	std::vector<char *> cargs;
+	for (size_t i = 0; i < args.size(); i++) cargs.push_back(&args[i][0]);
+	cargs.push_back(NULL);
+	if (chdir(biochef_dir.c_str()) != 0) biochef_fail("cannot enter %s (%s)", biochef_dir.c_str(), strerror(errno));
+	int rc = biochef_upstream_main((int)cargs.size() - 1, &cargs[0]);
+	if (chdir(cwd) != 0) biochef_fail("cannot go back to %s (%s)", cwd, strerror(errno));
+	if (rc) return rc;
+
+	FILE *fq = fopen(fastq, "wb"), *mf = fopen(maf, "wb");
+	if (!fq || !mf) biochef_fail("cannot write %s (%s)", !fq ? fastq : maf, strerror(errno));
+	fputs("##maf version=1\n\n", mf);
+	if (templ) {
+		biochef_gather(fq, biochef_dir + "/sd.fastq", NULL);
+		biochef_gather(mf, biochef_dir + "/sd.maf", NULL);
+	} else {
+		for (size_t i = 0; i < names.size(); i++) {
+			char n[16];
+			snprintf(n, sizeof n, "_%04zu", i + 1);
+			biochef_gather(fq, biochef_dir + "/sd" + n + ".fastq", NULL);
+			biochef_gather(mf, biochef_dir + "/sd" + n + ".maf", names[i].c_str());
+		}
+	}
+	if (fclose(fq) != 0 || fclose(mf) != 0) biochef_fail("cannot write %s or %s", fastq, maf);
+	return 0;
+}
+SHIM_EOF
+
+# PBSIM2 seeded its random numbers with the time, and took them from the
+# C library's rand, which gives other numbers in glibc than in musl, in
+# wasm. The seed is 1 unless --seed gives one, and rand is the entry
+# point's, the same in both.
+sed -i -e 's/\bsrand(/biochef_srand(/' -e 's/\brand()/biochef_rand()/g' \
+  -e 's/^#include <sys\/resource.h>$/&\nextern "C" int biochef_rand(void);\nextern "C" void biochef_srand(unsigned);/' src/pbsim.cpp
+[ "$(grep -c 'biochef_rand()' src/pbsim.cpp)" -eq 27 ]
+[ "$(grep -c '\brand()\|\bsrand(' src/pbsim.cpp)" -eq 0 ]
+
+# PBSIM2 exited with -1, 255 to the shell, on an error, and main returned
+# FAILED, which is 0, when it could not open an output file.
+sed -i -e 's/exit(-1);/exit(1);/' -e '/^int biochef_upstream_main /,/^}$/ s/return FAILED;/return 1;/' src/pbsim.cpp
+[ "$(grep -c 'exit(-1)' src/pbsim.cpp)" -eq 0 ]
+[ "$(sed -n '/^int biochef_upstream_main /,/^}$/p' src/pbsim.cpp | grep -c 'return 1;')" -eq 9 ]
+
+# Sampling from a FASTQ with one read in range set the sampling interval
+# to half the reads, 0, and divided by it.
+sed -i 's/^      sampling_interval = (long)(fastq.num_filtered \* 0.5);$/&\n      if (sampling_interval < 1) sampling_interval = 1;/' src/pbsim.cpp
+grep -q '^      if (sampling_interval < 1) sampling_interval = 1;$' src/pbsim.cpp
+
+# A template's read takes its qualities from twice as many as the template
+# has bases; an insertion takes one without taking a base, so with many
+# insertions they ran out before the template did and PBSIM2 read past
+# them. An insertion now needs one quality to spare for each base left.
+sed -i -e '/^int mutate_templ() {$/,/^}$/ s/^  mut.tmp_qc\[offset\] = .\\0.;$/&\n  long biochef_slots = offset;/' \
+  -e '/^int mutate_templ() {$/,/^}$/ s/^    } else if (rand_value < mut.ins_thre\[qc_value\]) {$/    } else if (rand_value < mut.ins_thre[qc_value] \&\& biochef_slots - qc_offset - 1 >= seqlen - seq_offset + 1) {/' src/pbsim.cpp
+grep -q '^  long biochef_slots = offset;$' src/pbsim.cpp
+[ "$(grep -c 'biochef_slots - qc_offset - 1 >= seqlen - seq_offset + 1' src/pbsim.cpp)" -eq 1 ]
+
+# exp, pow and tgamma are called, not folded at compile time, and no step
+# is fused into an FMA, in either runtime.
+BIOCHEF_MATH_FLAGS="-ffp-contract=off -fno-builtin-exp -fno-builtin-pow -fno-builtin-tgamma"
+
 autoreconf -fi
-emconfigure ./configure
-emmake make -j4 CXXFLAGS="-O2 -sSTACK_SIZE=8MB $EM_FLAGS"
+emconfigure ./configure CXXFLAGS="-O2 $BIOCHEF_MATH_FLAGS"
+emmake make -j4 CXXFLAGS="-O2 $BIOCHEF_MATH_FLAGS" LDFLAGS="-sSTACK_SIZE=8MB --embed-file $PWD/data@/biochef_models $EM_FLAGS"
 mkdir -p out && mv src/pbsim out/pbsim.js && mv src/pbsim.wasm out/pbsim.wasm
