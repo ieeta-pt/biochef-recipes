@@ -2,7 +2,7 @@ apiVersion: v1
 
 id: app.biochef.miniasm
 name: miniasm
-description: miniasm — very fast OLC-style long-read de novo assembler that produces an unpolished GFA assembly graph from a precomputed PAF overlap file (typically from minimap2). Skips error correction entirely — the resulting contigs have per-base accuracy equal to the raw read accuracy. Standard pipeline — minimap2 → miniasm → racon (already in PR) for polishing. Ships `minidot` — a small companion that renders PAF-format pairwise alignments as a dotplot in EPS.
+description: "miniasm assembles long reads, from Oxford Nanopore or PacBio, from their overlaps alone, as minimap2 finds them: it keeps the parts of the reads that enough other reads cover, drops contained reads, builds a string graph, cleans it of tips, bubbles and short overlaps, and joins the reads along it into unitigs, written as GFA. It corrects no errors, so the unitigs are as accurate as the reads; racon can polish them. minidot, shipped with it, draws overlaps or alignments in PAF as a dot plot."
 
 version: 0.3-bc.1
 homepage: https://github.com/lh3/miniasm
@@ -27,7 +27,7 @@ build:
       buildScript: build-wasm.sh
   native:
     buildScript: build-native.sh
-    buildTools: [make]
+    buildTools: [make, gcc]
 
 runtime:
   modes: [wasm, native, remote]
@@ -37,43 +37,96 @@ operations:
     name: Assemble Long Reads (miniasm)
     category: Genomic Operations
     bin: miniasm
-    description: Assemble long reads into a GFA assembly graph from a precomputed PAF overlap file (e.g. from minimap2 self-overlap). Output is GFA-format with read-coherent unitigs. No error correction — pair with racon downstream for polishing.
+    description: "Assemble long reads into unitigs, in GFA, from the reads and their all-versus-all overlaps in PAF, as minimap2 -x ava-ont or ava-pb writes them. Each unitig's S line has its sequence, taken from the reads, and its a lines the reads it is made of."
     io:
       inputs:
-        - { name: reads, types: [FASTA, Multi-FASTA, FASTQ], mode: file, flag: -f }
-        - { name: overlaps, types: [PAF, TEXT], mode: file }
+        - { name: reads, types: [LONG_READS, FASTQ, FASTA, Multi-FASTA], mode: file, flag: -f }
+        - &overlaps { name: overlaps, types: [READ_OVERLAPS, PAF], mode: file }
       outputs:
-        - { name: out, types: [GFA], mode: stdout }
+        - { name: unitigs, types: [GFA], mode: stdout }
     parameters:
-      - { name: prefilter_contained, type: flag, flag: -R }
-      - { name: min_match_length, type: integer, flag: -m, default: 100 }
-      - { name: min_identity, type: float, flag: -i, default: 0.05 }
-      - { name: min_span, type: integer, flag: -s, default: 2000 }
-      - { name: min_coverage, type: integer, flag: -c, default: 3 }
-      - { name: min_overlap, type: integer, flag: -o }
-      - { name: max_overhang, type: integer, flag: -h, default: 1000 }
-      - { name: max_internal_match_ratio, type: float, flag: -I, default: 0.8 }
-      - { name: max_overhang_ratio, type: float, flag: -r, default: 0.5 }
-      - { name: min_end_dropoff, type: integer, flag: -e, default: 4 }
-      - { name: min_unitig_reads, type: integer, flag: -n, default: 3 }
-      - { name: max_short_unitig, type: integer, flag: -d, default: 50000 }
-      - { name: bub_pop_distance, type: float, flag: -g, default: 50000 }
-      - { name: small_tip_threshold, type: float, flag: -F, default: 0.8 }
-      - { name: verbose, type: integer, flag: -V, default: 1 }
-      - { name: output_overlap_only, type: integer, flag: "-1", default: 0 }
+      - &prefilter { name: prefilter_contained, type: flag, flag: -R }
+      - &min_match { name: min_match_length, type: integer, flag: -m, default: 100 }
+      - &min_identity { name: min_identity, type: float, flag: -i, default: 0.05 }
+      - &min_span { name: min_span, type: integer, flag: -s, default: 2000 }
+      - &min_coverage { name: min_coverage, type: integer, flag: -c, default: 3 }
+      - &min_overlap { name: min_overlap, type: integer, flag: -o }
+      - &max_overhang { name: max_overhang, type: integer, flag: -h, default: 1000 }
+      - &min_end_to_end { name: min_end_to_end_ratio, type: float, flag: -I, default: 0.8 }
+      - { name: max_gap_difference, type: integer, flag: -g, default: 1000 }
+      - { name: max_bubble_distance, type: integer, flag: -d, default: 50000 }
+      - { name: small_unitig_threshold, type: integer, flag: -e, default: 4 }
+      - { name: short_overlap_rounds, type: integer, flag: -n, default: 3 }
+      - { name: overlap_drop_ratios, type: string, flag: -r, default: "0.7,0.5" }
+      - { name: final_overlap_drop_ratio, type: float, flag: -F, default: 0.8 }
+      - &skip_first { name: skip_first_selection, type: flag, flag: "-1" }
+      - &skip_second { name: skip_second_selection, type: flag, flag: "-2" }
+      - &both_directions { name: both_directions, type: flag, flag: -b }
+
+  - id: miniasm.select
+    name: Select Read Regions (miniasm)
+    category: Genomic Operations
+    bin: miniasm
+    description: "Run miniasm's read selection on all-versus-all overlaps in PAF and write, in BED, the part of each read it keeps: the longest part enough other reads cover, of the reads not contained in others."
+    io:
+      inputs:
+        - *overlaps
+      outputs:
+        - { name: regions, types: [BED], mode: stdout }
+    parameters: &select_parameters
+      - { name: output, type: string, flag: -p, default: bed, required: true, hidden: true }
+      - *prefilter
+      - *min_match
+      - *min_identity
+      - *min_span
+      - *min_coverage
+      - *min_overlap
+      - *max_overhang
+      - *min_end_to_end
+      - *skip_first
+      - *skip_second
+      - *both_directions
+
+  - id: miniasm.overlaps
+    name: Filter Overlaps (miniasm)
+    category: Genomic Operations
+    bin: miniasm
+    description: "Run miniasm's read selection on all-versus-all overlaps in PAF and write, in PAF, the overlaps it keeps between the parts of the reads it keeps, each named read:start-end."
+    io:
+      inputs:
+        - *overlaps
+      outputs:
+        - { name: overlaps, types: [READ_OVERLAPS, PAF], mode: stdout }
+    parameters:
+      - { name: output, type: string, flag: -p, default: paf, required: true, hidden: true }
+      - *prefilter
+      - *min_match
+      - *min_identity
+      - *min_span
+      - *min_coverage
+      - *min_overlap
+      - *max_overhang
+      - *min_end_to_end
+      - *skip_first
+      - *skip_second
+      - *both_directions
 
   - id: miniasm.minidot
-    name: PAF Dotplot (minidot)
+    name: PAF Dot Plot (minidot)
     category: Sequence Analysis
     bin: minidot
-    description: Render a PAF-format pairwise alignment as an EPS dotplot. Useful for visualizing self-overlap structure (e.g. tandem repeats) or assembly-to-reference alignment.
+    description: "Draw overlaps or alignments in PAF as a dot plot, in Encapsulated PostScript: the targets along the x axis, the queries along the y axis, matches on the same strand in red and on opposite strands in blue. Self-overlaps of reads show their repeats; an assembly against a reference shows its joins and breaks."
     io:
       inputs:
-        - { name: in, types: [PAF, TEXT], mode: file }
+        - { name: alignments, types: [READ_OVERLAPS, PAF], mode: file }
       outputs:
-        - { name: out, types: [TEXT], mode: stdout }
+        - { name: plot, types: [EPS], mode: stdout }
     parameters:
       - { name: min_match_length, type: integer, flag: -m, default: 100 }
-      - { name: min_identity, type: float, flag: -i, default: 0.10 }
+      - { name: min_identity, type: float, flag: -i, default: 0.1 }
       - { name: min_span, type: integer, flag: -s, default: 1000 }
-      - { name: long_edge_only, type: flag, flag: -L }
+      - { name: width, type: integer, flag: -w, default: 600 }
+      - { name: font_size, type: integer, flag: -f, default: 11 }
+      - { name: line_width, type: float, flag: -t, default: 3 }
+      - { name: no_labels, type: flag, flag: -L }
+      - { name: no_diagonal, type: flag, flag: -d }
