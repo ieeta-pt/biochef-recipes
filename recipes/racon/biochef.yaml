@@ -2,7 +2,7 @@ apiVersion: v1
 
 id: app.biochef.racon
 name: racon
-description: racon — consensus-based polisher for long reads. Takes input long reads, their overlaps against an assembly (MHAP/PAF/SAM), and the target sequences; emits a polished assembly using partial-order alignment. The standard polishing pass after minimap2-based draft assembly with ONT/PacBio reads.
+description: "racon polishes a draft assembly with the long reads it was built from, from Oxford Nanopore or PacBio: it cuts each target into windows, aligns the parts of the reads that overlap each window into a partial order graph, and takes the consensus of the graph as the window's new sequence. It is the polishing pass after an assembly from miniasm or another long-read assembler, and it can also correct the reads themselves, from their overlaps with each other."
 
 version: 1.4.17-bc.1
 homepage: https://github.com/isovic/racon
@@ -26,31 +26,56 @@ build:
       emscriptenVersion: 4.0.18
       outputDir: build/bin
       buildScript: build-wasm.sh
+  native:
+    outputDir: build/bin
+    buildScript: build-native.sh
+    buildTools: [make, gcc]
 
 runtime:
-  modes: [wasm, remote]
+  modes: [wasm, native, remote]
 
 operations:
   - id: racon.polish
     name: Polish (racon)
     category: Genomic Operations
     bin: racon
-    description: Polish a draft assembly using long reads and their overlaps. Reads + overlaps + target sequences → polished FASTA on stdout.
+    description: "Polish target sequences, such as the contigs or unitigs of a draft assembly, with long reads and the reads' overlaps with the targets, in PAF or SAM, as minimap2 writes them. Writes the polished targets in FASTA; a target that no read overlaps is left out unless include_unpolished is set."
     io:
       inputs:
-        - { name: sequences, types: [FASTA, Multi-FASTA, FASTQ], mode: file }
-        - { name: overlaps, types: [SAM, TEXT], mode: file }
-        - { name: target, types: [FASTA, Multi-FASTA], mode: file }
+        - &sequences { name: sequences, types: [LONG_READS, FASTQ, FASTA, Multi-FASTA], mode: file }
+        - &overlaps { name: overlaps, types: [READ_OVERLAPS, PAF, SAM], mode: file }
+        - { name: targets, types: [LONG_READS, Multi-FASTA, FASTA], mode: file }
       outputs:
-        - { name: out, types: [FASTA, Multi-FASTA], mode: stdout }
+        - { name: polished, types: [Multi-FASTA, FASTA], mode: stdout }
     parameters:
       - { name: include_unpolished, type: flag, flag: -u }
-      - { name: fragment_correction, type: flag, flag: -f }
-      - { name: window_length, type: integer, flag: -w }
-      - { name: quality_threshold, type: float, flag: -q }
-      - { name: error_threshold, type: float, flag: -e }
-      - { name: trim, type: flag, flag: -t }
-      - { name: match, type: integer, flag: -m }
-      - { name: mismatch, type: integer, flag: -x }
-      - { name: gap, type: integer, flag: -g }
-      - { name: threads, type: integer, flag: -t, default: 1 }
+      - &window_length { name: window_length, type: integer, flag: -w, default: 500 }
+      - &quality_threshold { name: quality_threshold, type: float, flag: -q, default: 10 }
+      - &error_threshold { name: error_threshold, type: float, flag: -e, default: 0.3 }
+      - &no_trimming { name: no_trimming, type: flag, flag: --no-trimming }
+      - &match { name: match, type: integer, flag: -m, default: 3 }
+      - &mismatch { name: mismatch, type: integer, flag: -x, default: -5 }
+      - &gap { name: gap, type: integer, flag: -g, default: -4 }
+
+  - id: racon.correct
+    name: Correct Long Reads (racon)
+    category: Genomic Operations
+    bin: racon
+    description: "Correct long reads with each other: give the reads as both the sequences and the targets, with their all-versus-all overlaps in PAF, as minimap2 -x ava-ont or ava-pb writes them. Each read is polished with the reads that overlap it, using every overlap rather than only the best one per read. Writes the corrected reads in FASTA."
+    io:
+      inputs:
+        - *sequences
+        - *overlaps
+        - { name: reads, types: [LONG_READS, FASTQ, FASTA, Multi-FASTA], mode: file }
+      outputs:
+        - { name: corrected, types: [Multi-FASTA, FASTA], mode: stdout }
+    parameters:
+      - { name: fragment_correction, type: flag, flag: -f, required: true, hidden: true }
+      - { name: include_uncorrected, type: flag, flag: -u }
+      - *window_length
+      - *quality_threshold
+      - *error_threshold
+      - *no_trimming
+      - *match
+      - *mismatch
+      - *gap
