@@ -37,9 +37,9 @@ operations:
     description: View, subset and filter VCF/BCF files
     io:
       inputs:
-        - { name: in, types: [VCF, BCF], mode: file }
+        - { name: in, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file }
       outputs:
-        - { name: out, types: [VCF, BCF], mode: file, flag: -o }
+        - { name: out, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file, flag: -o }
     parameters:
       - { name: command, type: string, default: view, required: true, hidden: true }
       - { name: output_type, type: string, flag: -O }
@@ -65,7 +65,7 @@ operations:
     description: Extract fields from VCF/BCF as a tab-delimited table
     io:
       inputs:
-        - { name: in, types: [VCF, BCF], mode: file }
+        - { name: in, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
@@ -76,9 +76,22 @@ operations:
       - { name: samples, type: string, flag: -s }
       - { name: include, type: string, flag: -i }
       - { name: exclude, type: string, flag: -e }
-      - { name: list_samples, type: flag, flag: -l }
       - { name: print_header, type: flag, flag: -H }
       - { name: allow_undef_tags, type: flag, flag: -u }
+
+  - id: bcftools.query.samples
+    name: List Samples (BCFtools)
+    category: Information and Analysis
+    bin: bcftools
+    description: Write the names of the samples in a VCF or BCF, one per line.
+    io:
+      inputs:
+        - { name: in, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file }
+      outputs:
+        - { name: out, types: [SAMPLE_LIST], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: query, required: true, hidden: true }
+      - { name: list_samples, type: flag, flag: -l, required: true, hidden: true }
 
   - id: bcftools.stats
     name: Stats (BCFtools)
@@ -87,7 +100,7 @@ operations:
     description: Produce VCF/BCF statistics
     io:
       inputs:
-        - { name: in, types: [VCF, BCF], mode: file }
+        - { name: in, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
@@ -109,9 +122,9 @@ operations:
     description: Apply soft or hard filters to VCF/BCF
     io:
       inputs:
-        - { name: in, types: [VCF, BCF], mode: file }
+        - { name: in, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file }
       outputs:
-        - { name: out, types: [VCF, BCF], mode: file, flag: -o }
+        - { name: out, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file, flag: -o }
     parameters:
       - { name: command, type: string, default: filter, required: true, hidden: true }
       - { name: include, type: string, flag: -i }
@@ -132,9 +145,9 @@ operations:
     description: Sort VCF/BCF file by chromosome and position
     io:
       inputs:
-        - { name: in, types: [VCF, BCF], mode: file }
+        - { name: in, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file }
       outputs:
-        - { name: out, types: [VCF, BCF], mode: file, flag: -o }
+        - { name: out, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file, flag: -o }
     parameters:
       - { name: command, type: string, default: sort, required: true, hidden: true }
       - { name: output_type, type: string, flag: -O }
@@ -147,10 +160,10 @@ operations:
     description: Left-align and normalize indels; split or join multiallelic sites
     io:
       inputs:
-        - { name: in, types: [VCF, BCF], mode: file }
+        - { name: in, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file }
         - { name: fasta_ref, types: [FASTA], mode: file, flag: -f }
       outputs:
-        - { name: out, types: [VCF, BCF], mode: file, flag: -o }
+        - { name: out, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file, flag: -o }
     parameters:
       - { name: command, type: string, default: norm, required: true, hidden: true }
       - { name: check_ref, type: string, flag: -c }
@@ -169,10 +182,10 @@ operations:
     description: Concatenate or combine VCF/BCF files with the same set of samples
     io:
       inputs:
-        - { name: in1, types: [VCF, BCF], mode: file }
-        - { name: in2, types: [VCF, BCF], mode: file }
+        - { name: in1, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file }
+        - { name: in2, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file }
       outputs:
-        - { name: out, types: [VCF, BCF], mode: file, flag: -o }
+        - { name: out, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file, flag: -o }
     parameters:
       - { name: command, type: string, default: concat, required: true, hidden: true }
       - { name: allow_overlaps, type: flag, flag: -a }
@@ -190,10 +203,10 @@ operations:
     description: Merge multiple VCF/BCF files from non-overlapping sample sets
     io:
       inputs:
-        - { name: in1, types: [VCF, BCF], mode: file }
-        - { name: in2, types: [VCF, BCF], mode: file }
+        - { name: in1, types: [VCF_GZ, GVCF_GZ, BCF], mode: file }
+        - { name: in2, types: [VCF_GZ, GVCF_GZ, BCF], mode: file }
       outputs:
-        - { name: out, types: [VCF, BCF], mode: file, flag: -o }
+        - { name: out, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file, flag: -o }
     parameters:
       - { name: command, type: string, default: merge, required: true, hidden: true }
       - { name: force_samples, type: flag, flag: --force-samples }
@@ -214,10 +227,10 @@ operations:
     description: Two-file intersection of VCF/BCF (writes records of file 1 present in both) — inputs must be bgzipped and indexed
     io:
       inputs:
-        - { name: in1, types: [VCF, BCF], mode: file }
-        - { name: in2, types: [VCF, BCF], mode: file }
+        - { name: in1, types: [VCF_GZ, GVCF_GZ, BCF], mode: file }
+        - { name: in2, types: [VCF_GZ, GVCF_GZ, BCF], mode: file }
       outputs:
-        - { name: out, types: [VCF, BCF], mode: file, flag: -o }
+        - { name: out, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file, flag: -o }
     parameters:
       - { name: command, type: string, default: isec, required: true, hidden: true }
       - { name: nfiles, type: string, flag: -n, default: "=2" }
@@ -235,9 +248,9 @@ operations:
     description: Add or remove annotations in VCF/BCF
     io:
       inputs:
-        - { name: in, types: [VCF, BCF], mode: file }
+        - { name: in, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file }
       outputs:
-        - { name: out, types: [VCF, BCF], mode: file, flag: -o }
+        - { name: out, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file, flag: -o }
     parameters:
       - { name: command, type: string, default: annotate, required: true, hidden: true }
       - { name: set_id, type: string, flag: -I }
@@ -258,7 +271,7 @@ operations:
     description: Apply VCF variants to a reference FASTA to produce a consensus sequence
     io:
       inputs:
-        - { name: in, types: [VCF, BCF], mode: file }
+        - { name: in, types: [VCF_GZ, GVCF_GZ, BCF], mode: file }
         - { name: fasta_ref, types: [FASTA], mode: file, flag: -f }
       outputs:
         - { name: out, types: [FASTA], mode: stdout }
@@ -278,17 +291,46 @@ operations:
     name: Index (BCFtools)
     category: Genomic Operations
     bin: bcftools
-    description: Index a bgzipped VCF/BCF for random access (writes a .csi sibling file)
+    description: Index a bgzipped VCF or gVCF, or a BCF, so tools can read a region of it without reading it all. The index is a CSI file.
     io:
       inputs:
-        - { name: in, types: [VCF, BCF], mode: file }
+        - { name: in, types: [VCF_GZ, GVCF_GZ, BCF], mode: file }
       outputs:
-        - { name: out, types: [CSI], mode: file, flag: -o, filename: "in.txt.csi" }
+        - { name: out, types: [CSI], mode: file, flag: -o, filename: out.csi }
     parameters:
       - { name: command, type: string, default: index, required: true, hidden: true }
-      - { name: csi, type: flag, flag: -c }
       - { name: force, type: flag, flag: -f }
       - { name: min_shift, type: integer, flag: -m }
+
+  - id: bcftools.index.tbi
+    name: Index TBI (BCFtools)
+    category: Genomic Operations
+    bin: bcftools
+    description: Index a bgzipped VCF or gVCF as tabix does, so tools can read a region of it without reading it all. The index is a TBI file.
+    io:
+      inputs:
+        - { name: in, types: [VCF_GZ, GVCF_GZ], mode: file }
+      outputs:
+        - { name: out, types: [TBI], mode: file, flag: -o, filename: out.tbi }
+    parameters:
+      - { name: command, type: string, default: index, required: true, hidden: true }
+      - { name: tbi, type: flag, flag: --tbi, required: true, hidden: true }
+      - { name: force, type: flag, flag: -f }
+
+  - id: bcftools.convert.gvcf2vcf
+    name: gVCF to VCF (BCFtools)
+    category: Format Conversion
+    bin: bcftools
+    description: Expand the reference blocks of a gVCF into one record per site, against the reference FASTA, and write a plain VCF.
+    io:
+      inputs:
+        - { name: in, types: [GVCF, GVCF_GZ], mode: file, flag: --gvcf2vcf }
+        - { name: fasta_ref, types: [FASTA, Multi-FASTA], mode: file, flag: -f }
+      outputs:
+        - { name: out, types: [VCF, VCF_GZ, BCF], mode: file, flag: -o }
+    parameters:
+      - { name: command, type: string, default: convert, required: true, hidden: true }
+      - { name: output_type, type: string, flag: -O }
 
   - id: bcftools.mpileup
     name: Mpileup (BCFtools)
@@ -300,7 +342,7 @@ operations:
         - { name: bam, types: [BAM, CRAM], mode: file }
         - { name: fasta_ref, types: [FASTA], mode: file, flag: -f }
       outputs:
-        - { name: out, types: [VCF, BCF], mode: file, flag: --output }
+        - { name: out, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file, flag: --output }
     parameters:
       - { name: command, type: string, default: mpileup, required: true, hidden: true }
       - { name: output_type, type: string, flag: -O }
@@ -339,9 +381,9 @@ operations:
     description: Call SNPs and indels from the genotype likelihoods produced by Mpileup. Exactly one calling model must be enabled, either multiallelic_caller (recommended) or consensus_caller, otherwise the tool exits with a usage error.
     io:
       inputs:
-        - { name: in, types: [VCF, BCF], mode: file }
+        - { name: in, types: [VCF, VCF_GZ, BCF], mode: file }
       outputs:
-        - { name: out, types: [VCF, BCF], mode: file, flag: -o }
+        - { name: out, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file, flag: -o }
     parameters:
       - { name: command, type: string, default: call, required: true, hidden: true }
       - { name: multiallelic_caller, type: flag, flag: -m }
@@ -372,11 +414,11 @@ operations:
     description: Haplotype-aware consequence caller; annotates variants with protein-coding consequences in a BCSQ tag. Requires an Ensembl or GENCODE style GFF3 whose attributes use the gene and transcript ID prefixes; annotations from other sources are silently ignored. Suitable for small genomes such as viral, bacterial and organelle only.
     io:
       inputs:
-        - { name: in, types: [VCF, BCF], mode: file }
+        - { name: in, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file }
         - { name: fasta_ref, types: [FASTA], mode: file, flag: -f }
         - { name: gff, types: [GFF], mode: file, flag: -g }
       outputs:
-        - { name: out, types: [VCF, BCF], mode: file, flag: -o }
+        - { name: out, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file, flag: -o }
     parameters:
       - { name: command, type: string, default: csq, required: true, hidden: true }
       - { name: phase, type: string, flag: -p, default: a, required: true }
@@ -400,7 +442,7 @@ operations:
     description: Detect runs of homozygosity and autozygous segments with a hidden Markov model. Sites whose allele frequency cannot be determined are skipped, so a default allele frequency is supplied; clear af_dflt and choose af_tag or estimate_af if the input already carries frequencies.
     io:
       inputs:
-        - { name: in, types: [VCF, BCF], mode: file }
+        - { name: in, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
@@ -429,7 +471,7 @@ operations:
     description: Cross-check the genotypes of every sample against every other sample in a single multi-sample file to detect sample swaps and contamination. Reports pairwise discordance as a tab-delimited table.
     io:
       inputs:
-        - { name: in, types: [VCF, BCF], mode: file }
+        - { name: in, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
@@ -449,10 +491,10 @@ operations:
     description: Replace the header of a VCF/BCF with the contents of a supplied header file, leaving all records untouched. The output format always matches the input format.
     io:
       inputs:
-        - { name: in, types: [VCF, BCF], mode: file }
+        - { name: in, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file }
         - { name: header, types: [VCF, TEXT], mode: file, flag: -h }
       outputs:
-        - { name: out, types: [VCF, BCF], mode: file, flag: -o }
+        - { name: out, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file, flag: -o }
     parameters:
       - { name: command, type: string, default: reheader, required: true, hidden: true }
 
@@ -463,10 +505,10 @@ operations:
     description: Append lines from a header file to the VCF/BCF header, for example to declare INFO or FORMAT tags that the records already use but the header does not define.
     io:
       inputs:
-        - { name: in, types: [VCF, BCF], mode: file }
+        - { name: in, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file }
         - { name: header_lines, types: [TEXT], mode: file, flag: -h }
       outputs:
-        - { name: out, types: [VCF, BCF], mode: file, flag: -o }
+        - { name: out, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file, flag: -o }
     parameters:
       - { name: command, type: string, default: annotate, required: true, hidden: true }
       - { name: output_type, type: string, flag: -O }
@@ -485,9 +527,9 @@ operations:
     description: Split multiallelic sites into separate records, or join biallelic records back into multiallelic sites. Needs no reference genome, unlike the full Norm operation which also left-aligns indels.
     io:
       inputs:
-        - { name: in, types: [VCF, BCF], mode: file }
+        - { name: in, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file }
       outputs:
-        - { name: out, types: [VCF, BCF], mode: file, flag: -o }
+        - { name: out, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file, flag: -o }
     parameters:
       - { name: command, type: string, default: norm, required: true, hidden: true }
       - { name: multiallelics, type: string, flag: -m, default: "-both", required: true }
@@ -503,10 +545,10 @@ operations:
     description: Keep or drop samples listed in a file, one sample name per line. Prefix the list with a caret to exclude the named samples instead of keeping them.
     io:
       inputs:
-        - { name: in, types: [VCF, BCF], mode: file }
-        - { name: samples_file, types: [TEXT, LIST], mode: file, flag: -S }
+        - { name: in, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file }
+        - { name: samples_file, types: [SAMPLE_LIST], mode: file, flag: -S }
       outputs:
-        - { name: out, types: [VCF, BCF], mode: file, flag: -o }
+        - { name: out, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file, flag: -o }
     parameters:
       - { name: command, type: string, default: view, required: true, hidden: true }
       - { name: output_type, type: string, flag: -O }
@@ -528,10 +570,10 @@ operations:
     description: Rename contigs using a two-column file mapping the old name to the new name, one pair per line separated by whitespace. Use this to reconcile chr-prefixed and unprefixed references.
     io:
       inputs:
-        - { name: in, types: [VCF, BCF], mode: file }
+        - { name: in, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file }
         - { name: rename_chrs, types: [TEXT], mode: file, flag: --rename-chrs }
       outputs:
-        - { name: out, types: [VCF, BCF], mode: file, flag: -o }
+        - { name: out, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file, flag: -o }
     parameters:
       - { name: command, type: string, default: annotate, required: true, hidden: true }
       - { name: output_type, type: string, flag: -O }
