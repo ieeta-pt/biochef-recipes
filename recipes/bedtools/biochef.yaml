@@ -37,8 +37,8 @@ operations:
     description: Report features in A that overlap B (and vice-versa)
     io:
       inputs:
-        - { name: a, types: [BED, GFF, VCF], mode: file, flag: -a }
-        - { name: b, types: [BED, GFF, VCF, BAM], mode: file, flag: -b }
+        - { name: a, types: [BED, GFF, VCF, GVCF, VCF_GZ, GVCF_GZ], mode: file, flag: -a }
+        - { name: b, types: [BED, GFF, VCF, GVCF, VCF_GZ, GVCF_GZ, BAM], mode: file, flag: -b }
       outputs:
         - { name: out, types: [BED], mode: stdout }
     parameters:
@@ -61,6 +61,27 @@ operations:
       - { name: header, type: flag, flag: -header }
       - { name: sorted, type: flag, flag: -sorted }
 
+  - id: bedtools.intersect.vcf
+    name: Intersect VCF (bedtools)
+    category: Genomic Operations
+    bin: bedtools
+    description: Keep the records of a VCF, plain or bgzipped, or of a gVCF, that overlap the features of B, or with report_no_overlap those that do not. The header is kept, so the result is a VCF.
+    io:
+      inputs:
+        - { name: a, types: [VCF, GVCF, VCF_GZ, GVCF_GZ], mode: file, flag: -a }
+        - { name: b, types: [BED, GFF, VCF, GVCF, VCF_GZ, GVCF_GZ], mode: file, flag: -b }
+      outputs:
+        - { name: out, types: [VCF, GVCF], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: intersect, required: true, hidden: true }
+      - { name: header, type: flag, flag: -header, required: true, hidden: true }
+      - { name: report_no_overlap, type: flag, flag: -v }
+      - { name: unique, type: flag, flag: -u }
+      - { name: min_overlap_a, type: float, flag: -f }
+      - { name: min_overlap_b, type: float, flag: -F }
+      - { name: reciprocal, type: flag, flag: -r }
+      - { name: either_overlap, type: flag, flag: -e }
+
   - id: bedtools.merge
     name: Merge (bedtools)
     category: Genomic Operations
@@ -68,7 +89,7 @@ operations:
     description: Merge overlapping or adjacent BED/GFF/VCF features (sorted input required)
     io:
       inputs:
-        - { name: i, types: [BED, GFF, VCF], mode: file, flag: -i }
+        - { name: i, types: [BED, GFF, VCF, GVCF, VCF_GZ, GVCF_GZ], mode: file, flag: -i }
       outputs:
         - { name: out, types: [BED], mode: stdout }
     parameters:
@@ -88,9 +109,9 @@ operations:
     description: Sort BED/GFF/VCF by chromosome and position
     io:
       inputs:
-        - { name: i, types: [BED, GFF, VCF], mode: file, flag: -i }
+        - { name: i, types: [BED, GFF, VCF, GVCF, VCF_GZ, GVCF_GZ], mode: file, flag: -i }
       outputs:
-        - { name: out, types: [BED, GFF, VCF], mode: stdout }
+        - { name: out, types: [BED, GFF, VCF, GVCF], mode: stdout }
     parameters:
       - { name: command, type: string, default: sort, required: true, hidden: true }
       - { name: chrom_then_size_asc, type: flag, flag: -chrThenSizeA }
@@ -101,6 +122,20 @@ operations:
       - { name: size_desc, type: flag, flag: -sizeD }
       - { name: header, type: flag, flag: -header }
 
+  - id: bedtools.sort.vcf
+    name: Sort VCF (bedtools)
+    category: Genomic Operations
+    bin: bedtools
+    description: Sort the records of a VCF, plain or bgzipped, or of a gVCF, by chromosome and position. The header is kept, so the result is a VCF.
+    io:
+      inputs:
+        - { name: i, types: [VCF, GVCF, VCF_GZ, GVCF_GZ], mode: file, flag: -i }
+      outputs:
+        - { name: out, types: [VCF, GVCF], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: sort, required: true, hidden: true }
+      - { name: header, type: flag, flag: -header, required: true, hidden: true }
+
   - id: bedtools.subtract
     name: Subtract (bedtools)
     category: Genomic Operations
@@ -108,8 +143,8 @@ operations:
     description: Remove from A any feature overlap with B
     io:
       inputs:
-        - { name: a, types: [BED, GFF, VCF], mode: file, flag: -a }
-        - { name: b, types: [BED, GFF, VCF], mode: file, flag: -b }
+        - { name: a, types: [BED, GFF, VCF, GVCF, VCF_GZ, GVCF_GZ], mode: file, flag: -a }
+        - { name: b, types: [BED, GFF, VCF, GVCF, VCF_GZ, GVCF_GZ], mode: file, flag: -b }
       outputs:
         - { name: out, types: [BED], mode: stdout }
     parameters:
@@ -124,6 +159,26 @@ operations:
       - { name: either_overlap, type: flag, flag: -e }
       - { name: header, type: flag, flag: -header }
 
+  - id: bedtools.subtract.vcf
+    name: Subtract VCF (bedtools)
+    category: Genomic Operations
+    bin: bedtools
+    description: Drop the records of a VCF, plain or bgzipped, or of a gVCF, that overlap the features of B. A record is dropped whole, never cut. The header is kept, so the result is a VCF.
+    io:
+      inputs:
+        - { name: a, types: [VCF, GVCF, VCF_GZ, GVCF_GZ], mode: file, flag: -a }
+        - { name: b, types: [BED, GFF, VCF, GVCF, VCF_GZ, GVCF_GZ], mode: file, flag: -b }
+      outputs:
+        - { name: out, types: [VCF, GVCF], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: subtract, required: true, hidden: true }
+      - { name: header, type: flag, flag: -header, required: true, hidden: true }
+      - { name: remove_entire, type: flag, flag: -A, required: true, hidden: true }
+      - { name: min_overlap_a, type: float, flag: -f }
+      - { name: min_overlap_b, type: float, flag: -F }
+      - { name: reciprocal, type: flag, flag: -r }
+      - { name: either_overlap, type: flag, flag: -e }
+
   - id: bedtools.closest
     name: Closest (bedtools)
     category: Genomic Operations
@@ -131,8 +186,8 @@ operations:
     description: Find the closest feature in B for each feature in A
     io:
       inputs:
-        - { name: a, types: [BED, GFF, VCF], mode: file, flag: -a }
-        - { name: b, types: [BED, GFF, VCF], mode: file, flag: -b }
+        - { name: a, types: [BED, GFF, VCF, GVCF, VCF_GZ, GVCF_GZ], mode: file, flag: -a }
+        - { name: b, types: [BED, GFF, VCF, GVCF, VCF_GZ, GVCF_GZ], mode: file, flag: -b }
       outputs:
         - { name: out, types: [BED], mode: stdout }
     parameters:
@@ -155,7 +210,7 @@ operations:
     description: Report intervals NOT covered by features in input (needs genome file)
     io:
       inputs:
-        - { name: i, types: [BED, GFF, VCF], mode: file, flag: -i }
+        - { name: i, types: [BED, GFF, VCF, GVCF, VCF_GZ, GVCF_GZ], mode: file, flag: -i }
         - { name: g, types: [FAI, CHROM_SIZES], mode: file, flag: -g }
       outputs:
         - { name: out, types: [BED], mode: stdout }
@@ -170,8 +225,8 @@ operations:
     description: Coverage of features in B over intervals in A
     io:
       inputs:
-        - { name: a, types: [BED, GFF, VCF], mode: file, flag: -a }
-        - { name: b, types: [BED, GFF, VCF, BAM], mode: file, flag: -b }
+        - { name: a, types: [BED, GFF, VCF, GVCF, VCF_GZ, GVCF_GZ], mode: file, flag: -a }
+        - { name: b, types: [BED, GFF, VCF, GVCF, VCF_GZ, GVCF_GZ, BAM], mode: file, flag: -b }
       outputs:
         - { name: out, types: [BED], mode: stdout }
     parameters:
@@ -194,7 +249,7 @@ operations:
     description: Histogram, BedGraph, or per-base genome coverage from a BED file
     io:
       inputs:
-        - { name: i, types: [BED, GFF, VCF], mode: file, flag: -i }
+        - { name: i, types: [BED, GFF, VCF, GVCF, VCF_GZ, GVCF_GZ], mode: file, flag: -i }
         - { name: g, types: [FAI, CHROM_SIZES], mode: file, flag: -g }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
@@ -217,7 +272,7 @@ operations:
     io:
       inputs:
         - { name: fi, types: [FASTA, Multi-FASTA], mode: file, flag: -fi }
-        - { name: bed, types: [BED, GFF, VCF], mode: file, flag: -bed }
+        - { name: bed, types: [BED, GFF, VCF, GVCF, VCF_GZ, GVCF_GZ], mode: file, flag: -bed }
       outputs:
         - { name: out, types: [FASTA, Multi-FASTA], mode: stdout }
     parameters:
@@ -235,7 +290,7 @@ operations:
     description: Extend every interval by the same amount on both sides, within the bounds of the genome. With percent the amount is a fraction of the interval length.
     io:
       inputs:
-        - { name: i, types: [BED, GFF, VCF], mode: file, flag: -i }
+        - { name: i, types: [BED, GFF, VCF, GVCF, VCF_GZ, GVCF_GZ], mode: file, flag: -i }
         - { name: g, types: [FAI, CHROM_SIZES], mode: file, flag: -g }
       outputs:
         - { name: out, types: [BED], mode: stdout }
@@ -253,7 +308,7 @@ operations:
     description: Extend every interval by one amount on the left and another on the right, within the bounds of the genome. With strand_aware, left and right follow the strand. With percent the amounts are fractions of the interval length.
     io:
       inputs:
-        - { name: i, types: [BED, GFF, VCF], mode: file, flag: -i }
+        - { name: i, types: [BED, GFF, VCF, GVCF, VCF_GZ, GVCF_GZ], mode: file, flag: -i }
         - { name: g, types: [FAI, CHROM_SIZES], mode: file, flag: -g }
       outputs:
         - { name: out, types: [BED], mode: stdout }
@@ -272,7 +327,7 @@ operations:
     description: Make the flanks of every interval, the same length on both sides, within the bounds of the genome. With percent the length is a fraction of the interval length.
     io:
       inputs:
-        - { name: i, types: [BED, GFF, VCF], mode: file, flag: -i }
+        - { name: i, types: [BED, GFF, VCF, GVCF, VCF_GZ, GVCF_GZ], mode: file, flag: -i }
         - { name: g, types: [FAI, CHROM_SIZES], mode: file, flag: -g }
       outputs:
         - { name: out, types: [BED], mode: stdout }
@@ -290,7 +345,7 @@ operations:
     description: Make the flanks of every interval, one length on the left and another on the right, within the bounds of the genome. With strand_aware, left and right follow the strand. With percent the lengths are fractions of the interval length.
     io:
       inputs:
-        - { name: i, types: [BED, GFF, VCF], mode: file, flag: -i }
+        - { name: i, types: [BED, GFF, VCF, GVCF, VCF_GZ, GVCF_GZ], mode: file, flag: -i }
         - { name: g, types: [FAI, CHROM_SIZES], mode: file, flag: -g }
       outputs:
         - { name: out, types: [BED], mode: stdout }
@@ -309,8 +364,8 @@ operations:
     description: Jaccard statistic of intersection between two sorted BED/GFF/VCF files
     io:
       inputs:
-        - { name: a, types: [BED, GFF, VCF], mode: file, flag: -a }
-        - { name: b, types: [BED, GFF, VCF], mode: file, flag: -b }
+        - { name: a, types: [BED, GFF, VCF, GVCF, VCF_GZ, GVCF_GZ], mode: file, flag: -a }
+        - { name: b, types: [BED, GFF, VCF, GVCF, VCF_GZ, GVCF_GZ], mode: file, flag: -b }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
@@ -353,8 +408,8 @@ operations:
     description: For each interval of A, summarise a column of the B features that overlap it, with an operation such as count, sum, mean or distinct. Both inputs must be sorted. The default counts the B features, which works for any BED; to sum the scores of a BED5 or wider, set columns to 5 and operations to sum.
     io:
       inputs:
-        - { name: a, types: [BED, GFF, VCF], mode: file, flag: -a }
-        - { name: b, types: [BED, GFF, VCF], mode: file, flag: -b }
+        - { name: a, types: [BED, GFF, VCF, GVCF, VCF_GZ, GVCF_GZ], mode: file, flag: -a }
+        - { name: b, types: [BED, GFF, VCF, GVCF, VCF_GZ, GVCF_GZ], mode: file, flag: -b }
       outputs:
         - { name: out, types: [BED], mode: stdout }
     parameters:
@@ -444,8 +499,8 @@ operations:
     description: Report B features falling within a base-pair window around each A feature
     io:
       inputs:
-        - { name: a, types: [BED, GFF, VCF], mode: file, flag: -a }
-        - { name: b, types: [BED, GFF, VCF], mode: file, flag: -b }
+        - { name: a, types: [BED, GFF, VCF, GVCF, VCF_GZ, GVCF_GZ], mode: file, flag: -a }
+        - { name: b, types: [BED, GFF, VCF, GVCF, VCF_GZ, GVCF_GZ], mode: file, flag: -b }
       outputs:
         - { name: out, types: [BED], mode: stdout }
     parameters:
@@ -468,7 +523,7 @@ operations:
     description: Assign a cluster id to overlapping or nearby features without merging them (sorted input required)
     io:
       inputs:
-        - { name: i, types: [BED, GFF, VCF], mode: file, flag: -i }
+        - { name: i, types: [BED, GFF, VCF, GVCF, VCF_GZ, GVCF_GZ], mode: file, flag: -i }
       outputs:
         - { name: out, types: [BED], mode: stdout }
     parameters:
@@ -484,7 +539,7 @@ operations:
     io:
       inputs:
         - { name: fi, types: [FASTA, Multi-FASTA], mode: file, flag: -fi }
-        - { name: bed, types: [BED, GFF, VCF], mode: file, flag: -bed }
+        - { name: bed, types: [BED, GFF, VCF, GVCF, VCF_GZ, GVCF_GZ], mode: file, flag: -bed }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
@@ -502,8 +557,8 @@ operations:
     description: Fisher's exact test for overlap between two sorted interval files (needs genome file)
     io:
       inputs:
-        - { name: a, types: [BED, GFF, VCF], mode: file, flag: -a }
-        - { name: b, types: [BED, GFF, VCF], mode: file, flag: -b }
+        - { name: a, types: [BED, GFF, VCF, GVCF, VCF_GZ, GVCF_GZ], mode: file, flag: -a }
+        - { name: b, types: [BED, GFF, VCF, GVCF, VCF_GZ, GVCF_GZ], mode: file, flag: -b }
         - { name: g, types: [FAI, CHROM_SIZES], mode: file, flag: -g }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
@@ -540,7 +595,7 @@ operations:
     io:
       inputs:
         - { name: fi, types: [FASTA, Multi-FASTA], mode: file, flag: -fi }
-        - { name: bed, types: [BED, GFF, VCF], mode: file, flag: -bed }
+        - { name: bed, types: [BED, GFF, VCF, GVCF, VCF_GZ, GVCF_GZ], mode: file, flag: -bed }
       outputs:
         - { name: fo, types: [FASTA, Multi-FASTA], mode: file, flag: -fo }
     parameters:
