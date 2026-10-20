@@ -2,7 +2,9 @@ apiVersion: v1
 
 id: app.biochef.vcflib
 name: vcflib
-description: vcflib — a C++ library and 70+ command-line tools for parsing, manipulating, and analysing VCF files. Built from source against bundled htslib and WFA2-lib.
+description: >-
+  vcflib is a C++ library and set of command-line tools for parsing, manipulating and analysing
+  VCF files, built from source against its bundled htslib and WFA2-lib.
 
 version: 1.0.15-bc.1
 homepage: https://github.com/vcflib/vcflib
@@ -29,7 +31,7 @@ build:
       buildScript: build-wasm.sh
   native:
     buildScript: build-native.sh
-    buildTools: [make]
+    buildTools: [make, gcc]
     outputDir: bin
 
 runtime:
@@ -53,14 +55,19 @@ operations:
     name: Filter (vcflib)
     category: Variant Analysis
     bin: vcffilter
-    description: Filter VCF records by a per-site expression on QUAL/INFO fields.
+    description: >-
+      Keep the VCF records for which an expression on QUAL and INFO fields holds, such as
+      "QUAL > 20 & DP > 10". Tokens are separated by spaces; the operators are > < = & | and !,
+      with parentheses. genotype_filter applies an expression on FORMAT fields to each sample, and
+      tag_pass writes a tag to the FILTER column of the records that pass instead of dropping the
+      others. A malformed expression stops with an error.
     io:
       inputs:
         - { name: in, types: [VCF], mode: stdin }
       outputs:
         - { name: out, types: [VCF], mode: stdout }
     parameters:
-      - { name: expression, type: string, flag: -f, required: true }
+      - { name: expression, type: string, flag: -f, default: "QUAL > 20", required: true }
       - { name: genotype_filter, type: string, flag: -g }
       - { name: tag_pass, type: string, flag: -t }
       - { name: invert, type: flag, flag: -v }
@@ -109,7 +116,7 @@ operations:
     name: Stream Sort (vcflib)
     category: Variant Analysis
     bin: vcfstreamsort
-    description: Sort VCF records on a sliding window — does not require the full input in memory.
+    description: Sort VCF records on a sliding window, without holding the whole input in memory.
     io:
       inputs:
         - { name: in, types: [VCF], mode: stdin }
@@ -134,10 +141,13 @@ operations:
     name: Concatenate (vcflib)
     category: Variant Analysis
     bin: vcfcat
-    description: Concatenate VCF files (preserve the header from the first input).
+    description: >-
+      Concatenate two VCF files with the same samples, keeping the header of the first. The
+      records are written in input order, not sorted.
     io:
       inputs:
-        - { name: in, types: [VCF], mode: stdin }
+        - { name: in1, types: [VCF], mode: file }
+        - { name: in2, types: [VCF], mode: file }
       outputs:
         - { name: out, types: [VCF], mode: stdout }
     parameters: []
@@ -146,27 +156,62 @@ operations:
     name: Combine (vcflib)
     category: Variant Analysis
     bin: vcfcombine
-    description: Combine VCFs from multiple samples into one multi-sample VCF.
+    description: >-
+      Combine two VCF files positionally into one multi-sample VCF. Records at the same site with
+      the same alleles are merged, and samples missing from a record get no-calls.
     io:
       inputs:
-        - { name: in, types: [VCF], mode: stdin }
+        - { name: in1, types: [VCF], mode: file }
+        - { name: in2, types: [VCF], mode: file }
       outputs:
         - { name: out, types: [VCF], mode: stdout }
-    parameters:
-      - { name: region, type: string, flag: -r }
+    parameters: []
 
   - id: vcflib.check
     name: Check (vcflib)
     category: Variant Analysis
     bin: vcfcheck
-    description: Validate REF alleles in a VCF against a FASTA reference.
+    description: >-
+      Report the records of a VCF whose REF allele differs from the FASTA reference, one line
+      each. The output is empty when every REF matches.
     io:
       inputs:
         - { name: in, types: [VCF], mode: stdin }
-        - { name: reference, types: [FASTA], mode: file, flag: -f }
+        - { name: reference, types: [FASTA, Multi-FASTA], mode: file, flag: -f }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
-    parameters: []
+    parameters:
+      - { name: ignore_case, type: flag, flag: -i }
+
+  - id: vcflib.checkexclude
+    name: Drop REF Mismatches (vcflib)
+    category: Variant Analysis
+    bin: vcfcheck
+    description: Write the records of a VCF whose REF allele matches the FASTA reference.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+        - { name: reference, types: [FASTA, Multi-FASTA], mode: file, flag: -f }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: exclude_failures, type: flag, flag: -x, required: true, hidden: true }
+      - { name: ignore_case, type: flag, flag: -i }
+
+  - id: vcflib.checkkeep
+    name: Keep REF Mismatches (vcflib)
+    category: Variant Analysis
+    bin: vcfcheck
+    description: Write the records of a VCF whose REF allele differs from the FASTA reference.
+    io:
+      inputs:
+        - { name: in, types: [VCF], mode: stdin }
+        - { name: reference, types: [FASTA, Multi-FASTA], mode: file, flag: -f }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: keep_failures, type: flag, flag: -k, required: true, hidden: true }
+      - { name: ignore_case, type: flag, flag: -i }
 
   - id: vcflib.countalleles
     name: Count Alleles (vcflib)
@@ -208,7 +253,9 @@ operations:
     name: Keep Samples (vcflib)
     category: Variant Analysis
     bin: vcfkeepsamples
-    description: Keep only the listed samples from a multi-sample VCF.
+    description: >-
+      Keep only the listed samples of a multi-sample VCF. samples takes one name or several,
+      separated by commas or spaces; a name the VCF does not have stops with an error.
     io:
       inputs:
         - { name: in, types: [VCF], mode: stdin }
@@ -216,13 +263,15 @@ operations:
         - { name: out, types: [VCF], mode: stdout }
     parameters:
       - { name: vcf, type: string, default: "-", required: true, hidden: true }
-      - { name: samples, type: string, required: true }
+      - { name: samples, type: string, default: sample, required: true }
 
   - id: vcflib.removesamples
     name: Remove Samples (vcflib)
     category: Variant Analysis
     bin: vcfremovesamples
-    description: Remove the listed samples from a multi-sample VCF.
+    description: >-
+      Remove the listed samples from a multi-sample VCF. samples takes one name or several,
+      separated by commas or spaces; a name the VCF does not have stops with an error.
     io:
       inputs:
         - { name: in, types: [VCF], mode: stdin }
