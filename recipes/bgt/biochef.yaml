@@ -35,10 +35,10 @@ operations:
     name: Import VCF to BGT
     category: Format Conversion
     bin: bgt
-    description: "Convert a multi-sample VCF into a BGT database. Multi-allelic sites become one record per allele, and only the genotypes (GT) are kept. A VCF without ##contig header lines needs the contig names and lengths, given as a FASTA index (FAI) in contigs."
+    description: "Convert a multi-sample VCF, plain or bgzipped, into a BGT database. Multi-allelic sites become one record per allele, and only the genotypes (GT) are kept. A VCF without ##contig header lines needs the contig names and lengths, given as a FASTA index (FAI) in contigs."
     io:
       inputs:
-        - { name: in, types: [VCF], mode: file }
+        - { name: in, types: [VCF, VCF_GZ], mode: file }
         - { name: contigs, types: [FAI], mode: file, flag: -t }
       outputs:
         - { name: database, types: [BGT], mode: file, flag: --bc-out }
@@ -86,7 +86,7 @@ operations:
       inputs:
         - { name: database, types: [BGT], mode: file, flag: --bc-bgt }
       outputs:
-        - { name: out, types: [FMF, LIST], mode: stdout }
+        - { name: out, types: [FMF, SAMPLE_LIST], mode: stdout }
     parameters:
       - { name: subcommand, type: string, default: fmf, required: true, hidden: true }
       - { name: condition, type: string }
@@ -100,7 +100,7 @@ operations:
       inputs:
         - { name: database, types: [BGT], mode: file, flag: --bc-bgt }
       outputs:
-        - { name: out, types: [LIST], mode: stdout }
+        - { name: out, types: [SAMPLE_LIST], mode: stdout }
     parameters:
       - { name: subcommand, type: string, default: fmf, required: true, hidden: true }
       - { name: names_only, type: flag, flag: -n, required: true, hidden: true }
@@ -258,10 +258,10 @@ operations:
     name: Atomize VCF
     category: Format Conversion
     bin: bgt
-    description: "Split multi-allelic VCF records into one record per allele, each with a single ALT. A VCF without ##contig header lines needs the contig names and lengths, given as a FASTA index (FAI) in contigs."
+    description: "Split the multi-allelic records of a VCF, plain or bgzipped, into one record per allele, each with a single ALT. A VCF without ##contig header lines needs the contig names and lengths, given as a FASTA index (FAI) in contigs."
     io:
       inputs:
-        - { name: in, types: [VCF], mode: file }
+        - { name: in, types: [VCF, VCF_GZ], mode: file }
         - { name: contigs, types: [FAI], mode: file, flag: -t }
       outputs:
         - { name: out, types: [VCF], mode: stdout }
@@ -293,7 +293,7 @@ operations:
     description: "Atomize VCF, writing BCF."
     io:
       inputs:
-        - { name: in, types: [VCF], mode: file }
+        - { name: in, types: [VCF, VCF_GZ], mode: file }
         - { name: contigs, types: [FAI], mode: file, flag: -t }
       outputs:
         - { name: out, types: [BCF], mode: file, flag: --bc-to }
