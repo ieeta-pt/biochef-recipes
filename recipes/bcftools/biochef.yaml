@@ -58,6 +58,25 @@ operations:
       - { name: header_only, type: flag, flag: -h }
       - { name: no_header, type: flag, flag: -H }
 
+  - id: bcftools.view.region
+    name: View Region (BCFtools)
+    category: Format Conversion
+    bin: bcftools
+    description: Read only the records of a region, such as chr1:1000-2000, through the index of a bgzipped VCF or a BCF, with the filters of View.
+    io:
+      inputs:
+        - { name: in, types: [VCF_GZ, GVCF_GZ, BCF], mode: file, filename: in.vcf.gz }
+        - { name: index, types: [TBI, CSI], mode: sidecar, filename: in.vcf.gz.csi }
+      outputs:
+        - { name: out, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file, flag: -o }
+    parameters:
+      - { name: command, type: string, default: view, required: true, hidden: true }
+      - { name: regions, type: string, flag: -r, required: true }
+      - { name: output_type, type: string, flag: -O }
+      - { name: include, type: string, flag: -i }
+      - { name: exclude, type: string, flag: -e }
+      - { name: drop_genotypes, type: flag, flag: -G }
+
   - id: bcftools.query
     name: Query (BCFtools)
     category: Information and Analysis
@@ -200,11 +219,13 @@ operations:
     name: Merge (BCFtools)
     category: Genomic Operations
     bin: bcftools
-    description: Merge multiple VCF/BCF files from non-overlapping sample sets
+    description: Merge two bgzipped VCFs or BCFs with different samples into one file with all of them. Each input needs its index (TBI or CSI), which bcftools reads beside it.
     io:
       inputs:
-        - { name: in1, types: [VCF_GZ, GVCF_GZ, BCF], mode: file }
-        - { name: in2, types: [VCF_GZ, GVCF_GZ, BCF], mode: file }
+        - { name: in1, types: [VCF_GZ, GVCF_GZ, BCF], mode: file, filename: in1.vcf.gz }
+        - { name: index1, types: [TBI, CSI], mode: sidecar, filename: in1.vcf.gz.csi }
+        - { name: in2, types: [VCF_GZ, GVCF_GZ, BCF], mode: file, filename: in2.vcf.gz }
+        - { name: index2, types: [TBI, CSI], mode: sidecar, filename: in2.vcf.gz.csi }
       outputs:
         - { name: out, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file, flag: -o }
     parameters:
@@ -224,16 +245,18 @@ operations:
     name: Isec (BCFtools)
     category: Genomic Operations
     bin: bcftools
-    description: Two-file intersection of VCF/BCF (writes records of file 1 present in both) — inputs must be bgzipped and indexed
+    description: Intersect two bgzipped VCFs or BCFs. By default it writes the records of the first that the second also has; nfiles and write choose otherwise. Each input needs its index (TBI or CSI), which bcftools reads beside it.
     io:
       inputs:
-        - { name: in1, types: [VCF_GZ, GVCF_GZ, BCF], mode: file }
-        - { name: in2, types: [VCF_GZ, GVCF_GZ, BCF], mode: file }
+        - { name: in1, types: [VCF_GZ, GVCF_GZ, BCF], mode: file, filename: in1.vcf.gz }
+        - { name: index1, types: [TBI, CSI], mode: sidecar, filename: in1.vcf.gz.csi }
+        - { name: in2, types: [VCF_GZ, GVCF_GZ, BCF], mode: file, filename: in2.vcf.gz }
+        - { name: index2, types: [TBI, CSI], mode: sidecar, filename: in2.vcf.gz.csi }
       outputs:
         - { name: out, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file, flag: -o }
     parameters:
       - { name: command, type: string, default: isec, required: true, hidden: true }
-      - { name: nfiles, type: string, flag: -n, default: "=2" }
+      - { name: nfiles, type: string, flag: -n, default: "=2", required: true }
       - { name: write, type: string, flag: -w, default: "1", required: true }
       - { name: collapse, type: string, flag: -c }
       - { name: apply_filters, type: string, flag: -f }
@@ -268,10 +291,11 @@ operations:
     name: Consensus (BCFtools)
     category: Genomic Operations
     bin: bcftools
-    description: Apply VCF variants to a reference FASTA to produce a consensus sequence
+    description: Apply the variants of a bgzipped VCF or a BCF to a reference FASTA and write the consensus sequence. The variants need their index (TBI or CSI), which bcftools reads beside them.
     io:
       inputs:
-        - { name: in, types: [VCF_GZ, GVCF_GZ, BCF], mode: file }
+        - { name: in, types: [VCF_GZ, GVCF_GZ, BCF], mode: file, filename: in.vcf.gz }
+        - { name: index, types: [TBI, CSI], mode: sidecar, filename: in.vcf.gz.csi }
         - { name: fasta_ref, types: [FASTA], mode: file, flag: -f }
       outputs:
         - { name: out, types: [FASTA], mode: stdout }
@@ -378,7 +402,7 @@ operations:
     name: Call (BCFtools)
     category: Genomic Operations
     bin: bcftools
-    description: Call SNPs and indels from the genotype likelihoods produced by Mpileup. Exactly one calling model must be enabled, either multiallelic_caller (recommended) or consensus_caller, otherwise the tool exits with a usage error.
+    description: Call SNPs and indels from the genotype likelihoods mpileup writes, with the multiallelic caller (-m), which bcftools recommends. With gvcf it writes a gVCF.
     io:
       inputs:
         - { name: in, types: [VCF, VCF_GZ, BCF], mode: file }
@@ -386,8 +410,39 @@ operations:
         - { name: out, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file, flag: -o }
     parameters:
       - { name: command, type: string, default: call, required: true, hidden: true }
-      - { name: multiallelic_caller, type: flag, flag: -m }
-      - { name: consensus_caller, type: flag, flag: -c }
+      - { name: multiallelic_caller, type: flag, flag: -m, required: true, hidden: true }
+      - { name: variants_only, type: flag, flag: -v }
+      - { name: output_type, type: string, flag: -O }
+      - { name: keep_alts, type: flag, flag: -A }
+      - { name: keep_masked_ref, type: flag, flag: -M }
+      - { name: skip_variants, type: string, flag: -V }
+      - { name: format_fields, type: string, flag: -f }
+      - { name: prior_freqs, type: string, flag: -F }
+      - { name: group_samples, type: string, flag: -G }
+      - { name: gvcf, type: string, flag: -g }
+      - { name: constrain, type: string, flag: -C }
+      - { name: novel_rate, type: string, flag: -n }
+      - { name: pval_threshold, type: float, flag: -p }
+      - { name: prior, type: float, flag: -P }
+      - { name: ploidy, type: string, flag: --ploidy }
+      - { name: samples, type: string, flag: -s }
+      - { name: regions, type: string, flag: -r }
+      - { name: targets, type: string, flag: -t }
+      - { name: no_version, type: flag, flag: --no-version }
+
+  - id: bcftools.call.consensus
+    name: Call Consensus (BCFtools)
+    category: Genomic Operations
+    bin: bcftools
+    description: Call SNPs and indels from the genotype likelihoods mpileup writes, with the original consensus caller (-c), which handles at most two alleles a site.
+    io:
+      inputs:
+        - { name: in, types: [VCF, VCF_GZ, BCF], mode: file }
+      outputs:
+        - { name: out, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file, flag: -o }
+    parameters:
+      - { name: command, type: string, default: call, required: true, hidden: true }
+      - { name: consensus_caller, type: flag, flag: -c, required: true, hidden: true }
       - { name: variants_only, type: flag, flag: -v }
       - { name: output_type, type: string, flag: -O }
       - { name: keep_alts, type: flag, flag: -A }
@@ -506,7 +561,7 @@ operations:
     io:
       inputs:
         - { name: in, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file }
-        - { name: header_lines, types: [TEXT], mode: file, flag: -h }
+        - { name: header_lines, types: [VCF_HEADER], mode: file, flag: -h }
       outputs:
         - { name: out, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file, flag: -o }
     parameters:
