@@ -46,9 +46,9 @@ operations:
     description: Read and re-emit a VCF file unchanged. Useful for validating the I/O layer.
     io:
       inputs:
-        - { name: in, types: [VCF], mode: stdin }
+        - { name: in, types: [VCF, GVCF], mode: stdin }
       outputs:
-        - { name: out, types: [VCF], mode: stdout }
+        - { name: out, types: [VCF, GVCF], mode: stdout }
     parameters: []
 
   - id: vcflib.filter
@@ -63,9 +63,9 @@ operations:
       others. A malformed expression stops with an error.
     io:
       inputs:
-        - { name: in, types: [VCF], mode: stdin }
+        - { name: in, types: [VCF, GVCF], mode: stdin }
       outputs:
-        - { name: out, types: [VCF], mode: stdout }
+        - { name: out, types: [VCF, GVCF], mode: stdout }
     parameters:
       - { name: expression, type: string, flag: -f, default: "QUAL > 20", required: true }
       - { name: genotype_filter, type: string, flag: -g }
@@ -79,7 +79,7 @@ operations:
     description: Split multi-allelic records (e.g. G to C,A) into bi-allelic records.
     io:
       inputs:
-        - { name: in, types: [VCF], mode: stdin }
+        - { name: in, types: [VCF, GVCF], mode: stdin }
       outputs:
         - { name: out, types: [VCF], mode: stdout }
     parameters: []
@@ -91,7 +91,7 @@ operations:
     description: Decompose complex variants into SNPs and indels via WFA2 alignment.
     io:
       inputs:
-        - { name: in, types: [VCF], mode: stdin }
+        - { name: in, types: [VCF, GVCF], mode: stdin }
       outputs:
         - { name: out, types: [VCF], mode: stdout }
     parameters:
@@ -105,7 +105,7 @@ operations:
     description: Decompose complex variants using WFA2 wavefront alignment; reports SNP/INDEL/MNP/complex types.
     io:
       inputs:
-        - { name: in, types: [VCF], mode: stdin }
+        - { name: in, types: [VCF, GVCF], mode: stdin }
       outputs:
         - { name: out, types: [VCF], mode: stdout }
     parameters:
@@ -119,9 +119,9 @@ operations:
     description: Sort VCF records on a sliding window, without holding the whole input in memory.
     io:
       inputs:
-        - { name: in, types: [VCF], mode: stdin }
+        - { name: in, types: [VCF, GVCF], mode: stdin }
       outputs:
-        - { name: out, types: [VCF], mode: stdout }
+        - { name: out, types: [VCF, GVCF], mode: stdout }
     parameters:
       - { name: window, type: integer, flag: -w }
 
@@ -132,9 +132,9 @@ operations:
     description: Drop duplicate variant records (CHROM, POS, REF, ALT). Input must be sorted.
     io:
       inputs:
-        - { name: in, types: [VCF], mode: stdin }
+        - { name: in, types: [VCF, GVCF], mode: stdin }
       outputs:
-        - { name: out, types: [VCF], mode: stdout }
+        - { name: out, types: [VCF, GVCF], mode: stdout }
     parameters: []
 
   - id: vcflib.cat
@@ -146,10 +146,10 @@ operations:
       records are written in input order, not sorted.
     io:
       inputs:
-        - { name: in1, types: [VCF], mode: file }
-        - { name: in2, types: [VCF], mode: file }
+        - { name: in1, types: [VCF, GVCF], mode: file }
+        - { name: in2, types: [VCF, GVCF], mode: file }
       outputs:
-        - { name: out, types: [VCF], mode: stdout }
+        - { name: out, types: [VCF, GVCF], mode: stdout }
     parameters: []
 
   - id: vcflib.combine
@@ -161,10 +161,10 @@ operations:
       the same alleles are merged, and samples missing from a record get no-calls.
     io:
       inputs:
-        - { name: in1, types: [VCF], mode: file }
-        - { name: in2, types: [VCF], mode: file }
+        - { name: in1, types: [VCF, GVCF], mode: file }
+        - { name: in2, types: [VCF, GVCF], mode: file }
       outputs:
-        - { name: out, types: [VCF], mode: stdout }
+        - { name: out, types: [VCF, GVCF], mode: stdout }
     parameters: []
 
   - id: vcflib.check
@@ -176,7 +176,7 @@ operations:
       each. The output is empty when every REF matches.
     io:
       inputs:
-        - { name: in, types: [VCF], mode: stdin }
+        - { name: in, types: [VCF, GVCF], mode: stdin }
         - { name: reference, types: [FASTA, Multi-FASTA], mode: file, flag: -f }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
@@ -190,10 +190,10 @@ operations:
     description: Write the records of a VCF whose REF allele matches the FASTA reference.
     io:
       inputs:
-        - { name: in, types: [VCF], mode: stdin }
+        - { name: in, types: [VCF, GVCF], mode: stdin }
         - { name: reference, types: [FASTA, Multi-FASTA], mode: file, flag: -f }
       outputs:
-        - { name: out, types: [VCF], mode: stdout }
+        - { name: out, types: [VCF, GVCF], mode: stdout }
     parameters:
       - { name: exclude_failures, type: flag, flag: -x, required: true, hidden: true }
       - { name: ignore_case, type: flag, flag: -i }
@@ -205,10 +205,10 @@ operations:
     description: Write the records of a VCF whose REF allele differs from the FASTA reference.
     io:
       inputs:
-        - { name: in, types: [VCF], mode: stdin }
+        - { name: in, types: [VCF, GVCF], mode: stdin }
         - { name: reference, types: [FASTA, Multi-FASTA], mode: file, flag: -f }
       outputs:
-        - { name: out, types: [VCF], mode: stdout }
+        - { name: out, types: [VCF, GVCF], mode: stdout }
     parameters:
       - { name: keep_failures, type: flag, flag: -k, required: true, hidden: true }
       - { name: ignore_case, type: flag, flag: -i }
@@ -220,7 +220,7 @@ operations:
     description: Emit the total number of REF+ALT alleles across the input.
     io:
       inputs:
-        - { name: in, types: [VCF], mode: stdin }
+        - { name: in, types: [VCF, GVCF], mode: stdin }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters: []
@@ -232,7 +232,7 @@ operations:
     description: Annotate each record with length, length.ref, length.alt.
     io:
       inputs:
-        - { name: in, types: [VCF], mode: stdin }
+        - { name: in, types: [VCF, GVCF], mode: stdin }
       outputs:
         - { name: out, types: [VCF], mode: stdout }
     parameters: []
@@ -244,7 +244,7 @@ operations:
     description: Emit sample names declared in the VCF header.
     io:
       inputs:
-        - { name: in, types: [VCF], mode: stdin }
+        - { name: in, types: [VCF, GVCF], mode: stdin }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters: []
@@ -258,9 +258,9 @@ operations:
       separated by commas or spaces; a name the VCF does not have stops with an error.
     io:
       inputs:
-        - { name: in, types: [VCF], mode: stdin }
+        - { name: in, types: [VCF, GVCF], mode: stdin }
       outputs:
-        - { name: out, types: [VCF], mode: stdout }
+        - { name: out, types: [VCF, GVCF], mode: stdout }
     parameters:
       - { name: vcf, type: string, default: "-", required: true, hidden: true }
       - { name: samples, type: string, default: sample, required: true }
@@ -274,9 +274,9 @@ operations:
       separated by commas or spaces; a name the VCF does not have stops with an error.
     io:
       inputs:
-        - { name: in, types: [VCF], mode: stdin }
+        - { name: in, types: [VCF, GVCF], mode: stdin }
       outputs:
-        - { name: out, types: [VCF], mode: stdout }
+        - { name: out, types: [VCF, GVCF], mode: stdout }
     parameters:
       - { name: vcf, type: string, default: "-", required: true, hidden: true }
       - { name: samples, type: string }
@@ -288,7 +288,7 @@ operations:
     description: Convert VCF to tab-separated values (TSV).
     io:
       inputs:
-        - { name: in, types: [VCF], mode: stdin }
+        - { name: in, types: [VCF, GVCF], mode: stdin }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
@@ -302,7 +302,7 @@ operations:
     description: Per-site statistics including SNP/indel counts, Ts/Tv ratio, allele frequency.
     io:
       inputs:
-        - { name: in, types: [VCF], mode: stdin }
+        - { name: in, types: [VCF, GVCF], mode: stdin }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters: []
@@ -314,7 +314,7 @@ operations:
     description: Reduce overlapping variant records by keeping the highest-quality call.
     io:
       inputs:
-        - { name: in, types: [VCF], mode: stdin }
+        - { name: in, types: [VCF, GVCF], mode: stdin }
       outputs:
         - { name: out, types: [VCF], mode: stdout }
     parameters: []
@@ -326,7 +326,7 @@ operations:
     description: Left-align indels against a reference FASTA, normalising representation.
     io:
       inputs:
-        - { name: in, types: [VCF], mode: stdin }
+        - { name: in, types: [VCF, GVCF], mode: stdin }
         - { name: reference, types: [FASTA], mode: file, flag: -r }
       outputs:
         - { name: out, types: [VCF], mode: stdout }
@@ -340,10 +340,10 @@ operations:
     description: Intersect or subtract two VCF files by chromosome and position.
     io:
       inputs:
-        - { name: in, types: [VCF], mode: stdin }
+        - { name: in, types: [VCF, GVCF], mode: stdin }
         - { name: bed, types: [BED], mode: file, flag: -b }
       outputs:
-        - { name: out, types: [VCF], mode: stdout }
+        - { name: out, types: [VCF, GVCF], mode: stdout }
     parameters:
       - { name: invert, type: flag, flag: -v }
       - { name: window, type: integer, flag: -w }
