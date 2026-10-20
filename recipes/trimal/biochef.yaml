@@ -115,7 +115,7 @@ operations:
       alignment quality before trimming. The accumulated gap distribution is always reported; tick others to add them.
     io:
       inputs:
-        - { name: in, types: [Multi-FASTA, FASTA], mode: file, flag: -in }
+        - { name: in, types: [Multi-FASTA, FASTA, CLUSTAL], mode: file, flag: -in }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
