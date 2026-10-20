@@ -2,7 +2,7 @@ apiVersion: v1
 
 id: app.biochef.vsearch
 name: VSEARCH
-description: VSEARCH — versatile open-source tool for processing metagenomic amplicon and similar sequence data. Covers dereplication, clustering, chimera detection, pairwise alignment, all-vs-all search, taxonomic classification (SINTAX), FASTQ statistics/filtering/merging, and many other common operations on FASTA/FASTQ files. Drop-in for many USEARCH workflows.
+description: VSEARCH is a versatile open-source tool for processing metagenomic amplicon and similar sequence data. Covers dereplication, clustering, chimera detection, pairwise alignment, all-vs-all search, taxonomic classification (SINTAX), FASTQ statistics/filtering/merging, and many other common operations on FASTA/FASTQ files. Drop-in for many USEARCH workflows.
 
 version: 2.31.0-bc.1
 homepage: https://github.com/torognes/vsearch
@@ -72,7 +72,7 @@ operations:
     name: Chimera Detection De Novo (VSEARCH)
     category: Sequence Analysis
     bin: vsearch
-    description: Detect chimeric sequences using the UCHIME de novo algorithm. Input is typically a dereplicated FASTA with abundance information; output separates chimeras from non-chimeras.
+    description: Detect chimeric sequences with the UCHIME de novo algorithm and write the chimeras and the non-chimeras apart. The input is a dereplicated FASTA whose headers carry abundances (";size=N"), as Dereplicate Full Length writes them with sizeout; a chimera needs parents more abundant than itself, so without abundances no sequence is flagged.
     io:
       inputs:
         - { name: in, types: [FASTA, Multi-FASTA], mode: file, flag: --uchime_denovo }

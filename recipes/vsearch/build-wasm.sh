@@ -13,9 +13,11 @@ static void serial_xpthread_join(pthread_t, void **) {}
 #define xpthread_create serial_xpthread_create
 #define xpthread_join serial_xpthread_join
 EOF
-for f in src/allpairs.cc src/chimera.cc src/mask.cc src/search.cc src/search_exact.cc src/sintax.cc; do
+for f in src/allpairs.cc src/chimera.cc src/fastq_mergepairs.cc src/mask.cc src/search.cc src/search_exact.cc src/sintax.cc; do
   sed -i.bak '/^#include <pthread.h>$/r serial-threads.inc' "$f"
 done
+grep -q '^  return sysconf(_SC_NPROCESSORS_ONLN);$' src/arch.cc || exit 1
+sed -i.bak 's/^  return sysconf(_SC_NPROCESSORS_ONLN);$/  return 1;/' src/arch.cc
 
 emconfigure ./configure --disable-bzip2 --disable-pdfman
 
