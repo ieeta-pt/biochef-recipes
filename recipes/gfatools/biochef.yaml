@@ -41,9 +41,9 @@ operations:
     description: Read a GFA graph and write it back, optionally restricted to a list of segments or a region and its neighbourhood.
     io:
       inputs:
-        - { name: graph, types: [GFA], mode: file }
+        - { name: graph, types: [GFA, RGFA], mode: file }
       outputs:
-        - { name: out, types: [GFA], mode: stdout }
+        - { name: out, types: [GFA, RGFA], mode: stdout }
     parameters:
       - { name: command, type: string, default: view, required: true, hidden: true }
       - { name: segments, type: string, flag: -l }
@@ -63,7 +63,7 @@ operations:
     description: Report the number of segments and links, segment lengths and vertex degrees of a GFA graph.
     io:
       inputs:
-        - { name: graph, types: [GFA], mode: file }
+        - { name: graph, types: [GFA, RGFA], mode: file }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
@@ -76,7 +76,7 @@ operations:
     description: Write the segments of a GFA graph as FASTA. On rGFA, it can instead write the stable sequences.
     io:
       inputs:
-        - { name: graph, types: [GFA], mode: file }
+        - { name: graph, types: [GFA, RGFA], mode: file }
       outputs:
         - { name: out, types: [FASTA, Multi-FASTA], mode: stdout }
     parameters:
@@ -90,10 +90,10 @@ operations:
     name: GFA to BED (gfatools)
     category: Format Conversion
     bin: gfatools
-    description: Write where each segment of an rGFA graph lies on its stable sequence, as BED. A graph without rGFA tags gives no lines.
+    description: Write where each segment of an rGFA graph lies on its stable sequence, as BED. A graph without rGFA tags is refused.
     io:
       inputs:
-        - { name: graph, types: [GFA], mode: file }
+        - { name: graph, types: [RGFA], mode: file }
       outputs:
         - { name: out, types: [BED], mode: stdout }
     parameters:
@@ -107,7 +107,7 @@ operations:
     description: Write the regions of an rGFA graph's reference that lie in bubbles, as BED, padded to a minimum length.
     io:
       inputs:
-        - { name: graph, types: [GFA], mode: file }
+        - { name: graph, types: [RGFA], mode: file }
       outputs:
         - { name: out, types: [BED], mode: stdout }
     parameters:
@@ -122,7 +122,7 @@ operations:
     description: Find bubble-like regions in an rGFA graph and write one per line (experimental upstream).
     io:
       inputs:
-        - { name: graph, types: [GFA], mode: file }
+        - { name: graph, types: [RGFA], mode: file }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
@@ -136,7 +136,7 @@ operations:
     description: Simplify an assembly graph the way miniasm does. The steps run in the order listed, and the result is written as GFA.
     io:
       inputs:
-        - { name: graph, types: [GFA], mode: file }
+        - { name: graph, types: [GFA, RGFA], mode: file }
       outputs:
         - { name: out, types: [GFA], mode: stdout }
     parameters:
@@ -150,13 +150,13 @@ operations:
       - { name: unitigs, type: flag, flag: -u }
 
   - id: gfatools.sql
-    name: rGFA to SQL (gfatools)
+    name: GFA to SQL (gfatools)
     category: Format Conversion
     bin: gfatools
-    description: Write an rGFA graph as SQL statements that create and fill SQLite tables.
+    description: Write a GFA graph as SQL statements that create and fill SQLite tables. On rGFA, the stable sequence, offset and rank of each segment fill their columns too.
     io:
       inputs:
-        - { name: graph, types: [GFA], mode: file }
+        - { name: graph, types: [GFA, RGFA], mode: file }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
@@ -170,7 +170,7 @@ operations:
     description: Align each query sequence to a graph from its starting segment and report the edit distance, or the path with the alignment option (upstream marks it for evaluation only).
     io:
       inputs:
-        - { name: graph, types: [GFA, FASTA], mode: file }
+        - { name: graph, types: [GFA, RGFA, FASTA], mode: file }
         - { name: queries, types: [FASTA, Multi-FASTA], mode: file }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
