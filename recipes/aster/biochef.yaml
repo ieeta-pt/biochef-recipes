@@ -4,7 +4,7 @@ id: app.biochef.aster
 name: ASTER
 description: Accurate Species Tree EstimatoR. Quartet-based species tree inference from gene trees (ASTRAL, ASTRAL-Pro, wASTRAL) or directly from multi-locus sequence alignments (CASTER).
 
-version: 1.23.0-bc.2
+version: 1.23.0-bc.3
 homepage: https://github.com/chaoszhang/ASTER
 license:
   spdx: AGPL-3.0-or-later
@@ -22,9 +22,11 @@ status: experimental
 
 build:
   wasm:
-    strategy: biowasm
-    biowasm:
-      package: ASTER
+    strategy: emscripten
+    emscripten:
+      emscriptenVersion: 4.0.18
+      outputDir: out
+      buildScript: build-wasm.sh
 
 runtime:
   modes: [wasm]
