@@ -2,7 +2,7 @@ apiVersion: v1
 
 id: app.biochef.htslib
 name: htslib
-description: HTSlib utilities — bgzip (BGZF compression), tabix (indexing tab-delimited files), htsfile (identify file format).
+description: HTSlib utilities, namely bgzip (BGZF compression), tabix (indexing tab-delimited files) and htsfile (identifying file formats).
 
 version: 1.21-bc.1
 homepage: https://github.com/samtools/htslib
@@ -34,20 +34,33 @@ operations:
     name: BGZip (compress)
     category: Format Conversion
     bin: bgzip
-    description: BGZF-compress text data (VCF/BED/GFF/SAM/TEXT) — stream to stdout
+    description: BGZF-compress a text file, such as BED, GFF or SAM. VCF has its own operation, whose output is typed.
     io:
       inputs:
-        - { name: in, types: [TEXT, VCF, BED, GFF, SAM], mode: file }
+        - { name: in, types: [TEXT, BED, GFF, SAM], mode: file }
       outputs:
-        - { name: out, types: [BIN], mode: stdout }
+        - { name: out, types: [BGZF], mode: file, flag: -o, filename: out.gz }
     parameters:
-      - { name: stdout, type: flag, flag: -c, required: true, hidden: true }
       - { name: keep_input, type: flag, flag: -k }
       - { name: force, type: flag, flag: -f }
       - { name: index, type: flag, flag: -i }
       - { name: index_name, type: string, flag: -I }
       - { name: compress_level, type: integer, flag: -l }
       - { name: binary, type: flag, flag: --binary }
+      - { name: threads, type: integer, flag: --threads, default: 1 }
+
+  - id: htslib.bgzip.vcf
+    name: BGZip VCF (compress)
+    category: Format Conversion
+    bin: bgzip
+    description: BGZF-compress a VCF or gVCF, which makes it indexable with tabix or bcftools index.
+    io:
+      inputs:
+        - { name: in, types: [VCF, GVCF], mode: file }
+      outputs:
+        - { name: out, types: [VCF_GZ, GVCF_GZ], mode: file, flag: -o, filename: out.vcf.gz }
+    parameters:
+      - { name: compress_level, type: integer, flag: -l }
       - { name: threads, type: integer, flag: --threads, default: 1 }
 
   - id: htslib.bgzip.decompress
@@ -57,9 +70,9 @@ operations:
     description: Decompress a BGZF file to stdout
     io:
       inputs:
-        - { name: in, types: [BIN], mode: file }
+        - { name: in, types: [VCF_GZ, GVCF_GZ, BGZF], mode: file }
       outputs:
-        - { name: out, types: [TEXT], mode: stdout }
+        - { name: out, types: [VCF, GVCF, TEXT], mode: stdout }
     parameters:
       - { name: decompress, type: flag, flag: -d, required: true, hidden: true }
       - { name: stdout, type: flag, flag: -c, required: true, hidden: true }
@@ -74,12 +87,12 @@ operations:
     name: Tabix Index
     category: Genomic Operations
     bin: tabix
-    description: Index a bgzipped tab-delimited file (writes a .tbi sibling by default)
+    description: Index a bgzipped tab-delimited file, such as a VCF.gz, as TBI (or CSI with the csi option). tabix writes the index next to its input, named after it.
     io:
       inputs:
-        - { name: in, types: [BIN], mode: file }
+        - { name: in, types: [VCF_GZ, GVCF_GZ, BGZF], mode: file }
       outputs:
-        - { name: out, types: [BIN], mode: file, filename: "in.txt.tbi" }
+        - { name: out, types: [TBI, CSI], mode: file, filename: "in.txt.tbi" }
     parameters:
       - { name: preset, type: string, flag: -p }
       - { name: zero_based, type: flag, flag: "-0" }
@@ -97,10 +110,10 @@ operations:
     name: HTS File (identify)
     category: Information and Analysis
     bin: htsfile
-    description: Identify the format of an HTS-related file (FASTA/SAM/BAM/CRAM/VCF/BCF/…)
+    description: Identify the format of an HTS-related file (FASTA, SAM, BAM, CRAM, VCF, BCF and their indexes)
     io:
       inputs:
-        - { name: in, types: [TEXT, BIN, FASTA, FASTQ, VCF, BCF, SAM, BAM, CRAM, BED, GFF], mode: file }
+        - { name: in, types: [TEXT, BIN, FASTA, FASTQ, VCF, GVCF, VCF_GZ, GVCF_GZ, BGZF, BCF, TBI, CSI, SAM, BAM, BAI, CRAM, BED, GFF], mode: file }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
