@@ -156,7 +156,7 @@ operations:
     io:
       inputs:
         - { name: i, types: [BED, GFF, VCF], mode: file, flag: -i }
-        - { name: g, types: [TEXT, FAI], mode: file, flag: -g }
+        - { name: g, types: [FAI, CHROM_SIZES], mode: file, flag: -g }
       outputs:
         - { name: out, types: [BED], mode: stdout }
     parameters:
@@ -195,7 +195,7 @@ operations:
     io:
       inputs:
         - { name: i, types: [BED, GFF, VCF], mode: file, flag: -i }
-        - { name: g, types: [TEXT, FAI], mode: file, flag: -g }
+        - { name: g, types: [FAI, CHROM_SIZES], mode: file, flag: -g }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
@@ -232,18 +232,35 @@ operations:
     name: Slop (bedtools)
     category: Genomic Operations
     bin: bedtools
-    description: Extend intervals by a fixed amount on each side (capped by genome bounds)
+    description: Extend every interval by the same amount on both sides, within the bounds of the genome. With percent the amount is a fraction of the interval length.
     io:
       inputs:
         - { name: i, types: [BED, GFF, VCF], mode: file, flag: -i }
-        - { name: g, types: [TEXT, FAI], mode: file, flag: -g }
+        - { name: g, types: [FAI, CHROM_SIZES], mode: file, flag: -g }
       outputs:
         - { name: out, types: [BED], mode: stdout }
     parameters:
       - { name: command, type: string, default: slop, required: true, hidden: true }
-      - { name: both, type: integer, flag: -b }
-      - { name: left, type: integer, flag: -l }
-      - { name: right, type: integer, flag: -r }
+      - { name: both, type: integer, flag: -b, required: true }
+      - { name: strand_aware, type: flag, flag: -s }
+      - { name: percent, type: flag, flag: -pct }
+      - { name: header, type: flag, flag: -header }
+
+  - id: bedtools.slop.asymmetric
+    name: Slop Asymmetric (bedtools)
+    category: Genomic Operations
+    bin: bedtools
+    description: Extend every interval by one amount on the left and another on the right, within the bounds of the genome. With strand_aware, left and right follow the strand. With percent the amounts are fractions of the interval length.
+    io:
+      inputs:
+        - { name: i, types: [BED, GFF, VCF], mode: file, flag: -i }
+        - { name: g, types: [FAI, CHROM_SIZES], mode: file, flag: -g }
+      outputs:
+        - { name: out, types: [BED], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: slop, required: true, hidden: true }
+      - { name: left, type: integer, flag: -l, required: true }
+      - { name: right, type: integer, flag: -r, required: true }
       - { name: strand_aware, type: flag, flag: -s }
       - { name: percent, type: flag, flag: -pct }
       - { name: header, type: flag, flag: -header }
@@ -252,18 +269,35 @@ operations:
     name: Flank (bedtools)
     category: Genomic Operations
     bin: bedtools
-    description: Create flanking intervals on either side of input features
+    description: Make the flanks of every interval, the same length on both sides, within the bounds of the genome. With percent the length is a fraction of the interval length.
     io:
       inputs:
         - { name: i, types: [BED, GFF, VCF], mode: file, flag: -i }
-        - { name: g, types: [TEXT, FAI], mode: file, flag: -g }
+        - { name: g, types: [FAI, CHROM_SIZES], mode: file, flag: -g }
       outputs:
         - { name: out, types: [BED], mode: stdout }
     parameters:
       - { name: command, type: string, default: flank, required: true, hidden: true }
-      - { name: both, type: integer, flag: -b }
-      - { name: left, type: integer, flag: -l }
-      - { name: right, type: integer, flag: -r }
+      - { name: both, type: integer, flag: -b, required: true }
+      - { name: strand_aware, type: flag, flag: -s }
+      - { name: percent, type: flag, flag: -pct }
+      - { name: header, type: flag, flag: -header }
+
+  - id: bedtools.flank.asymmetric
+    name: Flank Asymmetric (bedtools)
+    category: Genomic Operations
+    bin: bedtools
+    description: Make the flanks of every interval, one length on the left and another on the right, within the bounds of the genome. With strand_aware, left and right follow the strand. With percent the lengths are fractions of the interval length.
+    io:
+      inputs:
+        - { name: i, types: [BED, GFF, VCF], mode: file, flag: -i }
+        - { name: g, types: [FAI, CHROM_SIZES], mode: file, flag: -g }
+      outputs:
+        - { name: out, types: [BED], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: flank, required: true, hidden: true }
+      - { name: left, type: integer, flag: -l, required: true }
+      - { name: right, type: integer, flag: -r, required: true }
       - { name: strand_aware, type: flag, flag: -s }
       - { name: percent, type: flag, flag: -pct }
       - { name: header, type: flag, flag: -header }
@@ -316,7 +350,7 @@ operations:
     name: Map (bedtools)
     category: Genomic Operations
     bin: bedtools
-    description: Apply a summary function to a column of B for each interval in A (both inputs must be sorted)
+    description: For each interval of A, summarise a column of the B features that overlap it, with an operation such as count, sum, mean or distinct. Both inputs must be sorted. The default counts the B features, which works for any BED; to sum the scores of a BED5 or wider, set columns to 5 and operations to sum.
     io:
       inputs:
         - { name: a, types: [BED, GFF, VCF], mode: file, flag: -a }
@@ -325,8 +359,8 @@ operations:
         - { name: out, types: [BED], mode: stdout }
     parameters:
       - { name: command, type: string, default: map, required: true, hidden: true }
-      - { name: columns, type: string, flag: -c, default: "5", required: true }
-      - { name: operations, type: string, flag: -o, default: sum, required: true }
+      - { name: columns, type: string, flag: -c, default: "1", required: true }
+      - { name: operations, type: string, flag: -o, default: count, required: true }
       - { name: null_value, type: string, flag: -null }
       - { name: delimiter, type: string, flag: -delim }
       - { name: precision, type: integer, flag: -prec }
@@ -368,7 +402,7 @@ operations:
     name: Groupby (bedtools)
     category: Information and Analysis
     bin: bedtools
-    description: Group rows by shared columns and summarize other columns, like SQL GROUP BY
+    description: Group the rows of a sorted file by the columns given and summarise other columns of each group, like SQL GROUP BY. The default counts the rows of each chromosome of a BED; to sum the scores per interval of a BED5 or wider, group by 1,2,3 and sum column 5.
     io:
       inputs:
         - { name: i, types: [BED, TEXT], mode: file, flag: -i }
@@ -376,9 +410,9 @@ operations:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
       - { name: command, type: string, default: groupby, required: true, hidden: true }
-      - { name: group_columns, type: string, flag: -g, default: "1,2,3", required: true }
-      - { name: columns, type: string, flag: -c, default: "5", required: true }
-      - { name: operations, type: string, flag: -o, default: sum, required: true }
+      - { name: group_columns, type: string, flag: -g, default: "1", required: true }
+      - { name: columns, type: string, flag: -c, default: "2", required: true }
+      - { name: operations, type: string, flag: -o, default: count, required: true }
       - { name: all_columns, type: flag, flag: -full }
       - { name: input_header, type: flag, flag: -inheader }
       - { name: output_header, type: flag, flag: -outheader }
@@ -393,7 +427,7 @@ operations:
     description: Tile a genome into fixed-size (optionally sliding) windows
     io:
       inputs:
-        - { name: g, types: [TEXT, FAI], mode: file, flag: -g }
+        - { name: g, types: [FAI, CHROM_SIZES], mode: file, flag: -g }
       outputs:
         - { name: out, types: [BED], mode: stdout }
     parameters:
@@ -470,7 +504,7 @@ operations:
       inputs:
         - { name: a, types: [BED, GFF, VCF], mode: file, flag: -a }
         - { name: b, types: [BED, GFF, VCF], mode: file, flag: -b }
-        - { name: g, types: [TEXT, FAI], mode: file, flag: -g }
+        - { name: g, types: [FAI, CHROM_SIZES], mode: file, flag: -g }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
