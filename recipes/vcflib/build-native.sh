@@ -3,7 +3,7 @@ sudo apt-get install -y cmake pkg-config libbz2-dev liblzma-dev libcurl4-openssl
 
 git submodule update --init --recursive
 
-python3 - <<'BIOCHEF_PY'
+python3 - <<'BIOCHEF_PY' || exit 1
 import sys
 
 
