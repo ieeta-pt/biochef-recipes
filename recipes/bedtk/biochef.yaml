@@ -91,16 +91,38 @@ operations:
     name: Filter (bedtk)
     category: Genomic Operations
     bin: bedtk
-    description: Filter records in a BED or VCF file against a BED of regions (keep only records that overlap).
+    description: Keep the records of a BED that overlap a BED of regions, or with invert those that do not.
     io:
       inputs:
-        - { name: a, types: [BED, VCF], mode: file }
         - { name: b, types: [BED], mode: file }
+        - { name: a, types: [BED], mode: file }
       outputs:
         - { name: out, types: [BED], mode: stdout }
     parameters:
       - { name: command, type: string, default: flt, required: true, hidden: true }
       - { name: invert, type: flag, flag: -v }
+      - { name: contained, type: flag, flag: -C }
+      - { name: window, type: integer, flag: -w }
+      - { name: min_overlap, type: float, flag: -f }
+
+  - id: bedtk.flt.vcf
+    name: Filter VCF (bedtk)
+    category: Genomic Operations
+    bin: bedtk
+    description: Keep the records of a VCF, plain or bgzipped, or of a gVCF, that overlap a BED of regions, or with invert those that do not. The header is kept.
+    io:
+      inputs:
+        - { name: regions, types: [BED], mode: file }
+        - { name: in, types: [VCF, GVCF, VCF_GZ, GVCF_GZ], mode: file }
+      outputs:
+        - { name: out, types: [VCF, GVCF], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: flt, required: true, hidden: true }
+      - { name: vcf, type: flag, flag: -c, required: true, hidden: true }
+      - { name: invert, type: flag, flag: -v }
+      - { name: contained, type: flag, flag: -C }
+      - { name: window, type: integer, flag: -w }
+      - { name: min_overlap, type: float, flag: -f }
 
   - id: bedtk.cov
     name: Coverage (bedtk)
