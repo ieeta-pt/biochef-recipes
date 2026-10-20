@@ -43,9 +43,9 @@ operations:
     description: Read a VCF/BCF/VCF.GZ file and print it as text VCF.
     io:
       inputs:
-        - { name: in, types: [VCF], mode: file }
+        - { name: in, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file }
       outputs:
-        - { name: out, types: [VCF], mode: file, flag: -o, filename: out.vcf }
+        - { name: out, types: [VCF, GVCF], mode: file, flag: -o, filename: out.vcf }
     parameters:
       - { name: command, type: string, default: view, required: true, hidden: true }
       - { name: filter_expression, type: string, flag: -f }
@@ -58,10 +58,10 @@ operations:
     description: Normalize variants by left-aligning them and trimming them to their most parsimonious form, against a FASTA reference.
     io:
       inputs:
-        - { name: in, types: [VCF], mode: file }
+        - { name: in, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file }
         - { name: reference, types: [FASTA], mode: file, flag: -r }
       outputs:
-        - { name: out, types: [VCF], mode: file, flag: -o, filename: out.vcf }
+        - { name: out, types: [VCF, GVCF], mode: file, flag: -o, filename: out.vcf }
     parameters:
       - { name: command, type: string, default: normalize, required: true, hidden: true }
       - { name: no_fail, type: flag, flag: -n }
@@ -74,9 +74,9 @@ operations:
     description: Decompose multi-allelic variants into bi-allelic records.
     io:
       inputs:
-        - { name: in, types: [VCF], mode: file }
+        - { name: in, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file }
       outputs:
-        - { name: out, types: [VCF], mode: file, flag: -o, filename: out.vcf }
+        - { name: out, types: [VCF, GVCF], mode: file, flag: -o, filename: out.vcf }
     parameters:
       - { name: command, type: string, default: decompose, required: true, hidden: true }
       - { name: smart, type: flag, flag: -s }
@@ -88,9 +88,9 @@ operations:
     description: Decompose block substitutions into SNP records.
     io:
       inputs:
-        - { name: in, types: [VCF], mode: file }
+        - { name: in, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file }
       outputs:
-        - { name: out, types: [VCF], mode: file, flag: -o, filename: out.vcf }
+        - { name: out, types: [VCF, GVCF], mode: file, flag: -o, filename: out.vcf }
     parameters:
       - { name: command, type: string, default: decompose_blocksub, required: true, hidden: true }
       - { name: aggressive, type: flag, flag: -a }
@@ -103,9 +103,9 @@ operations:
     description: Drop duplicate variants by chromosome, position, ref, and alt.
     io:
       inputs:
-        - { name: in, types: [VCF], mode: file }
+        - { name: in, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file }
       outputs:
-        - { name: out, types: [VCF], mode: file, flag: -o, filename: out.vcf }
+        - { name: out, types: [VCF, GVCF], mode: file, flag: -o, filename: out.vcf }
     parameters:
       - { name: command, type: string, default: uniq, required: true, hidden: true }
 
@@ -116,9 +116,9 @@ operations:
     description: Sort VCF records by chromosome and position.
     io:
       inputs:
-        - { name: in, types: [VCF], mode: file }
+        - { name: in, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file }
       outputs:
-        - { name: out, types: [VCF], mode: file, flag: -o, filename: out.vcf }
+        - { name: out, types: [VCF, GVCF], mode: file, flag: -o, filename: out.vcf }
     parameters:
       - { name: command, type: string, default: sort, required: true, hidden: true }
       - { name: window, type: integer, flag: -w }
@@ -130,7 +130,7 @@ operations:
     description: Count the samples, chromosomes and variants of a VCF, by type (SNP, MNP, indel, complex) and number of alleles, with the transition/transversion and insertion/deletion ratios. A filter expression counts only the variants it keeps.
     io:
       inputs:
-        - { name: in, types: [VCF], mode: file }
+        - { name: in, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
@@ -144,9 +144,9 @@ operations:
     description: Concatenate multiple VCF files into one.
     io:
       inputs:
-        - { name: in, types: [VCF], mode: file }
+        - { name: in, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file }
       outputs:
-        - { name: out, types: [VCF], mode: file, flag: -o, filename: out.vcf }
+        - { name: out, types: [VCF, GVCF], mode: file, flag: -o, filename: out.vcf }
     parameters:
       - { name: command, type: string, default: cat, required: true, hidden: true }
 
@@ -157,10 +157,10 @@ operations:
     description: Subset a VCF to variants polymorphic in one or more samples, given as a list with one sample name per line.
     io:
       inputs:
-        - { name: in, types: [VCF], mode: file }
-        - { name: samples, types: [LIST], mode: file, flag: -s }
+        - { name: in, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file }
+        - { name: samples, types: [SAMPLE_LIST], mode: file, flag: -s }
       outputs:
-        - { name: out, types: [VCF], mode: file, flag: -o, filename: out.vcf }
+        - { name: out, types: [VCF, GVCF], mode: file, flag: -o, filename: out.vcf }
     parameters:
       - { name: command, type: string, default: subset, required: true, hidden: true }
       - { name: filter_expression, type: string, flag: -f }
@@ -172,7 +172,7 @@ operations:
     description: Check that the records of a VCF are sorted, and report each one that is out of order and how many there are.
     io:
       inputs:
-        - { name: in, types: [VCF], mode: file }
+        - { name: in, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
@@ -186,7 +186,7 @@ operations:
     description: Check that the records of a VCF are sorted and that each REF allele matches the reference, and report each record that fails and how many there are.
     io:
       inputs:
-        - { name: in, types: [VCF], mode: file }
+        - { name: in, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file }
         - { name: reference, types: [FASTA, Multi-FASTA], mode: file, flag: -r }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
@@ -195,7 +195,7 @@ operations:
       - { name: counts_only, type: flag, flag: -q }
 
   - id: vt.index
-    name: Index (vt)
+    name: Index BCF (vt)
     category: Variant Analysis
     bin: vt
     description: Index a BCF file, so tools can read a region of it without reading it all. The index is a CSI file.
@@ -204,5 +204,18 @@ operations:
         - { name: in, types: [BCF], mode: file }
       outputs:
         - { name: out, types: [CSI], mode: file, flag: -o, filename: out.csi }
+    parameters:
+      - { name: command, type: string, default: index, required: true, hidden: true }
+
+  - id: vt.index.tabix
+    name: Index VCF.gz (vt)
+    category: Variant Analysis
+    bin: vt
+    description: Index a bgzipped VCF or gVCF, so tools can read a region of it without reading it all. The index is a tabix (TBI) file.
+    io:
+      inputs:
+        - { name: in, types: [VCF_GZ, GVCF_GZ], mode: file }
+      outputs:
+        - { name: out, types: [TBI], mode: file, flag: -o, filename: out.tbi }
     parameters:
       - { name: command, type: string, default: index, required: true, hidden: true }
