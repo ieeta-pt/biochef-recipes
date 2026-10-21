@@ -4,7 +4,7 @@ id: app.biochef.minimap2
 name: minimap2
 description: Versatile pairwise sequence aligner for long reads, assemblies, and splice alignment.
 
-version: 2.22-bc.2
+version: 2.31-bc.1
 homepage: https://github.com/lh3/minimap2
 license:
   spdx: MIT
@@ -14,20 +14,23 @@ maintainers:
 
 source:
   repo: https://github.com/lh3/minimap2
-  tag: "v2.22"
-  version: "2.22"
-  commit: "7358a1ead1adfa89a2d3d0e72ffddd05732f9850"
+  tag: "v2.31"
+  version: "2.31"
+  commit: "3c28777e7e2dcc90f825de1b9f17a89cca7d4452"
 
 status: experimental
 
 build:
   wasm:
-    strategy: biowasm
-    biowasm:
-      package: minimap2
+    strategy: emscripten
+    emscripten:
+      outputDir: out
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
   native:
     buildScript: build-native.sh
-    buildTools: [make]
+    buildTools: [make, gcc]
+    outputDir: .
 
 runtime:
   modes: [wasm, native]
