@@ -2,32 +2,43 @@ apiVersion: v1
 
 id: app.biochef.mummer4
 name: mummer4
-description: Rapidly align entire genomes by finding maximal exact matches and extending them via clustering. Exposes nucmer (the DNA aligner from the MUMmer 4 suite).
+description: Rapidly align entire genomes by finding maximal exact matches and extending them via clustering. Exposes nucmer (the DNA aligner from the MUMmer 4 suite) and the delta-filter and show-coords tools for its alignments.
 
-version: 4.0.0-bc.1
+version: 4.0.1-bc.1
 homepage: https://github.com/mummer4/mummer
 license:
-  spdx: Artistic-2.0
+  spdx: Artistic-2.0 AND GPL-3.0-or-later AND MIT AND BSL-1.0
   files: [LICENSE.md]
+  evidence_files:
+    - include/jellyfish/stream_manager.hpp
+    - include/mt_skip_list/common.hpp
+    - include/compactsufsort/divsufsort_private.h
+    - include/thread_pipe/traits.hpp
 maintainers:
   - name: Biochef
 
 source:
   repo: https://github.com/mummer4/mummer
-  tag: "v4.0.0rc1"
-  version: "4.0.0rc1"
-  commit: "4fa9aee1f1b6a7304fd5e97608bbb91b2957b9fd"
+  tag: "v4.0.1"
+  version: "4.0.1"
+  commit: "eb734606f2d516f42a0e0dce7a116bfb88ec1ebf"
 
 status: experimental
 
 build:
   wasm:
-    strategy: biowasm
-    biowasm:
-      package: mummer4
+    strategy: emscripten
+    emscripten:
+      outputDir: out
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+  native:
+    buildScript: build-native.sh
+    buildTools: [make, gcc]
+    outputDir: bin
 
 runtime:
-  modes: [wasm]
+  modes: [wasm, native, remote]
 
 operations:
   - id: mummer4.nucmer
@@ -43,7 +54,6 @@ operations:
         - { name: out, types: [TEXT], mode: file, flag: --delta }
     parameters:
       - { name: mum, type: flag, flag: --mum }
-      - { name: mumreference, type: flag, flag: --mumreference }
       - { name: maxmatch, type: flag, flag: --maxmatch }
       - { name: breaklen, type: integer, flag: --breaklen }
       - { name: mincluster, type: integer, flag: --mincluster }
@@ -55,5 +65,83 @@ operations:
       - { name: nooptimize, type: flag, flag: --nooptimize }
       - { name: nosimplify, type: flag, flag: --nosimplify }
       - { name: minmatch, type: integer, flag: --minmatch }
+      - { name: minalign, type: integer, flag: --minalign }
       - { name: maxgap, type: integer, flag: --maxgap }
+      - { name: banded, type: flag, flag: --banded }
+      - { name: genome, type: flag, flag: --genome }
       - { name: threads, type: integer, flag: --threads, default: 1 }
+
+  - id: mummer4.nucmer.sam
+    name: Nucmer to SAM (MUMmer 4)
+    category: Genomic Operations
+    bin: nucmer
+    description: Align two genomic sequences (reference and query) and write the alignments as SAM, with the full query sequence of each record.
+    io:
+      inputs:
+        - { name: ref, types: [FASTA, Multi-FASTA], mode: file }
+        - { name: query, types: [FASTA, Multi-FASTA], mode: file }
+      outputs:
+        - { name: out, types: [SAM], mode: file, flag: --sam-long }
+    parameters:
+      - { name: mum, type: flag, flag: --mum }
+      - { name: maxmatch, type: flag, flag: --maxmatch }
+      - { name: breaklen, type: integer, flag: --breaklen }
+      - { name: mincluster, type: integer, flag: --mincluster }
+      - { name: diagdiff, type: integer, flag: --diagdiff }
+      - { name: diagfactor, type: float, flag: --diagfactor }
+      - { name: forward, type: flag, flag: --forward }
+      - { name: reverse, type: flag, flag: --reverse }
+      - { name: noextend, type: flag, flag: --noextend }
+      - { name: nooptimize, type: flag, flag: --nooptimize }
+      - { name: nosimplify, type: flag, flag: --nosimplify }
+      - { name: minmatch, type: integer, flag: --minmatch }
+      - { name: minalign, type: integer, flag: --minalign }
+      - { name: maxgap, type: integer, flag: --maxgap }
+      - { name: banded, type: flag, flag: --banded }
+      - { name: genome, type: flag, flag: --genome }
+      - { name: threads, type: integer, flag: --threads, default: 1 }
+
+  - id: mummer4.delta.filter
+    name: Delta Filter (MUMmer 4)
+    category: Genomic Operations
+    bin: delta-filter
+    description: Filter the alignments of a nucmer delta file, for example to a 1-to-1 or best-hit mapping, and write a delta file.
+    io:
+      inputs:
+        - { name: delta, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: one_to_one, type: flag, flag: "-1" }
+      - { name: global, type: flag, flag: -g }
+      - { name: many_to_many, type: flag, flag: -m }
+      - { name: query_best, type: flag, flag: -q }
+      - { name: reference_best, type: flag, flag: -r }
+      - { name: min_identity, type: float, flag: -i }
+      - { name: min_length, type: integer, flag: -l }
+      - { name: min_uniqueness, type: float, flag: -u }
+      - { name: max_overlap, type: float, flag: -o }
+
+  - id: mummer4.show.coords
+    name: Show Coordinates (MUMmer 4)
+    category: Genomic Operations
+    bin: show-coords
+    description: List the coordinates, identity and other details of each alignment in a nucmer delta file.
+    io:
+      inputs:
+        - { name: delta, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: merge_overlaps, type: flag, flag: -b }
+      - { name: btab, type: flag, flag: -B }
+      - { name: coverage, type: flag, flag: -c }
+      - { name: direction, type: flag, flag: -d }
+      - { name: no_header, type: flag, flag: -H }
+      - { name: min_identity, type: float, flag: -I }
+      - { name: lengths, type: flag, flag: -l }
+      - { name: min_length, type: integer, flag: -L }
+      - { name: annotate_overlaps, type: flag, flag: -o }
+      - { name: sort_query, type: flag, flag: -q }
+      - { name: sort_reference, type: flag, flag: -r }
+      - { name: tab, type: flag, flag: -T }
