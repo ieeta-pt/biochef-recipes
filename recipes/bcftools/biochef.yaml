@@ -4,7 +4,7 @@ id: app.biochef.bcftools
 name: BCFtools
 description: Utilities for variant calling and manipulating VCF/BCF files.
 
-version: 1.10-bc.2
+version: 1.24-bc.1
 homepage: https://github.com/samtools/bcftools
 license:
   spdx: MIT
@@ -14,20 +14,26 @@ maintainers:
 
 source:
   repo: https://github.com/samtools/bcftools
-  tag: "1.10"
-  version: "1.10"
-  commit: "9f0a0a2451bb64e52a12c4a586ffa5744a4bd965"
+  tag: "1.24"
+  version: "1.24"
+  commit: "fb9f0f783e0f67d734f6fa7fe4df9d230522f196"
 
 status: experimental
 
 build:
   wasm:
-    strategy: biowasm
-    biowasm:
-      package: bcftools
+    strategy: emscripten
+    emscripten:
+      outputDir: out
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+  native:
+    buildScript: build-native.sh
+    buildTools: [make, gcc]
+    outputDir: .
 
 runtime:
-  modes: [wasm, remote]
+  modes: [wasm, native, remote]
 
 operations:
   - id: bcftools.view
@@ -494,7 +500,7 @@ operations:
     name: Roh (BCFtools)
     category: Information and Analysis
     bin: bcftools
-    description: Detect runs of homozygosity and autozygous segments with a hidden Markov model. Sites whose allele frequency cannot be determined are skipped, so a default allele frequency is supplied; clear af_dflt and choose af_tag or estimate_af if the input already carries frequencies.
+    description: Detect runs of homozygosity and autozygous segments with a hidden Markov model, from the genotype likelihoods (FORMAT/PL) of a VCF such as call writes. For a VCF with genotypes only, use Roh From Genotypes. Sites whose allele frequency cannot be determined are skipped, so a default allele frequency is supplied; clear af_dflt and choose af_tag or estimate_af if the input already carries frequencies.
     io:
       inputs:
         - { name: in, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file }
@@ -505,7 +511,35 @@ operations:
       - { name: af_dflt, type: float, flag: --AF-dflt, default: 0.4, required: true }
       - { name: af_tag, type: string, flag: --AF-tag }
       - { name: estimate_af, type: string, flag: -e }
-      - { name: gts_only, type: float, flag: -G }
+      - { name: ignore_homref, type: flag, flag: -i }
+      - { name: skip_indels, type: flag, flag: -I }
+      - { name: buffer_size, type: string, flag: -b }
+      - { name: rec_rate, type: float, flag: -M }
+      - { name: hw_to_az, type: float, flag: -a }
+      - { name: az_to_hw, type: float, flag: -H }
+      - { name: viterbi_training, type: float, flag: -V }
+      - { name: samples, type: string, flag: -s }
+      - { name: regions, type: string, flag: -r }
+      - { name: targets, type: string, flag: -t }
+      - { name: include, type: string, flag: --include }
+      - { name: exclude, type: string, flag: --exclude }
+
+  - id: bcftools.roh.genotypes
+    name: Roh From Genotypes (BCFtools)
+    category: Information and Analysis
+    bin: bcftools
+    description: Detect runs of homozygosity and autozygous segments with a hidden Markov model, from the genotypes (FORMAT/GT) alone, for a VCF without likelihoods. gts_only is the phred-scaled quality given to each genotype. Sites whose allele frequency cannot be determined are skipped, so a default allele frequency is supplied; clear af_dflt and choose af_tag or estimate_af if the input already carries frequencies.
+    io:
+      inputs:
+        - { name: in, types: [VCF, GVCF, VCF_GZ, GVCF_GZ, BCF], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: roh, required: true, hidden: true }
+      - { name: af_dflt, type: float, flag: --AF-dflt, default: 0.4, required: true }
+      - { name: af_tag, type: string, flag: --AF-tag }
+      - { name: estimate_af, type: string, flag: -e }
+      - { name: gts_only, type: float, flag: -G, default: 30, required: true }
       - { name: ignore_homref, type: flag, flag: -i }
       - { name: skip_indels, type: flag, flag: -I }
       - { name: buffer_size, type: string, flag: -b }
