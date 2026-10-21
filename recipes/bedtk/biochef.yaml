@@ -2,9 +2,9 @@ apiVersion: v1
 
 id: app.biochef.bedtk
 name: bedtk
-description: bedtk — lightweight BED interval toolkit by Heng Li. Implements intersect, subtract, merge, sort, filter, coverage and total length operations on BED files. Effectively a focused subset of bedtools, with minimal dependencies.
+description: bedtk, a lightweight BED interval toolkit by Heng Li. Implements intersect, subtract, merge, sort, filter, coverage and total length operations on BED files. Effectively a focused subset of bedtools, with minimal dependencies.
 
-version: 0.1.0-bc.1
+version: 1.2-bc.1
 homepage: https://github.com/lh3/bedtk
 license:
   spdx: MIT
@@ -15,7 +15,7 @@ maintainers:
 source:
   repo: https://github.com/lh3/bedtk
   commit: "fa2cc15a8ab61d28bf6a4cfd50f36f883021a385"
-  version: "0.1.0"
+  version: "1.2"
 
 status: experimental
 
