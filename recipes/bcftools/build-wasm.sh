@@ -13,7 +13,7 @@ cat > htslib-src/config.h <<'EOF_CONFIG'
 EOF_CONFIG
 emmake make -C htslib-src -j4 CC=emcc AR=emar RANLIB=emranlib CFLAGS="-O2 -sUSE_ZLIB=1" LIBS="-lz -lm" NONCONFIGURE_OBJS= lib-static
 
-# No plugins: a wasm build cannot load a shared object.
+# No plugins: no operation here uses one.
 emmake make -j4 CC=emcc AR=emar RANLIB=emranlib CFLAGS="-O2 -sUSE_ZLIB=1" \
   HTSDIR=htslib-src HTSLIB_LIB=htslib-src/libhts.a PLUGINS_ENABLED=no LIBS="-lz -lm" NONCONFIGURE_OBJS= \
   LDFLAGS="-sUSE_ZLIB=1 -sSTACK_SIZE=8MB $EM_FLAGS" ALL_LIBS="-lz -lm" bcftools
