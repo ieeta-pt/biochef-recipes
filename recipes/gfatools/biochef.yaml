@@ -4,7 +4,7 @@ id: app.biochef.gfatools
 name: gfatools
 description: gfatools reads, converts and transforms assembly and pangenome graphs in the Graphical Fragment Assembly format (GFA and reference GFA, rGFA). It reports graph statistics, subsets graphs, converts them to FASTA or BED, finds bubbles, and simplifies assembly graphs the way miniasm does.
 
-version: 0.1.296-bc.1
+version: 0.5.296-bc.1
 homepage: https://github.com/lh3/gfatools
 license:
   spdx: MIT
@@ -15,7 +15,7 @@ maintainers:
 source:
   repo: https://github.com/lh3/gfatools
   commit: "39c54d5dfe4678d4cfb75b37bd27d4fb21f4de72"
-  version: "r296"
+  version: "0.5-r296"
 
 status: experimental
 
