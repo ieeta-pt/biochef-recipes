@@ -21,6 +21,18 @@ source:
 status: experimental
 
 build:
+  dependencies:
+    - name: htslib
+      repo: https://github.com/samtools/htslib
+      commit: "4e61c128238f3e7cbb3b1f4e9c0fdb4880aa9a10"
+      path: htslib
+      license: { spdx: MIT AND BSD-3-Clause, files: [LICENSE] }
+    - name: argp-standalone
+      repo: https://github.com/ericonr/argp-standalone
+      commit: "e5fe9ad9e83e6765cf8fa787f903d4c6792338b5"
+      path: argp
+      runtimes: [wasm]
+      license: { spdx: LGPL-2.1-or-later, files: [README.md] }
   wasm:
     strategy: emscripten
     emscripten:
