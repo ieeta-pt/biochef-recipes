@@ -1,21 +1,18 @@
-sudo apt install libncurses-dev \
-        zlib1g-dev \
-        liblzma-dev \
-        libbz2-dev \
-        libdeflate-dev \
-        libcurl4-openssl-dev \
-        musl-tools
+set -eo pipefail
 
-git clone --branch 1.21 --recurse-submodules https://github.com/samtools/htslib.git htslib
+# htslib at the release samtools 1.24 is made against, checked by commit.
+git clone --depth 1 --branch 1.24 --recurse-submodules https://github.com/samtools/htslib htslib-src
+test "$(git -C htslib-src rev-parse HEAD)" = "4b705e4fada8ee2b6b15746f725ee8ac51631803"
 
-cd htslib
-autoheader
-autoconf
-./configure
-make
-cd ..
-
-autoheader
-autoconf -Wno-syntax
-./configure --with-htslib="$PWD/htslib"
-make
+# zlib only: no bzip2, lzma or libcurl, none of which the browser has; and no
+# curses, so tview writes text or HTML rather than drawing a terminal.
+cat > htslib-src/config.h <<'EOF_CONFIG'
+#ifndef _XOPEN_SOURCE
+#define _XOPEN_SOURCE 600
+#endif
+#define HAVE_DRAND48 1
+EOF_CONFIG
+echo '/* zlib only, without curses */' > config.h
+VARS=(HTSDIR=htslib-src HTSLIB_LIB=htslib-src/libhts.a LIBS="-lz -lm" NONCONFIGURE_OBJS= CURSES_LIB=)
+make -C htslib-src -j4 "${VARS[@]}" lib-static
+make -j4 "${VARS[@]}" samtools
