@@ -50,6 +50,7 @@ operations:
       - { name: window_size, type: integer, flag: -w }
       - { name: hpc_minimizer, type: flag, flag: -H }
       - { name: split_index_size, type: string, flag: -I }
+      - { name: split_prefix, type: string, flag: --split-prefix }
       - { name: minibatch_size, type: string, flag: -K }
       - { name: bandwidth, type: string, flag: -r }
       - { name: top_frac_seeds, type: string, flag: -f }
@@ -66,14 +67,10 @@ operations:
       - { name: gap_ext_penalty, type: string, flag: -E }
       - { name: zdrop, type: string, flag: -z }
       - { name: mask_level, type: float, flag: -M }
-      - { name: read_group, type: string, flag: -R }
-      - { name: drop_quality, type: flag, flag: -Q }
-      - { name: long_cigar, type: flag, flag: -L }
       - { name: output_cigar, type: flag, flag: -c }
       - { name: skip_self_dual, type: flag, flag: -X }
       - { name: all_vs_all, type: flag, flag: -P }
-      - { name: yaml_output, type: flag, flag: -y }
-      - { name: pre_align_softmask, type: flag, flag: -Y }
+      - { name: copy_comment, type: flag, flag: -y }
       - { name: filter_repetitive, type: integer, flag: -F }
       - { name: cs_tag, type: string, flag: --cs }
       - { name: md_tag, type: flag, flag: --MD }
@@ -83,7 +80,6 @@ operations:
       - { name: reverse_only, type: flag, flag: --rev-only }
       - { name: no_self, type: flag, flag: -D }
       - { name: paf_no_hit, type: flag, flag: --paf-no-hit }
-      - { name: sam_hit_only, type: flag, flag: --sam-hit-only }
       - { name: splice_mode, type: flag, flag: --splice }
       - { name: splice_strand, type: string, flag: -u }
       - { name: sr_mode, type: flag, flag: --sr }
@@ -121,6 +117,7 @@ operations:
       - { name: window_size, type: integer, flag: -w }
       - { name: hpc_minimizer, type: flag, flag: -H }
       - { name: split_index_size, type: string, flag: -I }
+      - { name: split_prefix, type: string, flag: --split-prefix }
       - { name: minibatch_size, type: string, flag: -K }
       - { name: bandwidth, type: string, flag: -r }
       - { name: top_frac_seeds, type: string, flag: -f }
@@ -143,8 +140,8 @@ operations:
       - { name: output_cigar, type: flag, flag: -c }
       - { name: skip_self_dual, type: flag, flag: -X }
       - { name: all_vs_all, type: flag, flag: -P }
-      - { name: yaml_output, type: flag, flag: -y }
-      - { name: pre_align_softmask, type: flag, flag: -Y }
+      - { name: copy_comment, type: flag, flag: -y }
+      - { name: softclip_supplementary, type: flag, flag: -Y }
       - { name: filter_repetitive, type: integer, flag: -F }
       - { name: cs_tag, type: string, flag: --cs }
       - { name: md_tag, type: flag, flag: --MD }
@@ -153,7 +150,6 @@ operations:
       - { name: forward_only, type: flag, flag: --for-only }
       - { name: reverse_only, type: flag, flag: --rev-only }
       - { name: no_self, type: flag, flag: -D }
-      - { name: paf_no_hit, type: flag, flag: --paf-no-hit }
       - { name: sam_hit_only, type: flag, flag: --sam-hit-only }
       - { name: splice_mode, type: flag, flag: --splice }
       - { name: splice_strand, type: string, flag: -u }
