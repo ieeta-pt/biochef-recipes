@@ -37,7 +37,7 @@ operations:
     name: Align (minigraph)
     category: Genomic Operations
     bin: minigraph
-    description: Align queries to a graph genome (GFA or rGFA). Outputs GAF (Graph Alignment Format). With --vc on a GFA reference and a FASTA assembly, infers variant calls in VCF form.
+    description: Align queries to a graph genome (GFA or rGFA). Outputs GAF (Graph Alignment Format).
     io:
       inputs:
         - { name: graph, types: [RGFA, GFA], mode: file }
