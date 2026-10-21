@@ -4,7 +4,7 @@ id: app.biochef.vt
 name: vt
 description: Variant tool (vt) by Adrian Tan, a toolkit for manipulating, normalizing, decomposing, and analysing variants in VCF/BCF files. Built from source against htslib.
 
-version: 0.57772-bc.1
+version: 0.57721-bc.1
 homepage: https://genome.sph.umich.edu/wiki/Vt
 license:
   spdx: MIT
@@ -15,7 +15,7 @@ maintainers:
 source:
   repo: https://github.com/atks/vt
   commit: "c6bd1591a23a1d116d52834a627c00bbf7ed4a64"
-  version: "0.57772"
+  version: "0.57721-27-gc6bd159"
 
 status: experimental
 
