@@ -52,8 +52,9 @@ cat > config.h <<'EOF_CONFIG'
 EOF_CONFIG
 emmake make -j4 CC=emcc AR=emar RANLIB=emranlib CFLAGS="-O2 -sUSE_ZLIB=1" LDFLAGS="-sUSE_ZLIB=1" LIBS="-lz -lm" NONCONFIGURE_OBJS= lib-static bgzip.o tabix.o htsfile.o
 
-# Linked apart, because the Makefile writes LDFLAGS into config_vars.h, where
-# the quotes in EM_FLAGS do not survive.
+# Linked apart: the Makefile writes LDFLAGS into config_vars.h with each
+# quote as \x27, and in EM_FLAGS the letter after it, as in 'callMain',
+# extends the hex escape, so hts.c would not compile.
 mkdir -p out
 for b in bgzip tabix htsfile; do
   emcc -O2 -sUSE_ZLIB=1 $EM_FLAGS "$b.o" libhts.a -lm -o "out/$b.js"
