@@ -43,7 +43,7 @@ replace('tbx_index_build3(fname, NULL, min_shift, args.threads, &conf)', 'tbx_in
 open(path, "w").write(src)
 BIOCHEF_PY
 
-# zlib only: no bzip2, lzma or libcurl, none of which the browser has.
+# zlib only: no bzip2, lzma or libcurl.
 cat > config.h <<'EOF_CONFIG'
 #ifndef _XOPEN_SOURCE
 #define _XOPEN_SOURCE 600
