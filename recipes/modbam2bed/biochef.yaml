@@ -7,7 +7,7 @@ description: Summarize modified bases (e.g. 5mC methylation) from a modBAM align
 version: 0.10.0-bc.1
 homepage: https://github.com/epi2me-labs/modbam2bed
 license:
-  spdx: LicenseRef-ONT-Public-1.0
+  spdx: LicenseRef-ONT-Public-1.0 AND LGPL-2.1-or-later
   files: [LICENSE]
 maintainers:
   - name: Biochef
@@ -30,7 +30,7 @@ build:
   native:
     buildScript: build-native.sh
     buildTools: [make, gcc]
-    outputDir: .
+    outputDir: bin
 
 runtime:
   modes: [wasm, native]
@@ -61,7 +61,7 @@ operations:
       - { name: max_depth, type: integer, flag: -d }
       - { name: read_group, type: string, flag: -g }
       - { name: tag_name, type: string, flag: --tag_name }
-      - { name: tag_value, type: string, flag: --tag_value }
+      - { name: tag_value, type: integer, flag: --tag_value }
       - { name: haplotype, type: integer, flag: --haplotype }
       - { name: map_q, type: integer, flag: --map_q }
       - { name: threads, type: integer, flag: -t, default: 1 }
@@ -92,7 +92,7 @@ operations:
       - { name: max_depth, type: integer, flag: -d }
       - { name: read_group, type: string, flag: -g }
       - { name: tag_name, type: string, flag: --tag_name }
-      - { name: tag_value, type: string, flag: --tag_value }
+      - { name: tag_value, type: integer, flag: --tag_value }
       - { name: haplotype, type: integer, flag: --haplotype }
       - { name: map_q, type: integer, flag: --map_q }
       - { name: threads, type: integer, flag: -t, default: 1 }

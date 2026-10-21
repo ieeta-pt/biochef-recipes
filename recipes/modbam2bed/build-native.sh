@@ -11,8 +11,8 @@ cat > htslib/config.h <<'EOF_CONFIG'
 EOF_CONFIG
 make -C htslib -j4 LIBS="-lz -lm" NONCONFIGURE_OBJS= lib-static
 
-# A position with no spanning reads gets its score from nanf("") cast to
-# size_t, which is undefined. gcc and earlier emscripten wrote 0; clang now
+# A position with no reads on one strand gets that strand's score from
+# nanf("") cast to size_t, which is undefined. gcc and earlier emscripten wrote 0; clang now
 # drops the depth check and divides by zero. It is now 0 explicitly.
 python3 - <<'BIOCHEF_PY'
 import sys
@@ -29,4 +29,5 @@ BIOCHEF_PY
 for f in modbam2bed common counts bamiter args; do
   gcc -O2 -std=c99 -pthread -Isrc -Ihtslib -c src/$f.c -o $f.o
 done
-gcc -O2 -pthread modbam2bed.o common.o counts.o bamiter.o args.o htslib/libhts.a -lz -lm -o modbam2bed
+mkdir -p bin
+gcc -O2 -pthread modbam2bed.o common.o counts.o bamiter.o args.o htslib/libhts.a -lz -lm -o bin/modbam2bed

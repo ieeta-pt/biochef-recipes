@@ -48,8 +48,8 @@ for f in argp-ba argp-eexst argp-fmtstream argp-help argp-parse argp-pv argp-pvh
 done
 emar rcs argp/libargp.a argp/*.o
 
-# A position with no spanning reads gets its score from nanf("") cast to
-# size_t, which is undefined. gcc and earlier emscripten wrote 0; clang now
+# A position with no reads on one strand gets that strand's score from
+# nanf("") cast to size_t, which is undefined. gcc and earlier emscripten wrote 0; clang now
 # drops the depth check and divides by zero. It is now 0 explicitly.
 python3 - <<'BIOCHEF_PY'
 import sys
@@ -63,37 +63,45 @@ src = src.replace(old, '    size_t score = depth == 0 ? 0 : (1000 * tot) / depth
 open(path, "w").write(src)
 BIOCHEF_PY
 
-# NOTHREADS runs each region on one thread, since the build has no
-# pthreads; WASM skips a check of the open file limit. Upstream's NOTHREADS
-# path does not compile: it reads the BAM files from an undeclared `j` and
-# passes their names where calculate_pileup takes the opened files. It now
-# opens and closes them as the threaded worker does.
+# NOTHREADS runs on one thread, since the build has no pthreads; WASM skips
+# a check of the open file limit. Upstream's NOTHREADS path does not
+# compile (it reads the BAM files from an undeclared `j`), and it would
+# take a whole chromosome in one pileup, beyond wasm memory for most human
+# chromosomes. It now runs the threaded path's worker on the same 1 Mb
+# windows, in order.
 python3 - <<'BIOCHEF_PY'
 import sys
 
 path = "src/modbam2bed.c"
 src = open(path).read()
-
-
-def replace(old, new):
-    global src
-    if src.count(old) != 1:
-        sys.exit(f"patch: expected one {old[:60]!r} in {path}, found {src.count(old)}")
-    src = src.replace(old, new)
-
-
-replace("    set_fsets* files = create_filesets(j.args.bam);\n",
-        "    set_fsets* files = create_filesets(args.bam);\n")
-replace("    plp_data pileup = calculate_pileup(\n        args.bam, chr, start, end,\n"
-        "        args.read_group, args.tag_name, args.tag_value,\n"
-        "        args.threshold, args.mod_base, args.combine,\n"
-        "        args.hts_maxcnt, args.min_mapQ);\n",
-        "    plp_data pileup = calculate_pileup(\n        files, chr, start, end,\n"
-        "        args.read_group, args.tag_name, args.tag_value,\n"
-        "        args.threshold, args.mod_base, args.combine,\n"
-        "        args.hts_maxcnt, args.min_mapQ);\n"
-        "    destroy_filesets(files);\n")
-
+start = src.find("#ifdef NOTHREADS\nvoid process_region(")
+end = src.find("#else\nvoid process_region(", start)
+if start < 0 or end < 0 or src.count("#ifdef NOTHREADS\nvoid process_region(") != 1:
+    sys.exit(f"patch: NOTHREADS process_region not found as expected in {path}")
+src = src[:start] + """#ifdef NOTHREADS
+void process_region(arguments_t args, const char *chr, int start, int end, char *ref, output_files bed_files) {
+    fprintf(stderr, "Processing: %s:%d-%d\\n", chr, start, end);
+    const int width = 1000000;
+    init_output_buffers(bed_files);
+    for (int rstart = start; rstart < end; rstart += width) {
+        twarg *tw_args = xalloc(1, sizeof(*tw_args), "thread worker args");  // freed in worker
+        tw_args->args = args;
+        tw_args->chr = chr; tw_args->start = rstart; tw_args->end = min(rstart + width, end);
+        plp_data res = (plp_data)pileup_worker(tw_args);
+        if (res != NULL) {
+            if (args.pileup) {
+                print_pileup_data(res);
+            } else {
+                print_bedmethyl(
+                    res, ref, 0,
+                    args.extended, args.mod_base.abbrev, args.mod_base.base, bed_files);
+            }
+            destroy_plp_data(res);
+        }
+    }
+    flush_output_buffers(bed_files, chr, args.extended, args.mod_base.abbrev);
+}
+""" + src[end:]
 open(path, "w").write(src)
 BIOCHEF_PY
 
