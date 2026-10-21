@@ -43,7 +43,7 @@ operations:
         - { name: ref, types: [FASTA, MMI], mode: file }
         - { name: reads, types: [FASTA, FASTQ], mode: file }
       outputs:
-        - { name: out, types: [TEXT], mode: stdout }
+        - { name: out, types: [PAF], mode: stdout }
     parameters:
       - { name: preset, type: string, flag: -x }
       - { name: kmer_size, type: integer, flag: -k }
