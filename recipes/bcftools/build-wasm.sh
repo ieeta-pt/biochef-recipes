@@ -16,7 +16,7 @@ emmake make -C htslib-src -j4 CC=emcc AR=emar RANLIB=emranlib CFLAGS="-O2 -sUSE_
 # No plugins: no operation here uses one.
 emmake make -j4 CC=emcc AR=emar RANLIB=emranlib CFLAGS="-O2 -sUSE_ZLIB=1" \
   HTSDIR=htslib-src HTSLIB_LIB=htslib-src/libhts.a PLUGINS_ENABLED=no LIBS="-lz -lm" NONCONFIGURE_OBJS= \
-  LDFLAGS="-sUSE_ZLIB=1 -sSTACK_SIZE=8MB $EM_FLAGS" ALL_LIBS="-lz -lm" bcftools
+  LDFLAGS="-O2 -sUSE_ZLIB=1 -sSTACK_SIZE=8MB $EM_FLAGS" ALL_LIBS="-lz -lm" bcftools
 
 mkdir -p out
 mv bcftools out/bcftools.js
