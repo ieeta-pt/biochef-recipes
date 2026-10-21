@@ -21,6 +21,12 @@ source:
 status: experimental
 
 build:
+  dependencies:
+    - name: gclib
+      repo: https://github.com/gpertea/gclib
+      commit: "35376c8f69889178306ce80d986a3cc09e726a22"
+      path: gclib
+      license: { spdx: Artistic-2.0, files: [LICENSE.txt] }
   wasm:
     strategy: emscripten
     emscripten:
