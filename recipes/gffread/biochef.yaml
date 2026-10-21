@@ -7,7 +7,7 @@ description: Filter, convert or cluster GFF/GTF/BED records and extract transcri
 version: 0.12.9-bc.1
 homepage: https://github.com/gpertea/gffread
 license:
-  spdx: MIT
+  spdx: MIT AND Artistic-2.0
   files: [LICENSE]
 maintainers:
   - name: Biochef
