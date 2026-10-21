@@ -4,7 +4,7 @@ set -eo pipefail
 git clone --depth 1 --branch 1.24 --recurse-submodules https://github.com/samtools/htslib htslib-src
 test "$(git -C htslib-src rev-parse HEAD)" = "4b705e4fada8ee2b6b15746f725ee8ac51631803"
 
-# zlib only: no bzip2, lzma or libcurl, none of which the browser has.
+# zlib only: no bzip2, lzma or libcurl.
 cat > htslib-src/config.h <<'EOF_CONFIG'
 #ifndef _XOPEN_SOURCE
 #define _XOPEN_SOURCE 600
