@@ -16,7 +16,7 @@ echo '/* zlib only, without curses */' > config.h
 VARS=(CC=emcc AR=emar RANLIB=emranlib CFLAGS="-O2 -sUSE_ZLIB=1" HTSDIR=htslib-src
       HTSLIB_LIB=htslib-src/libhts.a LIBS="-lz -lm" NONCONFIGURE_OBJS= CURSES_LIB=)
 emmake make -C htslib-src -j4 "${VARS[@]}" lib-static
-emmake make -j4 "${VARS[@]}" LDFLAGS="-sUSE_ZLIB=1 -sSTACK_SIZE=8MB $EM_FLAGS" samtools
+emmake make -j4 "${VARS[@]}" LDFLAGS="-O2 -sUSE_ZLIB=1 -sSTACK_SIZE=8MB $EM_FLAGS" samtools
 
 mkdir -p out
 mv samtools out/samtools.js
