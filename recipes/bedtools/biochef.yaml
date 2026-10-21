@@ -4,7 +4,7 @@ id: app.biochef.bedtools
 name: bedtools
 description: Genome arithmetic over BED/GFF/VCF/BAM intervals.
 
-version: 2.31.0-bc.2
+version: 2.31.1-bc.1
 homepage: https://github.com/arq5x/bedtools2
 license:
   spdx: MIT
@@ -14,20 +14,26 @@ maintainers:
 
 source:
   repo: https://github.com/arq5x/bedtools2
-  tag: "v2.31.0"
-  version: "2.31.0"
-  commit: "333405a2bc5dc03c4aa89d5d31c356315f9cf7f1"
+  tag: "v2.31.1"
+  version: "2.31.1"
+  commit: "705ccfdf2c9a77d71560c8adcece0663c2f5e18e"
 
 status: experimental
 
 build:
   wasm:
-    strategy: biowasm
-    biowasm:
-      package: bedtools
+    strategy: emscripten
+    emscripten:
+      outputDir: out
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+  native:
+    buildScript: build-native.sh
+    buildTools: [make, gcc]
+    outputDir: bin
 
 runtime:
-  modes: [wasm, remote]
+  modes: [wasm, native, remote]
 
 operations:
   - id: bedtools.intersect
