@@ -4,7 +4,7 @@ id: app.biochef.ivar
 name: ivar
 description: Computational tools for primer trimming, variant calling, and consensus assembly of viral amplicon sequencing data.
 
-version: 1.3.1-bc.1
+version: 1.4.4-bc.1
 homepage: https://github.com/andersen-lab/ivar
 license:
   spdx: GPL-3.0-only
@@ -14,20 +14,26 @@ maintainers:
 
 source:
   repo: https://github.com/andersen-lab/ivar
-  tag: "v1.3.1"
-  version: "1.3.1"
-  commit: "ce1490a70806ea33b225e9cb1b89f15cf0fa0271"
+  tag: "v1.4.4"
+  version: "1.4.4"
+  commit: "e666e4c1663ba37a34b9d209b7bd5aea58299121"
 
 status: experimental
 
 build:
   wasm:
-    strategy: biowasm
-    biowasm:
-      package: ivar
+    strategy: emscripten
+    emscripten:
+      outputDir: out
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+  native:
+    buildScript: build-native.sh
+    buildTools: [make, gcc]
+    outputDir: bin
 
 runtime:
-  modes: [wasm, remote]
+  modes: [wasm, native, remote]
 
 operations:
   - id: ivar.consensus
@@ -49,12 +55,13 @@ operations:
       - { name: skip_low_coverage, type: flag, flag: -k }
       - { name: low_coverage_char, type: string, flag: -n }
       - { name: fasta_header, type: string, flag: -i }
+      - { name: min_insert_threshold, type: float, flag: -c }
 
   - id: ivar.variants
     name: Variants (ivar)
     category: Genomic Operations
     bin: ivar
-    description: Call variants from samtools-mpileup output (piped via stdin) — TSV out
+    description: Call variants from samtools-mpileup output (piped via stdin); writes a TSV
     io:
       inputs:
         - { name: in, types: [TEXT], mode: stdin }
@@ -68,6 +75,7 @@ operations:
       - { name: min_quality, type: integer, flag: -q }
       - { name: min_freq_threshold, type: float, flag: -t }
       - { name: min_depth, type: integer, flag: -m }
+      - { name: gapped_depth, type: flag, flag: -G }
 
   - id: ivar.trim
     name: Trim Primers (ivar)
@@ -89,6 +97,7 @@ operations:
       - { name: sliding_window, type: integer, flag: -s }
       - { name: include_no_primers, type: flag, flag: -e }
       - { name: keep_failed, type: flag, flag: -k }
+      - { name: primer_offset, type: integer, flag: -x }
 
   - id: ivar.filtervariants
     name: Filter Variants (ivar)
