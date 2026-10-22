@@ -112,7 +112,7 @@ operations:
     name: Inspect (yak)
     category: Sequence Analysis
     bin: yak
-    description: Print summary statistics about a .yak hash table (k size, # of k-mers, count distribution).
+    description: 'Print summary statistics about a .yak hash table (k size, # of k-mers, count distribution).'
     io:
       inputs:
         - { name: in, types: [YAK], mode: file }
