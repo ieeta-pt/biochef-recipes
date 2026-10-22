@@ -1,0 +1,122 @@
+apiVersion: v1
+
+id: app.biochef.yak
+name: yak
+description: yak (Yet Another K-mer counter) by Heng Li. Counts k-mers, evaluates assembly quality (QV), performs trio binning and phasing-accuracy evaluation. Output hash tables can be intersected, subtracted, and inspected.
+
+version: 0.1.93-bc.1
+homepage: https://github.com/lh3/yak
+license:
+  spdx: MIT
+  files: [LICENSE.txt]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/lh3/yak
+  commit: "ef033d720e229593b32ad454af14ccea2120ec13"
+  version: "0.1.93"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+  native:
+    buildScript: build-native.sh
+    buildTools: [make]
+
+runtime:
+  modes: [wasm, native, remote]
+
+operations:
+  - id: yak.count
+    name: Count (yak)
+    category: Sequence Analysis
+    bin: yak
+    description: Count k-mers in a FASTA/FASTQ input and dump the hash table to a .yak file.
+    io:
+      inputs:
+        - { name: in, types: [FASTA, Multi-FASTA, FASTQ], mode: file }
+      outputs:
+        - { name: out, types: [YAK], mode: file, flag: -o }
+    parameters:
+      - { name: command, type: string, default: count, required: true, hidden: true }
+      - { name: kmer_length, type: integer, flag: -k, default: 31 }
+      - { name: bloom_bits, type: integer, flag: -b }
+      - { name: chunk_size, type: integer, flag: -K }
+      - { name: threads, type: integer, flag: -t, default: 1 }
+
+  - id: yak.print
+    name: Print (yak)
+    category: Sequence Analysis
+    bin: yak
+    description: Print k-mers from a .yak hash table (k <= 31 only).
+    io:
+      inputs:
+        - { name: in, types: [YAK], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: print, required: true, hidden: true }
+      - { name: print_counts, type: flag, flag: -c }
+
+  - id: yak.qv
+    name: QV (yak)
+    category: Sequence Analysis
+    bin: yak
+    description: Estimate assembly quality value (QV) using k-mers from a high-quality short-read set vs the assembly.
+    io:
+      inputs:
+        - { name: reference_kmers, types: [YAK], mode: file }
+        - { name: assembly, types: [FASTA, Multi-FASTA], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: qv, required: true, hidden: true }
+      - { name: threads, type: integer, flag: -t, default: 1 }
+      - { name: per_sequence, type: flag, flag: -p }
+
+  - id: yak.isec
+    name: Intersect (yak)
+    category: Sequence Analysis
+    bin: yak
+    description: Intersect two k-mer hash tables.
+    io:
+      inputs:
+        - { name: a, types: [YAK], mode: file }
+        - { name: b, types: [YAK], mode: file }
+      outputs:
+        - { name: out, types: [YAK], mode: file, flag: -o }
+    parameters:
+      - { name: command, type: string, default: isec, required: true, hidden: true }
+
+  - id: yak.subtract
+    name: Subtract (yak)
+    category: Sequence Analysis
+    bin: yak
+    description: Subtract k-mers in B from k-mers in A.
+    io:
+      inputs:
+        - { name: a, types: [YAK], mode: file }
+        - { name: b, types: [YAK], mode: file }
+      outputs:
+        - { name: out, types: [YAK], mode: file, flag: -o }
+    parameters:
+      - { name: command, type: string, default: subtract, required: true, hidden: true }
+
+  - id: yak.inspect
+    name: Inspect (yak)
+    category: Sequence Analysis
+    bin: yak
+    description: 'Print summary statistics about a .yak hash table (k size, # of k-mers, count distribution).'
+    io:
+      inputs:
+        - { name: in, types: [YAK], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: inspect, required: true, hidden: true }
