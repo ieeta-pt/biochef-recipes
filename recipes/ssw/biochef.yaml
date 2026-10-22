@@ -87,7 +87,7 @@ operations:
     description: Local pairwise alignment of protein sequences with a substitution matrix file in BLOSUM or PAM format. Outputs the alignment score, location and, with the path option, the alignment.
     io:
       inputs:
-        - { name: matrix, types: [TEXT], mode: file, flag: -a }
+        - { name: matrix, types: [SCORING_MATRIX], mode: file, flag: -a }
         - { name: target, types: [FASTA, Multi-FASTA], mode: file }
         - { name: query, types: [FASTA, Multi-FASTA, FASTQ], mode: file }
       outputs:
@@ -105,7 +105,7 @@ operations:
     description: Local pairwise alignment of protein sequences with a substitution matrix file in BLOSUM or PAM format, written as SAM with a header.
     io:
       inputs:
-        - { name: matrix, types: [TEXT], mode: file, flag: -a }
+        - { name: matrix, types: [SCORING_MATRIX], mode: file, flag: -a }
         - { name: target, types: [FASTA, Multi-FASTA], mode: file }
         - { name: query, types: [FASTA, Multi-FASTA, FASTQ], mode: file }
       outputs:
