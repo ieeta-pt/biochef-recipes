@@ -4,7 +4,7 @@ id: app.biochef.gawk
 name: gawk
 description: GNU implementation of awk - pattern-action programming language for text processing.
 
-version: 5.1.0-bc.1
+version: 5.4.1-bc.1
 homepage: https://www.gnu.org/software/gawk/
 license:
   spdx: GPL-3.0-or-later
@@ -15,20 +15,26 @@ maintainers:
 
 source:
   repo: https://git.savannah.gnu.org/git/gawk.git
-  tag: "gawk-5.1.0"
-  version: "5.1.0"
-  commit: "40a6d096aa10340df1542a5dc23438c6cb7590fb"
+  tag: "gawk-5.4.1"
+  version: "5.4.1"
+  commit: "52af7f12758da12db0ddbdb117a84e0685cd2f72"
 
 status: experimental
 
 build:
   wasm:
-    strategy: biowasm
-    biowasm:
-      package: gawk
+    strategy: emscripten
+    emscripten:
+      outputDir: out
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+  native:
+    buildScript: build-native.sh
+    buildTools: [make, gcc]
+    outputDir: bin
 
 runtime:
-  modes: [wasm, remote]
+  modes: [wasm, native, remote]
 
 operations:
   - id: gawk.script
@@ -43,9 +49,8 @@ operations:
         - { name: out, types: [TEXT, LIST], mode: stdout }
     parameters:
       - { name: field_separator, type: string, flag: -F }
+      - { name: csv, type: flag, flag: --csv }
       - { name: variable_assign, type: string, flag: -v }
-      - { name: include_file, type: string, flag: -i }
-      - { name: load_extension, type: string, flag: -l }
       - { name: traditional, type: flag, flag: -c }
       - { name: posix, type: flag, flag: -P }
       - { name: bignum, type: flag, flag: -M }
@@ -72,9 +77,8 @@ operations:
         - { name: out, types: [TEXT, LIST], mode: stdout }
     parameters:
       - { name: field_separator, type: string, flag: -F }
+      - { name: csv, type: flag, flag: --csv }
       - { name: variable_assign, type: string, flag: -v }
-      - { name: include_file, type: string, flag: -i }
-      - { name: load_extension, type: string, flag: -l }
       - { name: traditional, type: flag, flag: -c }
       - { name: posix, type: flag, flag: -P }
       - { name: bignum, type: flag, flag: -M }
@@ -86,3 +90,31 @@ operations:
       - { name: no_optimize, type: flag, flag: -s }
       - { name: lint_old, type: flag, flag: -t }
       - { name: gen_pot, type: flag, flag: -g }
+
+  - id: gawk.script.with.library
+    name: Script With Library (gawk)
+    category: Text Processing
+    bin: gawk
+    description: Run an inline gawk program that uses the functions of a gawk library file (-i)
+    io:
+      inputs:
+        - { name: library, types: [TEXT], mode: file, flag: -i }
+        - { name: in, types: [TEXT, FASTA, FASTQ, Multi-FASTA, NUM, DNA, RNA, AminoAcids, LIST], mode: file }
+      outputs:
+        - { name: out, types: [TEXT, LIST], mode: stdout }
+    parameters:
+      - { name: field_separator, type: string, flag: -F }
+      - { name: csv, type: flag, flag: --csv }
+      - { name: variable_assign, type: string, flag: -v }
+      - { name: traditional, type: flag, flag: -c }
+      - { name: posix, type: flag, flag: -P }
+      - { name: bignum, type: flag, flag: -M }
+      - { name: sandbox, type: flag, flag: -S }
+      - { name: characters_as_bytes, type: flag, flag: -b }
+      - { name: non_decimal_data, type: flag, flag: -n }
+      - { name: re_interval, type: flag, flag: -r }
+      - { name: optimize, type: flag, flag: -O }
+      - { name: no_optimize, type: flag, flag: -s }
+      - { name: lint_old, type: flag, flag: -t }
+      - { name: gen_pot, type: flag, flag: -g }
+      - { name: program, type: string, flag: -e, required: true }
