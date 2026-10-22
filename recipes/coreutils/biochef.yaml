@@ -2,9 +2,9 @@ apiVersion: v1
 
 id: app.biochef.coreutils
 name: coreutils
-description: GNU coreutils — basic file, shell and text manipulation utilities.
+description: GNU coreutils, basic file, shell and text manipulation utilities.
 
-version: 8.32-bc.1
+version: 9.12-bc.1
 homepage: https://www.gnu.org/software/coreutils/
 license:
   spdx: GPL-3.0-or-later
@@ -14,20 +14,26 @@ maintainers:
 
 source:
   repo: https://github.com/coreutils/coreutils
-  tag: "v8.32"
-  version: "8.32"
-  commit: "8d13292a73ecf1f265f77731d3ace29866e3d616"
+  tag: "v9.12"
+  version: "9.12"
+  commit: "c0f8514d989184921d9b12a4d103a7b23abc5af8"
 
 status: experimental
 
 build:
   wasm:
-    strategy: biowasm
-    biowasm:
-      package: coreutils
+    strategy: emscripten
+    emscripten:
+      outputDir: out
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+  native:
+    buildScript: build-native.sh
+    buildTools: [make, gcc]
+    outputDir: bin
 
 runtime:
-  modes: [wasm]
+  modes: [wasm, native, remote]
 
 operations:
   - id: coreutils.cat
@@ -131,6 +137,7 @@ operations:
       - { name: bytes, type: flag, flag: -c }
       - { name: chars, type: flag, flag: -m }
       - { name: max_line_length, type: flag, flag: -L }
+      - { name: total, type: string, flag: --total }
 
   - id: coreutils.cut
     name: Cut (coreutils)
@@ -147,6 +154,8 @@ operations:
       - { name: chars, type: string, flag: -c }
       - { name: fields, type: string, flag: -f }
       - { name: delimiter, type: string, flag: -d }
+      - { name: whitespace_delimited, type: flag, flag: -w }
+      - { name: no_split_multibyte, type: flag, flag: -n }
       - { name: complement, type: flag, flag: --complement }
       - { name: only_delimited, type: flag, flag: -s }
       - { name: zero_terminated, type: flag, flag: -z }
@@ -265,6 +274,7 @@ operations:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
       - { name: bytes, type: flag, flag: -b }
+      - { name: characters, type: flag, flag: -c }
       - { name: spaces, type: flag, flag: -s }
       - { name: width, type: integer, flag: -w }
 
@@ -281,14 +291,29 @@ operations:
     parameters:
       - { name: head_count, type: integer, flag: -n }
       - { name: with_replacement, type: flag, flag: -r }
-      - { name: random_source, type: string, flag: --random-source }
+      - { name: zero_terminated, type: flag, flag: -z }
+
+  - id: coreutils.shuf.seeded
+    name: Shuf with random source (coreutils)
+    category: Text Processing
+    bin: shuf
+    description: Shuffle input lines in an order set by the bytes of a second file, so the same file gives the same order
+    io:
+      inputs:
+        - { name: random_source, types: [TEXT], mode: file, flag: --random-source }
+        - { name: in, types: [TEXT], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: head_count, type: integer, flag: -n }
+      - { name: with_replacement, type: flag, flag: -r }
       - { name: zero_terminated, type: flag, flag: -z }
 
   - id: coreutils.basename
     name: Basename (coreutils)
     category: Text Processing
     bin: basename
-    description: Strip directory and optionally suffix from a filename (Tools-page op — no input)
+    description: Strip directory and optionally suffix from a filename (Tools-page op, no input)
     io:
       inputs: []
       outputs:
@@ -302,7 +327,7 @@ operations:
     name: Dirname (coreutils)
     category: Text Processing
     bin: dirname
-    description: Strip last component from a path (Tools-page op — no input)
+    description: Strip last component from a path (Tools-page op, no input)
     io:
       inputs: []
       outputs:
@@ -315,7 +340,7 @@ operations:
     name: Seq (coreutils)
     category: Mathematical Operations
     bin: seq
-    description: Generate a sequence of numbers (Tools-page op — no input)
+    description: Generate a sequence of numbers (Tools-page op, no input)
     io:
       inputs: []
       outputs:
@@ -332,7 +357,7 @@ operations:
     name: Echo (coreutils)
     category: Text Processing
     bin: echo
-    description: Display a line of text (Tools-page op — no input)
+    description: Display a line of text (Tools-page op, no input)
     io:
       inputs: []
       outputs:
