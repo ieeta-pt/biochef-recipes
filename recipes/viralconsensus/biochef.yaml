@@ -4,7 +4,7 @@ id: app.biochef.viralconsensus
 name: ViralConsensus
 description: Call viral consensus genomes directly from read alignments (BAM/SAM/CRAM) without an intermediate variant-calling step. Designed for viral whole-genome sequencing.
 
-version: 1.0.0-bc.1
+version: 1.0.4-bc.1
 homepage: https://github.com/niemasd/ViralConsensus
 license:
   spdx: GPL-3.0-or-later
@@ -14,39 +14,72 @@ maintainers:
 
 source:
   repo: https://github.com/niemasd/ViralConsensus
-  tag: "1.0.0"
-  version: "1.0.0"
-  commit: "a2e91c90a88f06108306221ac0ac71452db7cb6c"
+  tag: "1.0.4"
+  version: "1.0.4"
+  commit: "7cfc1cbb2e80cf10ad4cb2c65dbd8fe80d38ca06"
 
 status: experimental
 
 build:
   wasm:
-    strategy: biowasm
-    biowasm:
-      package: ViralConsensus
+    strategy: emscripten
+    emscripten:
+      outputDir: out
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+  native:
+    buildScript: build-native.sh
+    buildTools: [make, gcc]
+    outputDir: bin
 
 runtime:
-  modes: [wasm]
+  modes: [wasm, native, remote]
 
 operations:
   - id: viralconsensus.consensus
     name: Consensus (ViralConsensus)
     category: Genomic Operations
     bin: viral_consensus
-    description: Build a consensus FASTA from a read alignment plus its reference, with per-base depth and frequency thresholds.
+    description: Build a consensus FASTA from a read alignment plus its reference, with per-base depth and frequency thresholds. Also writes the base counts of each position and the insertion counts.
     io:
       inputs:
-        - { name: reads, types: [BAM, SAM, CRAM], mode: file, flag: -i }
+        - { name: reads, types: [SAM, BAM, CRAM], mode: file, flag: -i }
         - { name: reference, types: [FASTA], mode: file, flag: -r }
       outputs:
         - { name: out, types: [FASTA], mode: file, flag: -o }
+        - { name: pos_counts, types: [TEXT], mode: file, flag: -op }
+        - { name: ins_counts, types: [JSON], mode: file, flag: -oi }
     parameters:
       - { name: min_qual, type: integer, flag: -q }
       - { name: min_depth, type: integer, flag: -d }
       - { name: min_freq, type: float, flag: -f }
+      - { name: min_aln_len, type: integer, flag: -lb }
+      - { name: min_aln_frac, type: float, flag: -lp }
+      - { name: min_identity_frac, type: float, flag: -ip }
       - { name: ambig_char, type: string, flag: -a }
-      - { name: primer_bed, type: string, flag: -p }
+      - { name: proper_pairs, type: flag, flag: -pp }
+
+  - id: viralconsensus.consensus.primers
+    name: Consensus with Primer Trimming (ViralConsensus)
+    category: Genomic Operations
+    bin: viral_consensus
+    description: Build a consensus FASTA from a read alignment plus its reference, trimming the primers listed in a BED file from the reads first.
+    io:
+      inputs:
+        - { name: reads, types: [SAM, BAM, CRAM], mode: file, flag: -i }
+        - { name: reference, types: [FASTA], mode: file, flag: -r }
+        - { name: primers, types: [BED], mode: file, flag: -p }
+      outputs:
+        - { name: out, types: [FASTA], mode: file, flag: -o }
+        - { name: pos_counts, types: [TEXT], mode: file, flag: -op }
+        - { name: ins_counts, types: [JSON], mode: file, flag: -oi }
+    parameters:
+      - { name: min_qual, type: integer, flag: -q }
+      - { name: min_depth, type: integer, flag: -d }
+      - { name: min_freq, type: float, flag: -f }
+      - { name: min_aln_len, type: integer, flag: -lb }
+      - { name: min_aln_frac, type: float, flag: -lp }
+      - { name: min_identity_frac, type: float, flag: -ip }
+      - { name: ambig_char, type: string, flag: -a }
+      - { name: proper_pairs, type: flag, flag: -pp }
       - { name: primer_offset, type: integer, flag: -po }
-      - { name: primer_strict, type: flag, flag: -ps }
-      - { name: quiet, type: flag, flag: --quiet }
