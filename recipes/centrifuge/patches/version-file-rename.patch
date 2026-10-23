@@ -1,0 +1,24 @@
+macOS APFS case-insensitivity collides VERSION with libc++'s <version>
+header; rename so clang's #include <version> resolves to libc++. On
+Linux CI this rename is harmless (filesystem already case-sensitive).
+
+diff --git a/Makefile b/Makefile
+index 10e42f5..4dadcb5 100644
+--- a/Makefile
++++ b/Makefile
+@@ -136,9 +136,9 @@ CENTRIFUGE_COMPRESS_CPPS_MAIN = $(BUILD_CPPS) \
+ CENTRIFUGE_REPORT_CPPS_MAIN=$(BUILD_CPPS)
+ 
+ SEARCH_FRAGMENTS = $(wildcard search_*_phase*.c)
+-VERSION = $(shell cat VERSION)
++VERSION = $(shell cat VERSION_FILE)
+ GIT_VERSION = $(VERSION)
+-#GIT_VERSION = $(shell command -v git 2>&1 > /dev/null && git describe --long --tags --dirty --always --abbrev=10 || cat VERSION)
++#GIT_VERSION = $(shell command -v git 2>&1 > /dev/null && git describe --long --tags --dirty --always --abbrev=10 || cat VERSION_FILE)
+ 
+ # Convert BITS=?? to a -m flag
+ BITS=32
+diff --git a/VERSION b/VERSION_FILE
+similarity index 100%
+rename from VERSION
+rename to VERSION_FILE

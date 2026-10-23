@@ -22,11 +22,13 @@ status: experimental
 build:
   wasm:
     strategy: emscripten
+    patches: [patches/biochef-entry-point.patch, patches/version-file-rename.patch, patches/wasm-single-thread.patch]
     emscripten:
       outputDir: .
       emscriptenVersion: 4.0.18
       buildScript: build-wasm.sh
   native:
+    patches: [patches/biochef-entry-point.patch]
     buildScript: build-native.sh
     buildTools: [make, gcc]
 
