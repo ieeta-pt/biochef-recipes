@@ -1,7 +1,3 @@
-# Break the SAMLIBS -> samtools dependency.
-# RSEM only needs libhts.a, not the samtools wrapper, which does not link in WASM.
-sed -i.bak 's|^\$(SAMLIBS) : \$(SAMTOOLS)/samtools$|$(SAMLIBS) :|' Makefile
-
 # Clean previous objects built with incompatible WASM flags. This recurses into
 # samtools and htslib, so it has to run before libhts.a is built.
 make clean
