@@ -22,12 +22,14 @@ status: experimental
 build:
   wasm:
     strategy: emscripten
+    patches: [patches/stdout-reports-and-index-output.patch, patches/wasm-makefile-toolchain.patch]
     emscripten:
       outputDir: build_wasm
       emscriptenVersion: 4.0.18
       buildScript: build-wasm.sh
   native:
     buildScript: build-native.sh
+    patches: [patches/stdout-reports-and-index-output.patch]
     buildTools: [make]
     outputDir: .
 
