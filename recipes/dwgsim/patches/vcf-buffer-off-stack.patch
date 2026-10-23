@@ -1,0 +1,16 @@
+The VCF of candidate mutations (-v) is read through 1 MB on the stack, more
+than wasm's stack holds, and scanned as a string that may not end inside it.
+
+diff --git a/src/mut_vcf.c b/src/mut_vcf.c
+index 0d6514c..ce1c5ed 100644
+--- a/src/mut_vcf.c
++++ b/src/mut_vcf.c
+@@ -52,7 +52,7 @@ muts_vcf_t *muts_vcf_init(FILE *fp, contigs_t *c)
+   size_t n_read = -1;
+   uint32_t prev_pos = 0, is_hap;
+   int32_t ref_l, alt_l;
+-  char buffer[BUFFER_L];
++  static char buffer[BUFFER_L + 1];
+   int32_t s, n, len;
+ 
+   m = calloc(1, sizeof(muts_vcf_t));
