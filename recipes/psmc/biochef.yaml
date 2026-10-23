@@ -25,6 +25,7 @@ build:
     emscripten:
       emscriptenVersion: 4.0.18
       buildScript: build-wasm.sh
+    patches: [patches/cntcpg-output-file.patch]
 
 runtime:
   modes: [wasm, remote]

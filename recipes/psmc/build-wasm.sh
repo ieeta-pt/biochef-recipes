@@ -1,10 +1,5 @@
 set -eo pipefail
 
-# cntcpg writes binary counts to stdout, and BioChef reads stdout as text, so
-# give it an output file (-o) to write them to instead.
-sed -i 's|getopt(argc, argv, "s:n:b")|getopt(argc, argv, "s:n:bo:")|; s|\t\tcase '"'"'b'"'"': bin = 1; break;|&\n\t\tcase '"'"'o'"'"': if (freopen(optarg, "wb", stdout) == 0) return 2; break;|' utils/cntcpg.c
-grep -q 'freopen(optarg, "wb", stdout)' utils/cntcpg.c
-
 # calloc2() in khmm.h stores the row pointers as char * and the HMM code reads
 # them back as double *. gcc does not exploit that aliasing violation, but
 # clang at -O2 compiles hmm_new_par() into an infinite loop, so Fit PSMC Model
