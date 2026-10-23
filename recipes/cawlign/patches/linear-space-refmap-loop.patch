@@ -1,0 +1,21 @@
+In linear space, cawlign copied the sequence before the first column it
+aligned only for -f refalign and pairwise, and counted down the column only
+there, so with -f refmap, the default, it looped for ever.
+
+diff --git a/src/cawlign.cpp b/src/cawlign.cpp
+index fbf8421..0ac4635 100644
+--- a/src/cawlign.cpp
++++ b/src/cawlign.cpp
+@@ -334,10 +334,10 @@ int biochef_upstream_main (int argc, const char * argv[]) {
+                                 
+                                 s2p = ops[p+1];
+                                 
+-                                for (long j = last_column-1; j>s2p;) {
++                                for (long j = last_column-1; j>s2p; j--) {
+                                     if (args.out_format != refmap) {
+                                         result1.appendChar(alignmentScoring->gap_char);
+-                                        result2.appendChar(sequences.getChar (j--));
++                                        result2.appendChar(sequences.getChar (j));
+                                     }
+                                 }
+                                 
