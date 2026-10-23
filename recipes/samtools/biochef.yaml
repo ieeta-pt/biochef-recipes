@@ -4,7 +4,7 @@ id: app.biochef.samtools
 name: samtools
 description: Utilities for manipulating SAM/BAM/CRAM alignment files.
 
-version: 1.21-bc.2
+version: 1.24-bc.1
 homepage: https://github.com/samtools/samtools
 license:
   spdx: MIT
@@ -14,20 +14,25 @@ maintainers:
 
 source:
   repo: https://github.com/samtools/samtools
-  tag: "1.21"
-  version: "1.21"
-  commit: "ec8bf989bd852cf46901b3e1a7d06d6fa10a79ff"
+  tag: "1.24"
+  version: "1.24"
+  commit: "dc71c7274044d1050ccb64901731373ec7e915b6"
 
 status: experimental
 
 build:
   wasm:
-    strategy: biowasm
-    biowasm:
-      package: samtools
+    strategy: emscripten
+    patches: [patches/zlib-only-config.patch]
+    emscripten:
+      outputDir: out
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
   native:
+    patches: [patches/zlib-only-config.patch]
     buildScript: build-native.sh
-    buildTools: [make]
+    buildTools: [make, gcc]
+    outputDir: .
 
 runtime:
   modes: [wasm, native]
