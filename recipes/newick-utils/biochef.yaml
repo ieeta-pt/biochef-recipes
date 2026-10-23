@@ -22,6 +22,12 @@ status: experimental
 build:
   wasm:
     strategy: emscripten
+    patches:
+      - patches/tentative-definitions.patch
+      - patches/return-type-declarations.patch
+      - patches/condense-group-size.patch
+      - patches/prune-readline.patch
+      - patches/biochef-entry-point.patch
     emscripten:
       outputDir: out
       emscriptenVersion: 4.0.18
