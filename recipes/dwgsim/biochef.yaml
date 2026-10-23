@@ -22,12 +22,14 @@ status: experimental
 build:
   wasm:
     strategy: emscripten
+    patches: [patches/entry-point.patch, patches/plain-fastq-output.patch, patches/same-log-and-pair-counts-in-both-runtimes.patch, patches/vcf-buffer-off-stack.patch, patches/bed-region-start.patch, patches/unaligned-insertion-lengths.patch]
     emscripten:
       emscriptenVersion: 4.0.18
       outputDir: out
       buildScript: build-wasm.sh
   native:
     buildScript: build-native.sh
+    patches: [patches/entry-point.patch, patches/plain-fastq-output.patch, patches/same-log-and-pair-counts-in-both-runtimes.patch, patches/vcf-buffer-off-stack.patch, patches/bed-region-start.patch, patches/unaligned-insertion-lengths.patch]
     buildTools: [make, gcc]
 
 runtime:
