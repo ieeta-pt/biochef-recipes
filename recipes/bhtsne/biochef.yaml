@@ -26,9 +26,11 @@ build:
       emscriptenVersion: 4.0.18
       outputDir: out
       buildScript: build-wasm.sh
+    patches: [patches/strict-entry-point.patch, patches/portable-rand-and-libm.patch, patches/vptree-stable-order.patch]
   native:
     buildScript: build-native.sh
     buildTools: [make, gcc]
+    patches: [patches/strict-entry-point.patch, patches/portable-rand-and-libm.patch, patches/vptree-stable-order.patch]
 
 runtime:
   modes: [wasm, native]
