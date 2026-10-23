@@ -26,6 +26,7 @@ build:
       outputDir: out
       emscriptenVersion: 4.0.18
       buildScript: build-wasm.sh
+    patches: [patches/wasm-single-threaded.patch, patches/wasm32-64-bit-integers.patch]
   native:
     buildScript: build-native.sh
     buildTools: [make]
