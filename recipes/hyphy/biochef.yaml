@@ -23,6 +23,7 @@ status: experimental
 build:
   wasm:
     strategy: emscripten
+    patches: [patches/entry-point-and-seed.patch, patches/wasm-postmessage-guard.patch]
     emscripten:
       emscriptenVersion: 4.0.18
       outputDir: out
@@ -30,6 +31,7 @@ build:
   native:
     outputDir: out
     buildScript: build-native.sh
+    patches: [patches/entry-point-and-seed.patch, patches/native-musl-libm.patch, patches/native-no-openmp.patch]
     buildTools: [make, gcc]
 
 runtime:
