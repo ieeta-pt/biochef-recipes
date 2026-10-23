@@ -25,11 +25,11 @@ build:
     emscripten:
       emscriptenVersion: 4.0.18
       buildScript: build-wasm.sh
-    patches: [patches/index-tar-entry-point.patch, patches/wasm-search-workers-in-place.patch, patches/wasm32-signed-ref-offset.patch, patches/wasm-build-one-thread.patch]
+    patches: [patches/index-tar-entry-point.patch, patches/reproducible-build-info.patch, patches/wasm-search-workers-in-place.patch, patches/wasm32-signed-ref-offset.patch, patches/wasm-build-one-thread.patch]
   native:
     buildScript: build-native.sh
     buildTools: [make, gcc]
-    patches: [patches/index-tar-entry-point.patch]
+    patches: [patches/index-tar-entry-point.patch, patches/reproducible-build-info.patch]
 
 runtime:
   modes: [wasm, native, remote]
