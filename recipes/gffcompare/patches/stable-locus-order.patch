@@ -1,0 +1,81 @@
+The loci of each locus across files, and the transcripts found the same in
+several files, were ordered by their addresses in memory, which differ from
+one runtime to another, and so did the .loci and .tracking files. They are
+now ordered by place, file and transcript names.
+
+diff --git a/gtf_tracking.cpp b/gtf_tracking.cpp
+index f4b84b7..ea010a4 100644
+--- a/gtf_tracking.cpp
++++ b/gtf_tracking.cpp
+@@ -852,3 +852,38 @@ int qsearch_loci(uint x, GList<GLocus>& loci) {
+ 	return (idx>maxh) ? -1 : idx;
+ }
+ 
++
++// Loci and transcripts in the same place are ordered by what they hold,
++// where cmpByPtr ordered them by their addresses in memory, which differ
++// from one runtime to another
++static int biochef_cmpInt(long a, long b) { return a < b ? -1 : (a > b ? 1 : 0); }
++
++int biochef_cmpTxByKey(const pointer p1, const pointer p2) {
++  if (p1==p2) return 0;
++  GffObj* a=(GffObj*)p1;
++  GffObj* b=(GffObj*)p2;
++  int c;
++  if ((c=biochef_cmpInt(a->gseq_id, b->gseq_id))) return c;
++  if ((c=biochef_cmpInt(a->start, b->start))) return c;
++  if ((c=biochef_cmpInt(a->end, b->end))) return c;
++  int qa=a->uptr ? ((CTData*)a->uptr)->qset : -2;
++  int qb=b->uptr ? ((CTData*)b->uptr)->qset : -2;
++  if ((c=biochef_cmpInt(qa, qb))) return c;
++  if ((c=strcmp(a->getID(), b->getID()))) return c;
++  return cmpByPtr(p1, p2);
++}
++
++int biochef_cmpLocusByKey(const pointer p1, const pointer p2) {
++  if (p1==p2) return 0;
++  GLocus* a=(GLocus*)p1;
++  GLocus* b=(GLocus*)p2;
++  int c;
++  if ((c=biochef_cmpInt(a->gseq_id, b->gseq_id))) return c;
++  if ((c=biochef_cmpInt(a->start, b->start))) return c;
++  if ((c=biochef_cmpInt(a->end, b->end))) return c;
++  if ((c=biochef_cmpInt(a->qfidx, b->qfidx))) return c;
++  for (int i=0; i<a->mrnas.Count() && i<b->mrnas.Count(); i++)
++    if ((c=biochef_cmpTxByKey(a->mrnas[i], b->mrnas[i]))) return c;
++  if ((c=biochef_cmpInt(a->mrnas.Count(), b->mrnas.Count()))) return c;
++  return cmpByPtr(p1, p2);
++}
+diff --git a/gtf_tracking.h b/gtf_tracking.h
+index 12dfca1..2068e29 100644
+--- a/gtf_tracking.h
++++ b/gtf_tracking.h
+@@ -31,6 +31,8 @@ extern int intronStickingMax;
+ // and exon attributes are discarded
+ 
+ int cmpByPtr(const pointer p1, const pointer p2);
++int biochef_cmpTxByKey(const pointer p1, const pointer p2);
++int biochef_cmpLocusByKey(const pointer p1, const pointer p2);
+ 
+ uint tMaxOverhang(GffObj& a, GffObj& b); //for two overlapping transcripts, return maximum terminal distance
+ 
+@@ -220,7 +222,7 @@ class GIArray:public GArray<GISeg> {
+ class CEqList: public GList<GffObj> {
+   public:
+     GffObj* head;
+-    CEqList():GList<GffObj>((GCompareProc*)cmpByPtr, (GFreeProc*)NULL, true),
++    CEqList():GList<GffObj>((GCompareProc*)biochef_cmpTxByKey, (GFreeProc*)NULL, true),
+     		head(NULL) { }
+ };
+ 
+@@ -1138,8 +1140,8 @@ class GXLocus:public GSeg {
+     GArray<GSeg> mexons; //list of merged exonic regions for this locus
+     GList<GXConsensus> tcons;
+     GXLocus(GLocus* lfirst=NULL):GSeg(0,0),
+-        rloci((GCompareProc*)cmpByPtr, (GFreeProc*)NULL, true),
+-        qloci((GCompareProc*)cmpByPtr, (GFreeProc*)NULL, true),
++        rloci((GCompareProc*)biochef_cmpLocusByKey, (GFreeProc*)NULL, true),
++        qloci((GCompareProc*)biochef_cmpLocusByKey, (GFreeProc*)NULL, true),
+         mexons(true,true), tcons(true,true,false) {
+       strand='.';
+       num_mtcons=0;
