@@ -1,0 +1,208 @@
+PBSIM2 seeded its random numbers with the time, and took them from the
+C library's rand, which gives other numbers in glibc than in musl, in
+wasm. The seed is 1 unless --seed gives one, and rand is the entry
+point's, the same in both.
+
+diff --git a/src/pbsim.cpp b/src/pbsim.cpp
+index 8b66d50..4579da4 100644
+--- a/src/pbsim.cpp
++++ b/src/pbsim.cpp
+@@ -12,6 +12,8 @@
+ #include <limits.h>
+ #include <sys/time.h>
+ #include <sys/resource.h>
++extern "C" int biochef_rand(void);
++extern "C" void biochef_srand(unsigned);
+ 
+ #define SUCCEEDED 1
+ #define FAILED 0
+@@ -388,7 +390,7 @@ int biochef_upstream_main (int argc, char** argv) {
+     }
+   }
+ 
+-  srand((unsigned int)seed);
++  biochef_srand((unsigned int)seed);
+ 
+   if (!(sim.set_flg[15])) {
+     if (argv[optind] == (char*)'\0') {
+@@ -1270,7 +1272,7 @@ int simulate_by_sampling() {
+   while (len_total < sim.len_quota) {
+     rewind(fp_filtered);
+ 
+-    sampling_value = rand() % fastq.num_filtered;
++    sampling_value = biochef_rand() % fastq.num_filtered;
+     while (fgets(mut.qc, fastq.len_max_filtered + 2, fp_filtered) != NULL) {
+       if (len_total >= sim.len_quota) {
+         break;
+@@ -1638,7 +1640,7 @@ int simulate_by_model() {
+ 
+   // simulation
+   while (len_total < sim.len_quota) {
+-    index = rand() % len_rand_value + 1;
++    index = biochef_rand() % len_rand_value + 1;
+     len = prob2len[index];
+     if (len_total + len > sim.len_quota) {
+       len = sim.len_quota - len_total;
+@@ -1650,20 +1652,20 @@ int simulate_by_model() {
+ 
+     mut.tmp_len_max = len;
+ 
+-    index = rand() % accuracy_rand_value + 1;
++    index = biochef_rand() % accuracy_rand_value + 1;
+     accuracy = prob2accuracy[index];
+ 
+     if (hmm_model[accuracy].exist_hmm == 1) {
+       num = 0;
+-      index = rand() % qc_rand_value_init[accuracy] + 1;
++      index = biochef_rand() % qc_rand_value_init[accuracy] + 1;
+       state = init2state[accuracy][index];
+-      index = rand() % qc_rand_value_emis[accuracy][state] + 1;
++      index = biochef_rand() % qc_rand_value_emis[accuracy][state] + 1;
+       index = emis2qc[accuracy][state][index];
+       mut.qc[num ++] = qc[index].character;
+       while (num < len) {
+-        index = rand() % qc_rand_value_tran[accuracy][state] + 1;
++        index = biochef_rand() % qc_rand_value_tran[accuracy][state] + 1;
+         state = tran2state[accuracy][state][index];
+-        index = rand() % qc_rand_value_emis[accuracy][state] + 1;
++        index = biochef_rand() % qc_rand_value_emis[accuracy][state] + 1;
+         index = emis2qc[accuracy][state][index];
+         mut.qc[num ++] = qc[index].character;
+       }
+@@ -1671,7 +1673,7 @@ int simulate_by_model() {
+     } else {
+       num = 0;
+       while (num < len) {
+-        index = rand() % qc_rand_value_freq[accuracy] + 1;
++        index = biochef_rand() % qc_rand_value_freq[accuracy] + 1;
+         index = freq2qc[accuracy][index];
+         mut.qc[num ++] = qc[index].character;
+       }
+@@ -1989,20 +1991,20 @@ int simulate_by_templ() {
+       templ.len = strlen(templ.seq);
+       len = templ.len * 2;
+ 
+-      index = rand() % accuracy_rand_value + 1;
++      index = biochef_rand() % accuracy_rand_value + 1;
+       accuracy = prob2accuracy[index];
+ 
+       if (hmm_model[accuracy].exist_hmm == 1) {
+         num = 0;
+-        index = rand() % qc_rand_value_init[accuracy] + 1;
++        index = biochef_rand() % qc_rand_value_init[accuracy] + 1;
+         state = init2state[accuracy][index];
+-        index = rand() % qc_rand_value_emis[accuracy][state] + 1;
++        index = biochef_rand() % qc_rand_value_emis[accuracy][state] + 1;
+         index = emis2qc[accuracy][state][index];
+         mut.qc[num ++] = qc[index].character;
+         while (num < len) {
+-          index = rand() % qc_rand_value_tran[accuracy][state] + 1;
++          index = biochef_rand() % qc_rand_value_tran[accuracy][state] + 1;
+           state = tran2state[accuracy][state][index];
+-          index = rand() % qc_rand_value_emis[accuracy][state] + 1;
++          index = biochef_rand() % qc_rand_value_emis[accuracy][state] + 1;
+           index = emis2qc[accuracy][state][index];
+           mut.qc[num ++] = qc[index].character;
+         }
+@@ -2010,7 +2012,7 @@ int simulate_by_templ() {
+       } else {
+         num = 0;
+         while (num < len) {
+-          index = rand() % qc_rand_value_freq[accuracy] + 1;
++          index = biochef_rand() % qc_rand_value_freq[accuracy] + 1;
+           index = freq2qc[accuracy][index];
+           mut.qc[num ++] = qc[index].character;
+         }
+@@ -2279,8 +2281,8 @@ int mutate() {
+   del_num_total = int((float)len * mut.del_thre / 1000000 + 0.5);
+   num = 0;
+   while (num < del_num_total) {
+-    pos = rand() % (len-1);
+-    rand_value = rand() % 1000000;
++    pos = biochef_rand() % (len-1);
++    rand_value = biochef_rand() % 1000000;
+     qc_value = (int)mut.qc[pos] - 33;
+     if (rand_value < mut.err_thre[qc_value]) {
+       del_num[pos] ++;
+@@ -2304,7 +2306,7 @@ int mutate() {
+     offset = 0;
+     len = ref.len;
+   } else {
+-    offset = rand() % (ref.len - len + 1);
++    offset = biochef_rand() % (ref.len - len + 1);
+   }
+ 
+   mut.seq_left = offset + 1;
+@@ -2354,12 +2356,12 @@ int mutate() {
+ 
+     mut.new_qc[offset] = mut.tmp_qc[i];
+ 
+-    rand_value = rand() % 1000000;
++    rand_value = biochef_rand() % 1000000;
+     qc_value = (int)mut.tmp_qc[i] - 33;
+ 
+     if (rand_value < mut.sub_thre[qc_value]) {
+       sim.res_sub_num ++;
+-      index = rand() % 3;
++      index = biochef_rand() % 3;
+       if (nt == 'A') {
+         mut.new_seq[offset] = mut.sub_nt_a[index];
+       } else if (nt == 'T') {
+@@ -2369,13 +2371,13 @@ int mutate() {
+       } else if (nt == 'C') {
+         mut.new_seq[offset] = mut.sub_nt_c[index];
+       } else {
+-        index = rand() % 4;
++        index = biochef_rand() % 4;
+         mut.new_seq[offset] = mut.sub_nt_n[index];
+       }
+       mut.maf_ref_seq[maf_offset] = nt;
+     } else if (rand_value < mut.ins_thre[qc_value]) {
+       sim.res_ins_num ++;
+-      index = rand() % 8;
++      index = biochef_rand() % 8;
+       if (index >= 4) {
+         mut.new_seq[offset] = nt;
+       } else {
+@@ -2435,8 +2437,8 @@ int mutate_templ() {
+   del_num_total = int((float)len * mut.del_thre / 1000000 + 0.5);
+   num = 0;
+   while (num < del_num_total) {
+-    pos = rand() % (len-1);
+-    rand_value = rand() % 1000000;
++    pos = biochef_rand() % (len-1);
++    rand_value = biochef_rand() % 1000000;
+     qc_value = (int)mut.qc[pos] - 33;
+     if (rand_value < mut.err_thre[qc_value]) {
+       del_num[pos] ++;
+@@ -2483,12 +2485,12 @@ int mutate_templ() {
+ 
+     mut.new_qc[new_offset] = mut.tmp_qc[qc_offset];
+ 
+-    rand_value = rand() % 1000000;
++    rand_value = biochef_rand() % 1000000;
+     qc_value = (int)mut.tmp_qc[qc_offset] - 33;
+ 
+     if (rand_value < mut.sub_thre[qc_value]) {
+       sim.res_sub_num ++;
+-      index = rand() % 3;
++      index = biochef_rand() % 3;
+       if (nt == 'A') {
+         mut.new_seq[new_offset] = mut.sub_nt_a[index];
+       } else if (nt == 'T') {
+@@ -2498,13 +2500,13 @@ int mutate_templ() {
+       } else if (nt == 'C') {
+         mut.new_seq[new_offset] = mut.sub_nt_c[index];
+       } else {
+-        index = rand() % 4;
++        index = biochef_rand() % 4;
+         mut.new_seq[new_offset] = mut.sub_nt_n[index];
+       }
+       mut.maf_ref_seq[maf_offset] = nt;
+     } else if (rand_value < mut.ins_thre[qc_value]) {
+       sim.res_ins_num ++;
+-      index = rand() % 8;
++      index = biochef_rand() % 8;
+       if (index >= 4) {
+         mut.new_seq[new_offset] = nt;
+       } else {
