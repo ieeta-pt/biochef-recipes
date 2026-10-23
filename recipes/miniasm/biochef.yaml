@@ -22,10 +22,12 @@ status: experimental
 build:
   wasm:
     strategy: emscripten
+    patches: [patches/biochef-entry-point.patch, patches/single-round-drop-ratio.patch, patches/minidot-checks.patch, patches/upstream-main-messages.patch, patches/wasm-kdq-bitfield.patch]
     emscripten:
       emscriptenVersion: 4.0.18
       buildScript: build-wasm.sh
   native:
+    patches: [patches/biochef-entry-point.patch, patches/single-round-drop-ratio.patch, patches/minidot-checks.patch, patches/upstream-main-messages.patch]
     buildScript: build-native.sh
     buildTools: [make, gcc]
 
