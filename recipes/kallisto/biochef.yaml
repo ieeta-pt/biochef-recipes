@@ -22,11 +22,34 @@ status: experimental
 build:
   wasm:
     strategy: emscripten
+    patches:
+      - patches/bifrost-datastorage-compile-fix.patch
+      - patches/bifrost-kmer-base-lookup.patch
+      - patches/ec-hash-shift-mask.patch
+      - patches/bias-hexamer-bounds.patch
+      - patches/dlist-bias-skip.patch
+      - patches/bifrost-fixed-seeds.patch
+      - patches/multinomial-bootstrap.patch
+      - patches/bifrost-built-separately.patch
+      - patches/wasm-single-thread.patch
+      - patches/biochef-entry-point.patch
+      - patches/wasm-no-avx2.patch
     emscripten:
       outputDir: out
       emscriptenVersion: 4.0.18
       buildScript: build-wasm.sh
   native:
+    patches:
+      - patches/bifrost-datastorage-compile-fix.patch
+      - patches/bifrost-kmer-base-lookup.patch
+      - patches/ec-hash-shift-mask.patch
+      - patches/bias-hexamer-bounds.patch
+      - patches/dlist-bias-skip.patch
+      - patches/bifrost-fixed-seeds.patch
+      - patches/multinomial-bootstrap.patch
+      - patches/bifrost-built-separately.patch
+      - patches/biochef-entry-point.patch
+      - patches/native-musl-math.patch
     outputDir: out
     buildScript: build-native.sh
     buildTools: [make, gcc]

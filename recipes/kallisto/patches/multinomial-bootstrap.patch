@@ -1,0 +1,90 @@
+The bootstrap drew from std::discrete_distribution over
+std::default_random_engine, the library's own too. It now draws from the
+counts with integers only.
+
+diff --git a/src/Multinomial.hpp b/src/Multinomial.hpp
+index 6604751..c7e94f9 100644
+--- a/src/Multinomial.hpp
++++ b/src/Multinomial.hpp
+@@ -1,47 +1,48 @@
+ #ifndef KALLISTO_MULTINOMIAL_H
+ #define KALLISTO_MULTINOMIAL_H
+ 
++#include <algorithm>
++#include <cstdint>
+ #include <random>
+ #include <stdexcept>
++#include <vector>
+ 
++// Draws from the counts with integers only, from mt19937_64, whose numbers
++// the standard fixes: std::default_random_engine and std::discrete_distribution
++// are the library's own, and libstdc++ and libc++ draw other samples from them.
+ class Multinomial {
+  public:
+-  Multinomial(const std::vector<uint32_t>& counts, size_t seed = 42)
+-      : counts_(counts), gen_(seed), dd_(counts_.begin(), counts_.end()), n_(0) {
++  Multinomial(const std::vector<uint32_t>& counts, uint64_t seed = 42)
++      : counts_(counts), gen_(seed), n_(0) {
++    uint64_t total = 0;
+     for (auto c : counts_) {
+       n_ += c;
++      total += c;
++      cumulative_.push_back(total);
+     }
+   }
+ 
+-  /**
+-   * Generate a sample from the multinomial distribution
+-   *
+-   * Note that calling this function with nsamp != n() will not result in
+-   * a "proper" multinomial, though, it might be useful as long as it is
+-   * understood that only samples that have the same nsamp are
+-   * comparable. Call sample() for a standard multinomial.
+-   *
+-   * @param nsamp the number of samples. default == -1, which means it
+-   * will default to n_
+-   * @return a vector of counts
+-   *
+-   */
+   std::vector<uint32_t> sample(int nsamp) {
+     if (nsamp < 1) {
+       throw std::domain_error("nsamp must be -1 or >=1");
+     }
+-
+-    std::vector<uint32_t> samp(counts_.size(), 0.0);
++    std::vector<uint32_t> samp(counts_.size(), 0);
++    const uint64_t total = cumulative_.empty() ? 0 : cumulative_.back();
++    if (total == 0) {
++      return samp;
++    }
++    const uint64_t limit = UINT64_MAX - UINT64_MAX % total;
+     for (auto i = 0; i < nsamp; ++i) {
+-      ++samp[dd_(gen_)];
++      uint64_t r;
++      do {
++        r = gen_();
++      } while (r >= limit);
++      r %= total;
++      ++samp[std::upper_bound(cumulative_.begin(), cumulative_.end(), r) - cumulative_.begin()];
+     }
+-
+     return samp;
+   }
+ 
+-  /**
+-   * @return a vector of ints with nsamp == n()
+-   */
+   std::vector<uint32_t> sample() {
+     return sample(n_);
+   }
+@@ -55,8 +56,8 @@ class Multinomial {
+ 
+  private:
+   const std::vector<uint32_t>& counts_;
+-  std::default_random_engine gen_;
+-  std::discrete_distribution<int> dd_;
++  std::vector<uint64_t> cumulative_;
++  std::mt19937_64 gen_;
+   int n_;
+ };
+ 

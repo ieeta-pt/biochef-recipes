@@ -1,0 +1,22 @@
+Learning the sequence bias (--bias), kallisto read six bases from the
+unitig at a read's end without checking they were there, and read past it.
+A hexamer past the unitig's end is now skipped, as one before its start is.
+
+diff --git a/src/MinCollector.cpp b/src/MinCollector.cpp
+index 7952a18..5406b7c 100644
+--- a/src/MinCollector.cpp
++++ b/src/MinCollector.cpp
+@@ -719,11 +719,11 @@ bool MinCollector::countBias(const char *s1, const char *s2, const std::vector<s
+       int hex = -1;
+       //std::cout << "  " << s << "\n";
+       if (um.strand) {
+-        hex = hexamerToInt(um.referenceUnitigToString().c_str() + (contig_start + pos - p - pre), true);
++        { const std::string biochef_u = um.referenceUnitigToString(); const size_t biochef_o = contig_start + pos - p - pre; hex = biochef_o + 6 <= biochef_u.size() ? hexamerToInt(biochef_u.c_str() + biochef_o, true) : -1; }
+         //std::cout << c.seq.substr(val.getPos()- p - pre,6) << "\n";
+       } else {
+         int pos_ = (pos + p) + k - post;
+-        hex = hexamerToInt(um.referenceUnitigToString().c_str() + (contig_start + pos_), false);
++        { const std::string biochef_u = um.referenceUnitigToString(); const size_t biochef_o = contig_start + pos_; hex = biochef_o + 6 <= biochef_u.size() ? hexamerToInt(biochef_u.c_str() + biochef_o, false) : -1; }
+         //std::cout << revcomp(c.seq.substr(pos,6)) << "\n";
+       }
+       return hex;
