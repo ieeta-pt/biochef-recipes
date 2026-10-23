@@ -4,7 +4,7 @@ id: app.biochef.yak
 name: yak
 description: yak (Yet Another K-mer counter) by Heng Li. Counts k-mers, evaluates assembly quality (QV), performs trio binning and phasing-accuracy evaluation. Output hash tables can be intersected, subtracted, and inspected.
 
-version: 0.1.93-bc.1
+version: 0.1.93-bc.2
 homepage: https://github.com/lh3/yak
 license:
   spdx: MIT
@@ -25,6 +25,7 @@ build:
     emscripten:
       emscriptenVersion: 4.0.18
       buildScript: build-wasm.sh
+    patches: [patches/single-threaded-kthread.patch]
   native:
     buildScript: build-native.sh
     buildTools: [make]
