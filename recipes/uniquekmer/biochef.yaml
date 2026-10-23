@@ -26,11 +26,13 @@ status: experimental
 build:
   wasm:
     strategy: emscripten
+    patches: [patches/kmer-walk-fixes.patch, patches/biochef-entry-point.patch, patches/wasm32-portability.patch]
     emscripten:
       outputDir: out
       emscriptenVersion: 4.0.18
       buildScript: build-wasm.sh
   native:
+    patches: [patches/kmer-walk-fixes.patch, patches/biochef-entry-point.patch]
     outputDir: out
     buildScript: build-native.sh
     buildTools: [make, gcc]
