@@ -42,7 +42,7 @@ if ("--upper-only" %in% argv) d[lower.tri(d)] <- NA
 
 # Rows are taken by position, not by name. Tip labels need not be unique, and
 # d["A", ] returns the FIRST row matching "A", so a duplicated label would emit
-# one tip's distances twice and never write the other's -- silently, and giving
+# one tip's distances twice and never write the other's, silently, giving
 # a matrix that is not even symmetric.
 #
 # Each value is formatted on its own with scientific notation disabled.
@@ -61,7 +61,7 @@ safe_label <- function(x) gsub("[\t\r\n]", " ", x)
 
 # Formatted in a single call over the whole matrix. Doing it per value is
 # around two hundred times slower and dominates the operation at a few hundred
-# tips -- cophenetic.phylo itself takes milliseconds -- and nothing on this path
+# tips (cophenetic.phylo itself takes milliseconds), and nothing on this path
 # has a timeout or, over webR's PostMessage channel, an interrupt. Doing it per
 # row is what the per-value version was written to avoid: format() picks one
 # representation per call, so the same distance could appear two ways in one

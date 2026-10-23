@@ -28,8 +28,8 @@ if (inherits(tree, "multiPhylo")) {
   stop("the input holds ", length(tree), " trees; this operation takes exactly one")
 }
 
-# A topology-only tree -- "((A,B),(C,D));" -- is valid Newick, and the input is
-# typed TEXT so nothing upstream rejects it. The four branch-length rows are
+# A topology-only tree such as "((A,B),(C,D));" is valid Newick, and the NEWICK
+# type accepts it, so nothing upstream rejects it. The four branch-length rows are
 # then undefined: is.ultrametric() errors outright, while sum() and
 # node.depth.edgelength() quietly return zero, which would be reported as fact.
 # Report NA for those rows instead and still emit the topology ones.
