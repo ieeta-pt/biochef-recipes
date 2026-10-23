@@ -4,7 +4,7 @@ id: app.biochef.samblaster
 name: samblaster
 description: samblaster — fast duplicate marking and structural-variant read extraction for SAM files. Used as a streaming post-process on aligner output (e.g. between bwa mem and samtools view) to flag PCR/optical duplicates, and optionally to extract discordant pairs, split reads, and unmapped/clipped reads in one pass.
 
-version: 0.1.26-bc.1
+version: 0.1.26-bc.2
 homepage: https://github.com/GregoryFaust/samblaster
 license:
   spdx: MIT
@@ -26,6 +26,7 @@ build:
       outputDir: out
       emscriptenVersion: 4.0.18
       buildScript: build-wasm.sh
+    patches: [patches/include-resource-headers.patch]
   native:
     buildScript: build-native.sh
     buildTools: [make]
