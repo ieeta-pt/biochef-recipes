@@ -25,12 +25,14 @@ status: experimental
 build:
   wasm:
     strategy: emscripten
+    patches: [patches/filter-operand-check-and-sample-lists.patch, patches/wasm-cmake.patch]
     emscripten:
       outputDir: build
       emscriptenVersion: 4.0.18
       buildScript: build-wasm.sh
   native:
     buildScript: build-native.sh
+    patches: [patches/filter-operand-check-and-sample-lists.patch, patches/native-static-portable-build.patch]
     buildTools: [make, gcc]
     outputDir: bin
 

@@ -1,0 +1,63 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index af3fe67..6c586fd 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -48,7 +48,7 @@ if (BUILD_STATIC)
+   set(CMAKE_EXE_LINKER_FLAGS "-static")
+   set(CMAKE_POSITION_INDEPENDENT_CODE OFF)
+ else ()
+-  set(BUILD_SHARED_LIBS ON)
++  set(BUILD_SHARED_LIBS OFF)
+   set(CMAKE_POSITION_INDEPENDENT_CODE ON) # for pybind11
+ endif ()
+ 
+@@ -67,7 +67,7 @@ pkg_check_modules(htslib IMPORTED_TARGET htslib)   # Optionally builds from cont
+ pkg_check_modules(tabixpp IMPORTED_TARGET tabixpp) # Optionally builds from contrib/
+ 
+ # ---- Build switches
+-set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ${ipo_supported})
++set(CMAKE_INTERPROCEDURAL_OPTIMIZATION OFF)
+ 
+ if(NOT CMAKE_BUILD_TYPE)
+   set(CMAKE_BUILD_TYPE Release CACHE STRING
+@@ -75,7 +75,7 @@ if(NOT CMAKE_BUILD_TYPE)
+ endif()
+ 
+ if (${CMAKE_BUILD_TYPE} MATCHES Release)
+-  set(EXTRA_FLAGS "-march=native -D_FILE_OFFSET_BITS=64")
++  set(EXTRA_FLAGS "-D_FILE_OFFSET_BITS=64")
+   # set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG") # reset CXX_FLAGS to replace -O3 with -Ofast
+ endif()
+ 
+@@ -371,7 +371,7 @@ if(WFA_GITMODULE)
+   message(STATUS "Using included libwfa")
+   set(WFA_INCLUDE_DIRS ${WFA_LOCAL})
+   add_subdirectory(${WFA_LOCAL})
+-  set(WFALIB wfa2) # pick up the wfa2 lib target from the included CMakeLists.txt
++  set(WFALIB wfa2_static) # pick up the wfa2 lib target from the included CMakeLists.txt
+ else(WFA_GITMODULE)
+   find_path(WFA_INCLUDE_DIRS wavefront/wfa.hpp PATH_SUFFIXES wfa2lib)
+   find_library(WFALIB wfa2 wfa REQUIRED) # distro search for shared lib
+@@ -475,7 +475,7 @@ if (NOT BUILD_ONLY_LIB)
+ endif()
+ 
+ 
+-if (NOT BUILD_STATIC) # only when not building static
++if (NOT BUILD_STATIC AND pybind11_FOUND) # only when not building static
+   # ---- Python bindings - mostly for testing at this stage
+   pybind11_add_module(pyvcflib "${CMAKE_SOURCE_DIR}/src/pythonffi.cpp")
+   # add_dependencies(pyvcflib CURL::libcurl)
+Submodule contrib/WFA2-lib contains modified content
+diff --git a/contrib/WFA2-lib/CMakeLists.txt b/contrib/WFA2-lib/CMakeLists.txt
+index 1d7c27c..6caa31a 100644
+--- a/contrib/WFA2-lib/CMakeLists.txt
++++ b/contrib/WFA2-lib/CMakeLists.txt
+@@ -56,7 +56,7 @@ if(NOT CMAKE_BUILD_TYPE)
+ endif()
+ 
+ if (${CMAKE_BUILD_TYPE} MATCHES Release)
+-  set(OPTIMIZE_FLAGS "${OPTIMIZE_FLAGS} -march=native -D_FILE_OFFSET_BITS=64")
++  set(OPTIMIZE_FLAGS "${OPTIMIZE_FLAGS} -D_FILE_OFFSET_BITS=64")
+ endif()
+ 
+ if ((${CMAKE_BUILD_TYPE} MATCHES Release) OR (${CMAKE_BUILD_TYPE} MATCHES RelWithDebInfo))
