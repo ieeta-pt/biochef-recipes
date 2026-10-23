@@ -22,12 +22,14 @@ status: experimental
 build:
   wasm:
     strategy: emscripten
+    patches: [patches/wasm-single-threaded-kthread.patch, patches/bloom-filter-off-by-default.patch]
     emscripten:
       outputDir: out
       emscriptenVersion: 4.0.18
       buildScript: build-wasm.sh
   native:
     buildScript: build-native.sh
+    patches: [patches/bloom-filter-off-by-default.patch]
     buildTools: [make]
     outputDir: .
 
