@@ -1,0 +1,37 @@
+stringtie took a read error from htslib for the end of the file, and htslib
+also reads FASTA and FASTQ, as unaligned records, so input that is not SAM,
+BAM or CRAM, or a truncated BAM, gave an empty assembly and exit 0. Fail on
+another format, a missing header and read errors (below -1; -1 is the end of
+the file).
+
+diff --git a/gclib/GSam.h b/gclib/GSam.h
+index 50a227d..ee3dc2b 100644
+--- a/gclib/GSam.h
++++ b/gclib/GSam.h
+@@ -385,7 +385,7 @@ class GSamReader {
+ 			 }
+     	  }
+ 	      fname=Gstrdup(filename);
+-	      hdr=sam_hdr_read(hts_file);
++	      hdr=sam_hdr_read(hts_file); if (hdr==NULL or (hts_file->format.format!=sam and hts_file->format.format!=bam and hts_file->format.format!=cram)) GError("Error: %s is not a valid SAM, BAM or CRAM file\n", filename);
+    }
+ 
+    GSamReader(const char* fn, const char* cram_ref=NULL,
+@@ -490,7 +490,7 @@ class GSamReader {
+       if (hts_file==NULL)
+         GError("Warning: GSamReader::next() called with no open file.\n");
+       bam1_t* b = bam_init1();
+-      if (sam_read1(hts_file, hdr, b) >= 0) {
++      int rd=sam_read1(hts_file, hdr, b); if (rd < -1) GError("Error: could not read an alignment from %s (invalid or truncated)\n", fname); if (rd >= 0) {
+         GSamRecord* bamrec=new GSamRecord(b, hdr, true);
+         return bamrec;
+       }
+@@ -502,7 +502,7 @@ class GSamReader {
+        if (hts_file==NULL)
+ 	        GError("Warning: GSamReader::next() called with no open file.\n");
+ 	   if (b_next==NULL) b_next=bam_init1();
+-       if (sam_read1(hts_file, hdr, b_next) >= 0) {
++       int rd=sam_read1(hts_file, hdr, b_next); if (rd < -1) GError("Error: could not read an alignment from %s (invalid or truncated)\n", fname); if (rd >= 0) {
+ 	        rec.init(b_next, hdr, false);
+ 	        return true;
+ 	   }
