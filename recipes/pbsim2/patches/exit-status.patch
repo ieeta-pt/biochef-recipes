@@ -1,0 +1,349 @@
+PBSIM2 exited with -1, 255 to the shell, on an error, and main returned
+FAILED, which is 0, when it could not open an output file.
+
+diff --git a/src/pbsim.cpp b/src/pbsim.cpp
+index 4579da4..d53e648 100644
+--- a/src/pbsim.cpp
++++ b/src/pbsim.cpp
+@@ -225,7 +225,7 @@ int biochef_upstream_main (int argc, char** argv) {
+       case 0:
+         if ((fastq.file = (char *)malloc(strlen(optarg) + 1)) == 0) {
+           fprintf(stderr, "ERROR: Cannot allocate memory.\n");
+-          exit(-1);
++          exit(1);
+         }
+         strcpy(fastq.file, optarg);
+         break;
+@@ -234,7 +234,7 @@ int biochef_upstream_main (int argc, char** argv) {
+         sim.depth = atof(optarg);
+         if (sim.depth <= 0.0) {
+           fprintf(stderr, "ERROR (depth: %s): Acceptable range is more than 0.\n", optarg);
+-          exit(-1);
++          exit(1);
+         }
+         break;
+ 
+@@ -242,7 +242,7 @@ int biochef_upstream_main (int argc, char** argv) {
+         sim.len_mean = atof(optarg);
+         if ((sim.len_mean < 1) || (sim.len_mean > FASTQ_LEN_MAX)) {
+           fprintf(stderr, "ERROR (length-mean: %s): Acceptable range is 1-%d.\n", optarg, FASTQ_LEN_MAX);
+-          exit(-1);
++          exit(1);
+         }
+         break;
+ 
+@@ -251,31 +251,31 @@ int biochef_upstream_main (int argc, char** argv) {
+         if ((sim.len_sd < 0) || (sim.len_sd > FASTQ_LEN_MAX)) {
+           fprintf(stderr, "ERROR (length-sd: %s): Acceptable range is 0-%d.\n",
+             optarg, FASTQ_LEN_MAX);
+-          exit(-1);
++          exit(1);
+         }
+         break;
+ 
+       case 4:
+         if (strlen(optarg) >= 8) {
+           fprintf(stderr, "ERROR (length-min: %s): Acceptable range is 1-%d.\n", optarg, FASTQ_LEN_MAX);
+-          exit(-1);
++          exit(1);
+         }
+         sim.len_min = atoi(optarg);
+         if ((sim.len_min < 1) || (sim.len_min > FASTQ_LEN_MAX)) {
+           fprintf(stderr, "ERROR (length-min: %s): Acceptable range is 1-%d.\n", optarg, FASTQ_LEN_MAX);
+-          exit(-1);
++          exit(1);
+         }
+         break;
+ 
+       case 5:
+         if (strlen(optarg) >= 8) {
+           fprintf(stderr, "ERROR (length-max: %s): Acceptable range is 1-%d.\n", optarg, FASTQ_LEN_MAX);
+-          exit(-1);
++          exit(1);
+         }
+         sim.len_max = atoi(optarg);
+         if ((sim.len_max < 1) || (sim.len_max > FASTQ_LEN_MAX)) {
+           fprintf(stderr, "ERROR (length-max: %s): Acceptable range is 1-%d.\n", optarg, FASTQ_LEN_MAX);
+-          exit(-1);
++          exit(1);
+         }
+         break;
+ 
+@@ -283,7 +283,7 @@ int biochef_upstream_main (int argc, char** argv) {
+         sim.accuracy_mean = atof(optarg);
+         if ((sim.accuracy_mean < 0.0) || (sim.accuracy_mean > 1.0)) {
+           fprintf(stderr, "ERROR (accuracy-mean: %s): Acceptable range is 0.0-1.0.\n", optarg);
+-          exit(-1);
++          exit(1);
+         }
+         break;
+ 
+@@ -291,7 +291,7 @@ int biochef_upstream_main (int argc, char** argv) {
+         sim.accuracy_min = atof(optarg);
+         if ((sim.accuracy_min < 0.0) || (sim.accuracy_min > 1.0)) {
+           fprintf(stderr, "ERROR (accuracy-min: %s): Acceptable range is 0.0-1.0.\n", optarg);
+-          exit(-1);
++          exit(1);
+         }
+         break;
+ 
+@@ -299,14 +299,14 @@ int biochef_upstream_main (int argc, char** argv) {
+         sim.accuracy_max = atof(optarg);
+         if ((sim.accuracy_max < 0.0) || (sim.accuracy_max > 1.0)) {
+           fprintf(stderr, "ERROR (accuracy-max: %s): Acceptable range is 0.0-1.0.\n", optarg);
+-          exit(-1);
++          exit(1);
+         }
+         break;
+ 
+       case 9:
+         if ((tmp_buf = (char *)malloc(strlen(optarg) + 1)) == 0) {
+           fprintf(stderr, "ERROR: Cannot allocate memory.\n");
+-          exit(-1);
++          exit(1);
+         }
+         strcpy(tmp_buf, optarg);
+         num = 0;
+@@ -314,16 +314,16 @@ int biochef_upstream_main (int argc, char** argv) {
+         while (num < 3) {
+           if (tp == NULL) {
+             fprintf(stderr, "ERROR (difference-ratio: %s): Format is sub:ins:del.\n", optarg);
+-            exit(-1);
++            exit(1);
+           }
+           if (strlen(tp) >= 5) {
+             fprintf(stderr, "ERROR (difference-ratio: %s): Acceptable range is 0-%d.\n", optarg, RATIO_MAX);
+-            exit(-1);
++            exit(1);
+           }
+           ratio = atoi(tp);
+           if ((ratio < 0) || (ratio > RATIO_MAX)) {
+             fprintf(stderr, "ERROR (difference-ratio: %s): Acceptable range is 0-%d.\n", optarg, RATIO_MAX);
+-            exit(-1);
++            exit(1);
+           }
+           if (num == 0) {
+             sim.sub_ratio = ratio;
+@@ -340,7 +340,7 @@ int biochef_upstream_main (int argc, char** argv) {
+       case 10:
+         if ((sim.hmm_model_file = (char *)malloc(strlen(optarg) + 1)) == 0) {
+           fprintf(stderr, "ERROR: Cannot allocate memory.\n");
+-          exit(-1);
++          exit(1);
+         }
+         strcpy(sim.hmm_model_file, optarg);
+         break;
+@@ -348,7 +348,7 @@ int biochef_upstream_main (int argc, char** argv) {
+       case 11:
+         if ((sim.prefix = (char *)malloc(strlen(optarg) + 1)) == 0) {
+           fprintf(stderr, "ERROR: Cannot allocate memory.\n");
+-          exit(-1);
++          exit(1);
+         }
+         strcpy(sim.prefix, optarg);
+         break;
+@@ -356,7 +356,7 @@ int biochef_upstream_main (int argc, char** argv) {
+       case 12:
+         if ((sim.profile_id = (char *)malloc(strlen(optarg) + 1)) == 0) {
+           fprintf(stderr, "ERROR: Cannot allocate memory.\n");
+-          exit(-1);
++          exit(1);
+         }
+         strcpy(sim.profile_id, optarg);
+         break;
+@@ -368,7 +368,7 @@ int biochef_upstream_main (int argc, char** argv) {
+       case 14:
+         if ((sim.id_prefix = (char *)malloc(strlen(optarg) + 1)) == 0) {
+           fprintf(stderr, "ERROR: Cannot allocate memory.\n");
+-          exit(-1);
++          exit(1);
+         }
+         strcpy(sim.id_prefix, optarg);
+         break;
+@@ -376,7 +376,7 @@ int biochef_upstream_main (int argc, char** argv) {
+       case 15:
+         if ((templ.file = (char *)malloc(strlen(optarg) + 1)) == 0) {
+           fprintf(stderr, "ERROR: Cannot allocate memory.\n");
+-          exit(-1);
++          exit(1);
+         }
+         strcpy(templ.file, optarg);
+         break;
+@@ -395,13 +395,13 @@ int biochef_upstream_main (int argc, char** argv) {
+   if (!(sim.set_flg[15])) {
+     if (argv[optind] == (char*)'\0') {
+       print_help();
+-      exit(-1);
++      exit(1);
+     }
+   }
+ 
+   // Setting of simulation parameters     
+   if (set_sim_param() == FAILED) {
+-    exit(-1);
++    exit(1);
+   }
+   print_sim_param(seed);
+ 
+@@ -438,39 +438,39 @@ int biochef_upstream_main (int argc, char** argv) {
+   if (sim.process == PROCESS_SAMPLING) {
+     if ((fp_filtered = tmpfile()) == NULL) {
+       fprintf(stderr, "ERROR: Cannot open temporary file\n");
+-      return FAILED;
++      return 1;
+     }
+ 
+     if (get_fastq_inf() == FAILED) {
+-      exit(-1);
++      exit(1);
+     }
+     print_fastq_stats();
+   } else if (sim.process == PROCESS_SAMPLING_STORE) {
+     if ((fp_filtered = fopen(sim.profile_fq, "w+")) == NULL) {
+       fprintf(stderr, "ERROR: Cannot open sample_profile\n");
+-      return FAILED;
++      return 1;
+     }
+     if ((fp_stats = fopen(sim.profile_stats, "w+")) == NULL) {
+       fprintf(stderr, "ERROR: Cannot open sample_profile\n");
+-      return FAILED;
++      return 1;
+     }
+ 
+     if (get_fastq_inf() == FAILED) {
+-      exit(-1);
++      exit(1);
+     }
+     print_fastq_stats();
+   } else if (sim.process == PROCESS_SAMPLING_REUSE) {
+     if ((fp_filtered = fopen(sim.profile_fq, "r")) == NULL) {
+       fprintf(stderr, "ERROR: Cannot open sample_profile\n");
+-      return FAILED;
++      return 1;
+     }
+     if ((fp_stats = fopen(sim.profile_stats, "r")) == NULL) {
+       fprintf(stderr, "ERROR: Cannot open sample_profile\n");
+-      return FAILED;
++      return 1;
+     }
+ 
+     if (get_fastq_inf() == FAILED) {
+-      exit(-1);
++      exit(1);
+     }
+     print_fastq_stats();
+   }
+@@ -478,7 +478,7 @@ int biochef_upstream_main (int argc, char** argv) {
+   // Quality code model
+   if ((sim.process == PROCESS_MODEL) || (sim.process == PROCESS_TEMPLATE)) {
+     if (set_hmm_model() == FAILED) {
+-      exit(-1);
++      exit(1);
+     }
+   }
+   if(0){
+@@ -502,13 +502,13 @@ int biochef_upstream_main (int argc, char** argv) {
+ 
+   // Set mutation parameters and varianeces
+   if (set_mut() == FAILED) {
+-    exit(-1);
++    exit(1);
+   }
+ 
+   // Creating simulated reads
+   if (sim.process == PROCESS_TEMPLATE) {
+     if (get_templ_inf() == FAILED) {
+-      exit(-1);
++      exit(1);
+     }
+     print_templ_stats();
+ 
+@@ -517,17 +517,17 @@ int biochef_upstream_main (int argc, char** argv) {
+     sprintf(sim.outfile_fq, "%s.fastq", sim.prefix);
+     if ((fp_fq = fopen(sim.outfile_fq, "w")) == NULL) {
+       fprintf(stderr, "ERROR: Cannot open output file: %s\n", sim.outfile_fq);
+-      return FAILED;
++      return 1;
+     }
+ 
+     sprintf(sim.outfile_maf, "%s.maf", sim.prefix);
+     if ((fp_maf = fopen(sim.outfile_maf, "w")) == NULL) {
+       fprintf(stderr, "ERROR: Cannot open output file: %s\n", sim.outfile_maf);
+-      return FAILED;
++      return 1;
+     }
+ 
+     if (simulate_by_templ() == FAILED) {
+-      exit(-1);
++      exit(1);
+     }
+ 
+     print_simulation_stats();
+@@ -538,17 +538,17 @@ int biochef_upstream_main (int argc, char** argv) {
+   } else {
+     if ((ref.file = (char *)malloc(strlen(argv[optind]) + 1)) == 0) {
+       fprintf(stderr, "ERROR: Cannot allocate memory.\n");
+-      exit(-1);
++      exit(1);
+     }
+     strcpy(ref.file, argv[optind]);
+ 
+     if (get_ref_inf() == FAILED) {
+-      exit(-1);
++      exit(1);
+     }
+ 
+     for (ref.num=1; ref.num<=ref.num_seq; ref.num++) {
+       if (get_ref_seq() == FAILED) {
+-        exit(-1);
++        exit(1);
+       }
+ 
+       init_sim_res();
+@@ -556,24 +556,24 @@ int biochef_upstream_main (int argc, char** argv) {
+       sprintf(sim.outfile_fq, "%s_%04ld.fastq", sim.prefix, ref.num);
+       if ((fp_fq = fopen(sim.outfile_fq, "w")) == NULL) {
+         fprintf(stderr, "ERROR: Cannot open output file: %s\n", sim.outfile_fq);
+-        return FAILED;
++        return 1;
+       }
+ 
+       sprintf(sim.outfile_maf, "%s_%04ld.maf", sim.prefix, ref.num);
+       if ((fp_maf = fopen(sim.outfile_maf, "w")) == NULL) {
+         fprintf(stderr, "ERROR: Cannot open output file: %s\n", sim.outfile_maf);
+-        return FAILED;
++        return 1;
+       }
+ 
+       sim.len_quota = (long long)(sim.depth * ref.len);
+ 
+       if (sim.process == PROCESS_MODEL) {
+         if (simulate_by_model() == FAILED) {
+-          exit(-1);
++          exit(1);
+         }
+       } else {
+         if (simulate_by_sampling() == FAILED) {
+-          exit(-1);
++          exit(1);
+         }
+       }
+ 
+@@ -1112,7 +1112,7 @@ int set_sim_param() {
+   if (!(sim.set_flg[11])) {
+     if ((sim.prefix = (char *)malloc(3)) == 0) {
+       fprintf(stderr, "ERROR: Cannot allocate memory.\n");
+-      exit(-1);
++      exit(1);
+     }
+     strcpy(sim.prefix, "sd");
+   }
+@@ -1136,7 +1136,7 @@ int set_sim_param() {
+   if (!(sim.set_flg[14])) {
+     if ((sim.id_prefix = (char *)malloc(2)) == 0) {
+       fprintf(stderr, "ERROR: Cannot allocate memory.\n");
+-      exit(-1);
++      exit(1);
+     }
+     strcpy(sim.id_prefix, "S");
+   }

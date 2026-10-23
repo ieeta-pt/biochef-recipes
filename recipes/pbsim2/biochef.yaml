@@ -22,6 +22,7 @@ status: experimental
 build:
   wasm:
     strategy: emscripten
+    patches: [patches/entry-point.patch, patches/seeded-rand.patch, patches/exit-status.patch, patches/sampling-interval-at-least-one.patch, patches/insertion-quality-bounds.patch]
     emscripten:
       outputDir: out
       emscriptenVersion: 4.0.18
@@ -29,6 +30,7 @@ build:
   native:
     outputDir: out
     buildScript: build-native.sh
+    patches: [patches/entry-point.patch, patches/seeded-rand.patch, patches/exit-status.patch, patches/sampling-interval-at-least-one.patch, patches/insertion-quality-bounds.patch, patches/native-musl-libm.patch]
     buildTools: [make, gcc]
 
 runtime:

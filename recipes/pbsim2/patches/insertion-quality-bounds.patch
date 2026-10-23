@@ -1,0 +1,26 @@
+A template's read takes its qualities from twice as many as the template
+has bases; an insertion takes one without taking a base, so with many
+insertions they ran out before the template did and PBSIM2 read past
+them. An insertion now needs one quality to spare for each base left.
+
+diff --git a/src/pbsim.cpp b/src/pbsim.cpp
+index d95e1be..0f5a4e6 100644
+--- a/src/pbsim.cpp
++++ b/src/pbsim.cpp
+@@ -2455,6 +2455,7 @@ int mutate_templ() {
+   }
+   mut.tmp_qc[offset ++] = mut.qc[len - 1];
+   mut.tmp_qc[offset] = '\0';
++  long biochef_slots = offset;
+ 
+   seqlen = strlen(templ.seq);
+   mut.seq_left = 1;
+@@ -2505,7 +2506,7 @@ int mutate_templ() {
+         mut.new_seq[new_offset] = mut.sub_nt_n[index];
+       }
+       mut.maf_ref_seq[maf_offset] = nt;
+-    } else if (rand_value < mut.ins_thre[qc_value]) {
++    } else if (rand_value < mut.ins_thre[qc_value] && biochef_slots - qc_offset - 1 >= seqlen - seq_offset + 1) {
+       sim.res_ins_num ++;
+       index = biochef_rand() % 8;
+       if (index >= 4) {
