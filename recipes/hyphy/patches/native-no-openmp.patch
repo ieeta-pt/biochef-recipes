@@ -1,0 +1,15 @@
+No OpenMP threads, whose sums come in another order in every run.
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 1c33d5a2..5b1573af 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -314,7 +314,7 @@ MESSAGE ("Set default compiler flags to ${DEFAULT_COMPILE_FLAGS}")
+ #-------------------------------------------------------------------------------
+ # OpenMP support
+ #-------------------------------------------------------------------------------
+-find_package(OpenMP)
++set(OPENMP_FOUND FALSE)
+ 
+ # emulate missing OpenMP for testing
+ 
