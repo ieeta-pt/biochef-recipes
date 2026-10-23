@@ -1,0 +1,253 @@
+apiVersion: v1
+
+id: app.biochef.centrifuge
+name: Centrifuge
+description: "Centrifuge classifies metagenomic reads by the taxa of the genomes they match, through an FM-index of those genomes and their taxonomy. Build the index once with Build Index (Centrifuge), from the genomes, a table of their taxonomic IDs and the taxonomy tree, then classify reads with Classify Reads (Centrifuge). The index passes between operations as one CENTRIFUGE_INDEX file, a tar of the four files centrifuge-build writes (ref.1.cf to ref.4.cf)."
+
+version: 1.0.5-bc.2
+homepage: https://github.com/DaehwanKimLab/centrifuge
+license:
+  spdx: GPL-3.0-or-later
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/DaehwanKimLab/centrifuge
+  commit: "ef1b13b076628bc1c0b97c38920373e3ca3f1328"
+  version: "1.0.5"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    patches: [patches/biochef-entry-point.patch, patches/reproducible-build-info.patch, patches/version-file-rename.patch, patches/wasm-single-thread.patch]
+    emscripten:
+      outputDir: .
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+  native:
+    patches: [patches/biochef-entry-point.patch, patches/reproducible-build-info.patch]
+    buildScript: build-native.sh
+    buildTools: [make, gcc]
+
+runtime:
+  modes: [wasm, native, remote]
+
+operations:
+  - id: centrifuge.classify
+    name: Classify Reads (Centrifuge)
+    category: Sequence Analysis
+    bin: centrifuge-class
+    description: "Classify metagenomic reads, unpaired or paired, in FASTQ or FASTA, by the taxa of the genomes in a Centrifuge index they match. Writes a table with the classification of each read, and a report of the reads and abundance of each taxon."
+    io:
+      inputs: &classify_inputs
+        - { name: index, types: [CENTRIFUGE_INDEX], mode: file, flag: --bc-index }
+        - { name: unpaired, types: [FASTQ, FASTA], mode: file, flag: -U }
+        - { name: mate1, types: [FASTQ, FASTA], mode: file, flag: "-1" }
+        - { name: mate2, types: [FASTQ, FASTA], mode: file, flag: "-2" }
+      outputs:
+        - { name: classifications, types: [CENTRIFUGE_CLASSIFICATION], mode: file, flag: -S }
+        - { name: report, types: [CENTRIFUGE_REPORT], mode: file, flag: --report-file }
+    parameters: &classify_parameters
+      - { name: threads, type: integer, flag: -p, default: 1 }
+      - { name: skip, type: integer, flag: -s }
+      - { name: upto, type: integer, flag: -u }
+      - { name: trim5, type: integer, flag: "-5" }
+      - { name: trim3, type: integer, flag: "-3" }
+      - { name: phred64, type: flag, flag: --phred64 }
+      - { name: int_quals, type: flag, flag: --int-quals }
+      - { name: ignore_quals, type: flag, flag: --ignore-quals }
+      - { name: nofw, type: flag, flag: --nofw }
+      - { name: norc, type: flag, flag: --norc }
+      - { name: min_hit_length, type: integer, flag: --min-hitlen }
+      - { name: min_total_length, type: integer, flag: --min-totallen }
+      - { name: max_assignments, type: integer, flag: -k }
+      - { name: host_taxids, type: string, flag: --host-taxids }
+      - { name: exclude_taxids, type: string, flag: --exclude-taxids }
+      - { name: time, type: flag, flag: -t }
+      - { name: quiet, type: flag, flag: --quiet }
+      - { name: seed, type: integer, flag: --seed }
+      - { name: non_deterministic, type: flag, flag: --non-deterministic }
+
+  - id: centrifuge.classify.columns
+    name: Classify Reads, Chosen Columns (Centrifuge)
+    category: Sequence Analysis
+    bin: centrifuge-class
+    description: "Classify metagenomic reads as Classify Reads (Centrifuge) does, with the columns of the table chosen, comma-separated, from readID, seqID, taxID, taxRank, taxName, score, 2ndBestScore, hitLength, queryLength, numMatches, readSeq and readQual."
+    io:
+      inputs: *classify_inputs
+      outputs:
+        - { name: classifications, types: [CENTRIFUGE_CLASSIFICATION], mode: file, flag: -S }
+        - { name: report, types: [CENTRIFUGE_REPORT], mode: file, flag: --report-file }
+    parameters:
+      - { name: columns, type: string, flag: --tab-fmt-cols, default: "readID,taxID,taxRank,taxName,score,hitLength", required: true }
+      - { name: threads, type: integer, flag: -p, default: 1 }
+      - { name: skip, type: integer, flag: -s }
+      - { name: upto, type: integer, flag: -u }
+      - { name: trim5, type: integer, flag: "-5" }
+      - { name: trim3, type: integer, flag: "-3" }
+      - { name: phred64, type: flag, flag: --phred64 }
+      - { name: int_quals, type: flag, flag: --int-quals }
+      - { name: ignore_quals, type: flag, flag: --ignore-quals }
+      - { name: nofw, type: flag, flag: --nofw }
+      - { name: norc, type: flag, flag: --norc }
+      - { name: min_hit_length, type: integer, flag: --min-hitlen }
+      - { name: min_total_length, type: integer, flag: --min-totallen }
+      - { name: max_assignments, type: integer, flag: -k }
+      - { name: host_taxids, type: string, flag: --host-taxids }
+      - { name: exclude_taxids, type: string, flag: --exclude-taxids }
+      - { name: time, type: flag, flag: -t }
+      - { name: quiet, type: flag, flag: --quiet }
+      - { name: seed, type: integer, flag: --seed }
+      - { name: non_deterministic, type: flag, flag: --non-deterministic }
+
+  - id: centrifuge.classify.sam
+    name: Classify Reads to SAM (Centrifuge)
+    category: Sequence Analysis
+    bin: centrifuge-class
+    description: "Classify metagenomic reads as Classify Reads (Centrifuge) does, writing the classifications as SAM, with the taxonomic ID in place of the reference name."
+    io:
+      inputs: *classify_inputs
+      outputs:
+        - { name: classifications, types: [SAM], mode: file, flag: -S }
+        - { name: report, types: [CENTRIFUGE_REPORT], mode: file, flag: --report-file }
+    parameters:
+      - { name: sam, type: string, flag: --out-fmt, default: sam, required: true, hidden: true }
+      - { name: threads, type: integer, flag: -p, default: 1 }
+      - { name: skip, type: integer, flag: -s }
+      - { name: upto, type: integer, flag: -u }
+      - { name: trim5, type: integer, flag: "-5" }
+      - { name: trim3, type: integer, flag: "-3" }
+      - { name: phred64, type: flag, flag: --phred64 }
+      - { name: int_quals, type: flag, flag: --int-quals }
+      - { name: ignore_quals, type: flag, flag: --ignore-quals }
+      - { name: nofw, type: flag, flag: --nofw }
+      - { name: norc, type: flag, flag: --norc }
+      - { name: min_hit_length, type: integer, flag: --min-hitlen }
+      - { name: min_total_length, type: integer, flag: --min-totallen }
+      - { name: max_assignments, type: integer, flag: -k }
+      - { name: host_taxids, type: string, flag: --host-taxids }
+      - { name: exclude_taxids, type: string, flag: --exclude-taxids }
+      - { name: time, type: flag, flag: -t }
+      - { name: quiet, type: flag, flag: --quiet }
+      - { name: seed, type: integer, flag: --seed }
+      - { name: non_deterministic, type: flag, flag: --non-deterministic }
+
+  - id: centrifuge.build
+    name: Build Index (Centrifuge)
+    category: Genomic Operations
+    bin: centrifuge-build-bin
+    description: "Build the Centrifuge index of a set of genomes, as one CENTRIFUGE_INDEX file (a tar of ref.1.cf to ref.4.cf). It needs three tables: the conversion table, with the taxonomic ID of each sequence by its name up to the first space; the taxonomy tree, NCBI's nodes.dmp or the part of it with every ancestor of those IDs; and NCBI's names.dmp, for the names of the taxa. A size table sets the genome size of a taxon, which is otherwise the length of its sequences. In the browser, keep to small sets of genomes."
+    io:
+      inputs:
+        - { name: reference, types: [FASTA, Multi-FASTA], mode: file }
+        - { name: conversion_table, types: [TAXID_MAP], mode: file, flag: --conversion-table }
+        - { name: taxonomy_tree, types: [NCBI_NODES], mode: file, flag: --taxonomy-tree }
+        - { name: name_table, types: [NCBI_NAMES], mode: file, flag: --name-table }
+        - { name: size_table, types: [TAXID_SIZES], mode: file, flag: --size-table }
+      outputs:
+        - { name: index, types: [CENTRIFUGE_INDEX], mode: file, flag: --bc-out }
+    parameters:
+      - { name: threads, type: integer, flag: -p, default: 1 }
+      - { name: noauto, type: flag, flag: -a }
+      - { name: bmax, type: integer, flag: --bmax }
+      - { name: bmaxdivn, type: integer, flag: --bmaxdivn }
+      - { name: dcv, type: integer, flag: --dcv }
+      - { name: offrate, type: integer, flag: -o }
+      - { name: ftabchars, type: integer, flag: -t }
+      - { name: kmer_count, type: integer, flag: --kmer-count }
+      - { name: seed, type: integer, flag: --seed }
+      - { name: quiet, type: flag, flag: -q }
+
+  - id: centrifuge.inspect
+    name: Inspect Index (Centrifuge)
+    category: Genomic Operations
+    bin: centrifuge-inspect-bin
+    description: "Write the sequences of a Centrifuge index as FASTA, rebuilt from the index."
+    io:
+      inputs:
+        - { name: index, types: [CENTRIFUGE_INDEX], mode: file, flag: --bc-index }
+      outputs:
+        - { name: out, types: [FASTA], mode: stdout }
+    parameters:
+      - { name: across, type: integer, flag: -a }
+
+  - id: centrifuge.inspect.summary
+    name: Index Summary (Centrifuge)
+    category: Genomic Operations
+    bin: centrifuge-inspect-bin
+    description: "Summarise a Centrifuge index: its parameters, and its sequences and their lengths."
+    io:
+      inputs:
+        - { name: index, types: [CENTRIFUGE_INDEX], mode: file, flag: --bc-index }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: summary, type: flag, flag: -s, required: true, hidden: true }
+
+  - id: centrifuge.inspect.names
+    name: Index Sequence Names (Centrifuge)
+    category: Genomic Operations
+    bin: centrifuge-inspect-bin
+    description: "List the names of the sequences in a Centrifuge index."
+    io:
+      inputs:
+        - { name: index, types: [CENTRIFUGE_INDEX], mode: file, flag: --bc-index }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: names, type: flag, flag: -n, required: true, hidden: true }
+
+  - id: centrifuge.inspect.conversion
+    name: Index Conversion Table (Centrifuge)
+    category: Genomic Operations
+    bin: centrifuge-inspect-bin
+    description: "Write the taxonomic ID of each sequence in a Centrifuge index, as the conversion table Build Index (Centrifuge) reads."
+    io:
+      inputs:
+        - { name: index, types: [CENTRIFUGE_INDEX], mode: file, flag: --bc-index }
+      outputs:
+        - { name: out, types: [TAXID_MAP], mode: stdout }
+    parameters:
+      - { name: conversion_table, type: flag, flag: --conversion-table, required: true, hidden: true }
+
+  - id: centrifuge.inspect.taxonomy
+    name: Index Taxonomy Tree (Centrifuge)
+    category: Genomic Operations
+    bin: centrifuge-inspect-bin
+    description: "Write the part of the taxonomy tree in a Centrifuge index: each taxon, its parent and its rank."
+    io:
+      inputs:
+        - { name: index, types: [CENTRIFUGE_INDEX], mode: file, flag: --bc-index }
+      outputs:
+        - { name: out, types: [NCBI_NODES], mode: stdout }
+    parameters:
+      - { name: taxonomy_tree, type: flag, flag: --taxonomy-tree, required: true, hidden: true }
+
+  - id: centrifuge.inspect.taxnames
+    name: Index Taxon Names (Centrifuge)
+    category: Genomic Operations
+    bin: centrifuge-inspect-bin
+    description: "Write the name of each taxon in a Centrifuge index."
+    io:
+      inputs:
+        - { name: index, types: [CENTRIFUGE_INDEX], mode: file, flag: --bc-index }
+      outputs:
+        - { name: out, types: [TAXID_NAMES], mode: stdout }
+    parameters:
+      - { name: name_table, type: flag, flag: --name-table, required: true, hidden: true }
+
+  - id: centrifuge.inspect.sizes
+    name: Index Genome Sizes (Centrifuge)
+    category: Genomic Operations
+    bin: centrifuge-inspect-bin
+    description: "Write the genome size of each taxon in a Centrifuge index, as the size table Build Index (Centrifuge) reads."
+    io:
+      inputs:
+        - { name: index, types: [CENTRIFUGE_INDEX], mode: file, flag: --bc-index }
+      outputs:
+        - { name: out, types: [TAXID_SIZES], mode: stdout }
+    parameters:
+      - { name: size_table, type: flag, flag: --size-table, required: true, hidden: true }
