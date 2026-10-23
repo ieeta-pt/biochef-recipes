@@ -1,0 +1,89 @@
+The JSON report holds the command line, the genes' names and the reads'
+qualities, which can hold '"' and '\', as JSON strings.
+
+diff --git a/src/biochef_genefuse.h b/src/biochef_genefuse.h
+new file mode 100644
+index 0000000..f59a00c
+--- /dev/null
++++ b/src/biochef_genefuse.h
+@@ -0,0 +1,23 @@
++#include <stdint.h>
++#include <stdio.h>
++#include <string>
++
++// A string as a JSON string's contents
++static inline std::string biochef_json(const std::string &s)
++{
++	std::string out;
++	for (size_t i = 0; i < s.size(); i++) {
++		unsigned char c = s[i];
++		if (c == '"' || c == '\\') {
++			out += '\\';
++			out += (char)c;
++		} else if (c < 0x20) {
++			char u[8];
++			snprintf(u, sizeof u, "\\u%04x", c);
++			out += u;
++		} else {
++			out += (char)c;
++		}
++	}
++	return out;
++}
+diff --git a/src/jsonreporter.cpp b/src/jsonreporter.cpp
+index 35b7ad3..bf56389 100644
+--- a/src/jsonreporter.cpp
++++ b/src/jsonreporter.cpp
+@@ -19,7 +19,7 @@ extern string command;
+ 
+ void JsonReporter::run() {
+     mFile << "{" << endl;
+-    mFile << "\t\"command\":\"" << command << "\"," << endl;
++    mFile << "\t\"command\":\"" << biochef_json(command) << "\"," << endl;
+     mFile << "\t\"version\":\"" << FUSIONSCAN_VER << "\"," << endl;
+     mFile << "\t\"time\":\"" << getCurrentSystemTime() << "\"," << endl;
+     mFile << "\t\"fusions\":{";
+@@ -42,25 +42,25 @@ void JsonReporter::run() {
+         else
+             mFile << "," << endl;
+ 
+-        mFile << "\t\t\"" <<  fusion.mTitle << "\":{" << endl;
++        mFile << "\t\t\"" << biochef_json(fusion.mTitle) << "\":{" << endl;
+             mFile << "\t\t\t\"" <<  "left" << "\":{" << endl;
+-                mFile << "\t\t\t\t\"" <<  "gene_name" << "\":" << "\"" << fusion.mLeftGene.mName << "\"," << endl;
+-                mFile << "\t\t\t\t\"" <<  "gene_chr" << "\":" << "\"" << fusion.mLeftGene.mChr << "\"," << endl;
++                mFile << "\t\t\t\t\"" <<  "gene_name" << "\":" << "\"" << biochef_json(fusion.mLeftGene.mName) << "\"," << endl;
++                mFile << "\t\t\t\t\"" <<  "gene_chr" << "\":" << "\"" << biochef_json(fusion.mLeftGene.mChr) << "\"," << endl;
+                 mFile << "\t\t\t\t\"" <<  "position" << "\":" <<  fusion.mLeftGene.genePos2ChrPos(fusion.mLeftGP.position) << "," << endl;
+                 mFile << "\t\t\t\t\"" <<  "reference" << "\":" << "\"" << fusion.mLeftRef << "\"," << endl;
+                 mFile << "\t\t\t\t\"" <<  "ref_ext" << "\":" << "\"" << fusion.mLeftRefExt << "\"," << endl;
+-                mFile << "\t\t\t\t\"" <<  "pos_str" << "\":" << "\"" << fusion.mLeftPos << "\"," << endl;
++                mFile << "\t\t\t\t\"" <<  "pos_str" << "\":" << "\"" << biochef_json(fusion.mLeftPos) << "\"," << endl;
+                 mFile << "\t\t\t\t\"" <<  "exon_or_intron" << "\":" << "\"" << (fusion.mLeftIsExon?"exon":"intron") << "\"," << endl;
+                 mFile << "\t\t\t\t\"" <<  "exon_or_intron_id" << "\":" << fusion.mLeftExonOrIntronID << "," << endl;
+                 mFile << "\t\t\t\t\"" <<  "strand" << "\":" << "\"" << (fusion.isLeftProteinForward()?"forward":"reversed") << "\"" << endl;
+             mFile << "\t\t\t}, " << endl;
+             mFile << "\t\t\t\"" <<  "right" << "\":{" << endl;
+-                mFile << "\t\t\t\t\"" <<  "gene_name" << "\":" << "\"" << fusion.mRightGene.mName << "\"," << endl;
+-                mFile << "\t\t\t\t\"" <<  "gene_chr" << "\":" << "\"" << fusion.mRightGene.mChr << "\"," << endl;
++                mFile << "\t\t\t\t\"" <<  "gene_name" << "\":" << "\"" << biochef_json(fusion.mRightGene.mName) << "\"," << endl;
++                mFile << "\t\t\t\t\"" <<  "gene_chr" << "\":" << "\"" << biochef_json(fusion.mRightGene.mChr) << "\"," << endl;
+                 mFile << "\t\t\t\t\"" <<  "position" << "\":" << fusion.mRightGene.genePos2ChrPos(fusion.mRightGP.position) << "," << endl;
+                 mFile << "\t\t\t\t\"" <<  "reference" << "\":" << "\"" << fusion.mRightRef << "\"," << endl;
+                 mFile << "\t\t\t\t\"" <<  "ref_ext" << "\":" << "\"" << fusion.mRightRefExt << "\"," << endl;
+-                mFile << "\t\t\t\t\"" <<  "pos_str" << "\":" << "\"" << fusion.mRightPos << "\"," << endl;
++                mFile << "\t\t\t\t\"" <<  "pos_str" << "\":" << "\"" << biochef_json(fusion.mRightPos) << "\"," << endl;
+                 mFile << "\t\t\t\t\"" <<  "exon_or_intron" << "\":" << "\"" << (fusion.mRightIsExon?"exon":"intron") << "\"," << endl;
+                 mFile << "\t\t\t\t\"" <<  "exon_or_intron_id" << "\":" << fusion.mRightExonOrIntronID << "," << endl;
+                 mFile << "\t\t\t\t\"" <<  "strand" << "\":" << "\"" << (fusion.isRightProteinForward()?"forward":"reversed") << "\"" << endl;
+diff --git a/src/match.cpp b/src/match.cpp
+index 1f81a6d..66c645a 100644
+--- a/src/match.cpp
++++ b/src/match.cpp
+@@ -90,5 +90,5 @@ int Match::countUnique(vector<Match*>& matches) {
+ 
+ void Match::printReadToJson(ofstream& file, string pad) {
+     file << pad << "\"seq\":" << "\"" <<  mRead->mSeq.mStr << "\"," << endl;
+-    file << pad << "\"qual\":" << "\"" <<  mRead->mQuality << "\"" << endl;
++    file << pad << "\"qual\":" << "\"" <<  biochef_json(mRead->mQuality) << "\"" << endl;
+ }
