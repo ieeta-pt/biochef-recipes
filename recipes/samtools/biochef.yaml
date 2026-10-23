@@ -21,6 +21,12 @@ source:
 status: experimental
 
 build:
+  dependencies:
+    - name: htslib
+      repo: https://github.com/samtools/htslib
+      commit: "4b705e4fada8ee2b6b15746f725ee8ac51631803"
+      path: htslib-src
+      license: { spdx: MIT AND BSD-3-Clause, files: [LICENSE] }
   wasm:
     strategy: emscripten
     patches: [patches/zlib-only-config.patch]
