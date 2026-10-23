@@ -1,0 +1,10 @@
+zlib only: no bzip2, lzma or libcurl. No curses either, so tview writes
+text or HTML rather than drawing a terminal.
+
+diff --git a/config.h b/config.h
+new file mode 100644
+index 00000000..0ea67122
+--- /dev/null
++++ b/config.h
+@@ -0,0 +1 @@
++/* zlib only, without curses */

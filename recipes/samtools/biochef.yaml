@@ -23,11 +23,13 @@ status: experimental
 build:
   wasm:
     strategy: emscripten
+    patches: [patches/zlib-only-config.patch]
     emscripten:
       outputDir: out
       emscriptenVersion: 4.0.18
       buildScript: build-wasm.sh
   native:
+    patches: [patches/zlib-only-config.patch]
     buildScript: build-native.sh
     buildTools: [make, gcc]
     outputDir: .
