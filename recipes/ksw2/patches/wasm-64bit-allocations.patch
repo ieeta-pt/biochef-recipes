@@ -1,0 +1,135 @@
+size_t is 32 bits in wasm32. Without a band, the DP matrices take about
+qlen * tlen bytes, so two sequences of 66 kb overflow the size and the
+allocation wraps to a small buffer that the alignment then writes past.
+Compute the sizes in 64 bits and stop with a message when they do not fit,
+or when the allocation fails.
+
+diff --git a/ksw2_extd.c b/ksw2_extd.c
+index 2cdd4e4..ae4de0e 100644
+--- a/ksw2_extd.c
++++ b/ksw2_extd.c
+@@ -19,7 +19,7 @@ void ksw_extd(void *km, int qlen, const uint8_t *query, int tlen, const uint8_t
+ 	qp = (int8_t*)kmalloc(km, qlen * m);
+ 	eh = (eh_t*)kcalloc(km, qlen + 1, sizeof(eh_t));
+ 	if (with_cigar) {
+-		z = (uint8_t*)kmalloc(km, (size_t)n_col * tlen);
++		z = (uint8_t*)ksw_wasm_kmalloc(km, (uint64_t)n_col * tlen);
+ 		off = (int32_t*)kcalloc(km, tlen, 4);
+ 	}
+ 
+diff --git a/ksw2_extd2_sse.c b/ksw2_extd2_sse.c
+index e7cb12e..55b6bed 100644
+--- a/ksw2_extd2_sse.c
++++ b/ksw2_extd2_sse.c
+@@ -119,7 +119,7 @@ void ksw_extd2_sse(void *km, int qlen, const uint8_t *query, int tlen, const uin
+ 		for (t = 0; t < tlen_ * 16; ++t) H[t] = KSW_NEG_INF;
+ 	}
+ 	if (with_cigar) {
+-		mem2 = (uint8_t*)kmalloc(km, ((size_t)(qlen + tlen - 1) * n_col_ + 1) * 16);
++		mem2 = (uint8_t*)ksw_wasm_kmalloc(km, ((uint64_t)(qlen + tlen - 1) * n_col_ + 1) * 16);
+ 		p = (__m128i*)(((size_t)mem2 + 15) >> 4 << 4);
+ 		off = (int*)kmalloc(km, (qlen + tlen - 1) * sizeof(int) * 2);
+ 		off_end = off + qlen + tlen - 1;
+diff --git a/ksw2_exts2_sse.c b/ksw2_exts2_sse.c
+index c38b14a..2a6709a 100644
+--- a/ksw2_exts2_sse.c
++++ b/ksw2_exts2_sse.c
+@@ -107,7 +107,7 @@ void ksw_exts2_sse(void *km, int qlen, const uint8_t *query, int tlen, const uin
+ 		for (t = 0; t < tlen_ * 16; ++t) H[t] = KSW_NEG_INF;
+ 	}
+ 	if (with_cigar) {
+-		mem2 = (uint8_t*)kmalloc(km, ((size_t)(qlen + tlen - 1) * n_col_ + 1) * 16);
++		mem2 = (uint8_t*)ksw_wasm_kmalloc(km, ((uint64_t)(qlen + tlen - 1) * n_col_ + 1) * 16);
+ 		p = (__m128i*)(((size_t)mem2 + 15) >> 4 << 4);
+ 		off = (int*)kmalloc(km, (qlen + tlen - 1) * sizeof(int) * 2);
+ 		off_end = off + qlen + tlen - 1;
+diff --git a/ksw2_extz.c b/ksw2_extz.c
+index 702ccaf..2c51e90 100644
+--- a/ksw2_extz.c
++++ b/ksw2_extz.c
+@@ -18,7 +18,7 @@ void ksw_extz(void *km, int qlen, const uint8_t *query, int tlen, const uint8_t
+ 	qp = (int8_t*)kmalloc(km, qlen * m);
+ 	eh = (eh_t*)kcalloc(km, qlen + 1, 8);
+ 	if (with_cigar) {
+-		z = (uint8_t*)kmalloc(km, (size_t)n_col * tlen);
++		z = (uint8_t*)ksw_wasm_kmalloc(km, (uint64_t)n_col * tlen);
+ 		off = (int32_t*)kcalloc(km, tlen, 4);
+ 	}
+ 
+diff --git a/ksw2_extz2_sse.c b/ksw2_extz2_sse.c
+index 02bb4c2..abc67c1 100644
+--- a/ksw2_extz2_sse.c
++++ b/ksw2_extz2_sse.c
+@@ -89,7 +89,7 @@ void ksw_extz2_sse(void *km, int qlen, const uint8_t *query, int tlen, const uin
+ 		for (t = 0; t < tlen_ * 16; ++t) H[t] = KSW_NEG_INF;
+ 	}
+ 	if (with_cigar) {
+-		mem2 = (uint8_t*)kmalloc(km, ((size_t)(qlen + tlen - 1) * n_col_ + 1) * 16);
++		mem2 = (uint8_t*)ksw_wasm_kmalloc(km, ((uint64_t)(qlen + tlen - 1) * n_col_ + 1) * 16);
+ 		p = (__m128i*)(((size_t)mem2 + 15) >> 4 << 4);
+ 		off = (int*)kmalloc(km, (qlen + tlen - 1) * sizeof(int) * 2);
+ 		off_end = off + qlen + tlen - 1;
+diff --git a/ksw2_gg.c b/ksw2_gg.c
+index e4ef125..9f2a01d 100644
+--- a/ksw2_gg.c
++++ b/ksw2_gg.c
+@@ -17,7 +17,7 @@ int ksw_gg(void *km, int qlen, const uint8_t *query, int tlen, const uint8_t *ta
+ 	eh = (eh_t*)kcalloc(km, qlen + 1, 8);
+ 	if (m_cigar_ && n_cigar_ && cigar_) {
+ 		*n_cigar_ = 0;
+-		z = (uint8_t*)kmalloc(km, (size_t)n_col * tlen);
++		z = (uint8_t*)ksw_wasm_kmalloc(km, (uint64_t)n_col * tlen);
+ 		off = (int32_t*)kcalloc(km, tlen, 4);
+ 	}
+ 
+diff --git a/ksw2_gg2.c b/ksw2_gg2.c
+index f320ae2..cf6d20e 100644
+--- a/ksw2_gg2.c
++++ b/ksw2_gg2.c
+@@ -16,7 +16,7 @@ int ksw_gg2(void *km, int qlen, const uint8_t *query, int tlen, const uint8_t *t
+ 	if (w < 0) w = tlen > qlen? tlen : qlen;
+ 	n_col = w + 1 < tlen? w + 1 : tlen;
+ 	if (m_cigar_ && n_cigar_ && cigar_) {
+-		p = (uint8_t*)kcalloc(km, (size_t)(qlen + tlen) * n_col, 1);
++		p = (uint8_t*)ksw_wasm_kcalloc(km, (uint64_t)(qlen + tlen) * n_col, 1);
+ 		off = (int*)kmalloc(km, (qlen + tlen) * sizeof(int));
+ 	}
+ 
+diff --git a/ksw2_gg2_sse.c b/ksw2_gg2_sse.c
+index ac949a8..64d0488 100644
+--- a/ksw2_gg2_sse.c
++++ b/ksw2_gg2_sse.c
+@@ -33,7 +33,7 @@ int ksw_gg2_sse(void *km, int qlen, const uint8_t *query, int tlen, const uint8_
+ 	u = (__m128i*)(((size_t)mem + 15) >> 4 << 4); // 16-byte aligned
+ 	v = u + tlen_, x = v + tlen_, y = x + tlen_, s = y + tlen_;
+ 	qr = (uint8_t*)kcalloc(km, qlen, 1);
+-	mem2 = (uint8_t*)kmalloc(km, ((size_t)(qlen + tlen - 1) * n_col_ + 1) * 16);
++	mem2 = (uint8_t*)ksw_wasm_kmalloc(km, ((uint64_t)(qlen + tlen - 1) * n_col_ + 1) * 16);
+ 	p = (__m128i*)(((size_t)mem2 + 15) >> 4 << 4);
+ 	off = (int*)kmalloc(km, (qlen + tlen - 1) * sizeof(int));
+ 
+diff --git a/ksw2_wasm_alloc.h b/ksw2_wasm_alloc.h
+new file mode 100644
+index 0000000..62f6f50
+--- /dev/null
++++ b/ksw2_wasm_alloc.h
+@@ -0,0 +1,19 @@
++#include <stdint.h>
++#include <stdio.h>
++#include "kalloc.h"
++static inline void *ksw_wasm_check(void *p, uint64_t size)
++{
++	if (p == 0) {
++		fprintf(stderr, "[ksw2] cannot allocate %llu bytes for the alignment; use a band (-w) or shorter sequences\n", (unsigned long long)size);
++		exit(1);
++	}
++	return p;
++}
++static inline void *ksw_wasm_kmalloc(void *km, uint64_t size)
++{
++	return ksw_wasm_check(size > SIZE_MAX ? 0 : kmalloc(km, (size_t)size), size);
++}
++static inline void *ksw_wasm_kcalloc(void *km, uint64_t count, size_t size)
++{
++	return ksw_wasm_check(count * size > SIZE_MAX ? 0 : kcalloc(km, (size_t)count, size), count * size);
++}
