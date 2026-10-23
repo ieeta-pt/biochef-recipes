@@ -26,10 +26,12 @@ build:
       emscriptenVersion: 4.0.18
       outputDir: out
       buildScript: build-wasm.sh
+    patches: [patches/strict-entry-point.patch, patches/linear-space-refmap-loop.patch, patches/linear-space-aligned-copy.patch, patches/reverse-complement-one-base.patch]
   native:
     outputDir: out
     buildScript: build-native.sh
     buildTools: [make, gcc]
+    patches: [patches/strict-entry-point.patch, patches/linear-space-refmap-loop.patch, patches/linear-space-aligned-copy.patch, patches/reverse-complement-one-base.patch]
 
 runtime:
   modes: [wasm, native, remote]
