@@ -1,0 +1,16 @@
+build_db refuses more threads than OpenMP offers, and wasm has one: build
+with that one. The database is the same for any number of threads.
+
+diff --git a/src/build_db.cc b/src/build_db.cc
+index e848085..95eda97 100644
+--- a/src/build_db.cc
++++ b/src/build_db.cc
+@@ -496,7 +496,7 @@ void ParseCommandLine(int argc, char **argv, Options &opts) {
+         if (opts.num_threads < 1)
+           errx(EX_USAGE, "can't have negative number of threads");
+         if (opts.num_threads > omp_get_max_threads())
+-          errx(EX_USAGE, "OMP only wants you to use %d threads", omp_get_max_threads());
++          opts.num_threads = omp_get_max_threads();
+         break;
+       case 'H' :
+         opts.hashtable_filename = optarg;

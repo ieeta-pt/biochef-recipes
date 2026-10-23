@@ -27,10 +27,12 @@ build:
       emscriptenVersion: 4.0.18
       outputDir: src
       buildScript: build-wasm.sh
+    patches: [patches/database-tar-entry-point.patch, patches/wasm-no-pthread.patch, patches/lookup-skip-lines-without-tab.patch, patches/wasm-k2d-64-bit-fields.patch, patches/wasm-64-bit-masks-and-clz.patch, patches/wasm-build-db-one-thread.patch]
   native:
     buildScript: build-native.sh
     buildTools: [make, gcc]
     outputDir: src
+    patches: [patches/database-tar-entry-point.patch, patches/lookup-skip-lines-without-tab.patch]
 
 runtime:
   modes: [wasm, native]
