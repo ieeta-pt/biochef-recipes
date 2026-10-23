@@ -1,0 +1,53 @@
+apiVersion: v1
+
+id: app.biochef.bhtsne
+name: bhtsne
+description: "Barnes-Hut t-SNE: non-linear dimensionality reduction of high-dimensional data, such as single-cell expression matrices, k-mer signatures or alignment profiles, in O(n log n). Input is an SND table, one row per sample with a name followed by tab-separated values; output is the embedding in the same format. A seed gives the same embedding natively and in the browser."
+
+version: 2016.08.22-bc.1
+homepage: https://github.com/lh3/bhtsne
+license:
+  spdx: BSD-4-Clause
+  files: [LICENSE.txt]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/lh3/bhtsne
+  commit: "1a62a5d3842944d832837b5522143cf892908f53"
+  version: "2016.08.22"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      emscriptenVersion: 4.0.18
+      outputDir: out
+      buildScript: build-wasm.sh
+    patches: [patches/strict-entry-point.patch, patches/portable-rand-and-libm.patch, patches/vptree-stable-order.patch]
+  native:
+    buildScript: build-native.sh
+    buildTools: [make, gcc]
+    patches: [patches/strict-entry-point.patch, patches/portable-rand-and-libm.patch, patches/vptree-stable-order.patch]
+
+runtime:
+  modes: [wasm, native]
+
+operations:
+  - id: bhtsne.embed
+    name: t-SNE Embedding (bhtsne)
+    category: Sequence Analysis
+    bin: bhtsne
+    description: "Embed the samples of an SND table (lines starting with '#' are skipped, then one row per sample: a name and tab-separated values, as many in every row) with Barnes-Hut t-SNE. The output is an SND table with one row per sample: its name and its coordinates. The table needs more than three times the perplexity samples. A theta of 0 runs exact t-SNE, for small tables; with theta above 0 the output dimension is at most 8."
+    io:
+      inputs:
+        - { name: in, types: [SND], mode: file }
+      outputs:
+        - { name: out, types: [SND], mode: stdout }
+    parameters:
+      - { name: out_dim, type: integer, flag: -d, default: 2 }
+      - { name: theta, type: float, flag: -e, default: 0.5 }
+      - { name: perplexity, type: float, flag: -p, default: 50.0 }
+      - { name: seed, type: integer, flag: -s, default: 11 }
