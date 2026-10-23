@@ -1,0 +1,220 @@
+apiVersion: v1
+
+id: app.biochef.hisat2
+name: HISAT2
+description: "HISAT2 aligns RNA-seq and DNA reads to a reference, across splice junctions and known variants, through a hierarchical graph FM-index. Build the index once with Build Index (HISAT2), then align with Align Reads (HISAT2). The index passes between operations as one HISAT2_INDEX file, a tar of the eight files hisat2-build writes (ref.1.ht2 to ref.8.ht2)."
+
+version: 2.2.2-bc.2
+homepage: https://github.com/DaehwanKimLab/hisat2
+license:
+  spdx: GPL-3.0-or-later
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/DaehwanKimLab/hisat2
+  commit: "99583d7536b9ee017ac07de8834017a3bf99a2fe"
+  version: "2.2.2"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+    patches: [patches/index-tar-entry-point.patch, patches/reproducible-build-info.patch, patches/wasm-search-workers-in-place.patch, patches/wasm32-signed-ref-offset.patch, patches/wasm-build-one-thread.patch]
+  native:
+    buildScript: build-native.sh
+    buildTools: [make, gcc]
+    patches: [patches/index-tar-entry-point.patch, patches/reproducible-build-info.patch]
+
+runtime:
+  modes: [wasm, native, remote]
+
+operations:
+  - id: hisat2.align
+    name: Align Reads (HISAT2)
+    category: Genomic Operations
+    bin: hisat2-align-s
+    description: "Align RNA-seq or DNA reads to a HISAT2 index, across splice junctions. Give unpaired reads, or the two ends of pairs as mate1 and mate2, in FASTQ or FASTA. Known splice sites guide the spliced alignments; the novel splice sites found are written for the next run or index. Writes SAM, and the alignment summary."
+    io:
+      inputs:
+        - { name: index, types: [HISAT2_INDEX], mode: file, flag: --bc-index }
+        - { name: unpaired, types: [FASTQ, FASTA], mode: file, flag: -U }
+        - { name: mate1, types: [FASTQ, FASTA], mode: file, flag: "-1" }
+        - { name: mate2, types: [FASTQ, FASTA], mode: file, flag: "-2" }
+        - { name: known_splice_sites, types: [HISAT2_SS], mode: file, flag: --known-splicesite-infile }
+        - { name: novel_splice_sites_in, types: [HISAT2_SS], mode: file, flag: --novel-splicesite-infile }
+      outputs:
+        - { name: out, types: [SAM], mode: stdout }
+        - { name: novel_splice_sites, types: [HISAT2_SS], mode: file, flag: --novel-splicesite-outfile }
+        - { name: summary, types: [TEXT], mode: file, flag: --summary-file }
+    parameters:
+      - { name: threads, type: integer, flag: -p, default: 1 }
+      - { name: skip, type: integer, flag: -s }
+      - { name: upto, type: integer, flag: -u }
+      - { name: trim5, type: integer, flag: "-5" }
+      - { name: trim3, type: integer, flag: "-3" }
+      - { name: phred64, type: flag, flag: --phred64 }
+      - { name: int_quals, type: flag, flag: --int-quals }
+      - { name: very_fast, type: flag, flag: --very-fast }
+      - { name: fast, type: flag, flag: --fast }
+      - { name: sensitive, type: flag, flag: --sensitive }
+      - { name: very_sensitive, type: flag, flag: --very-sensitive }
+      - { name: bowtie2_dp, type: integer, flag: --bowtie2-dp }
+      - { name: n_ceil, type: string, flag: --n-ceil }
+      - { name: ignore_quals, type: flag, flag: --ignore-quals }
+      - { name: nofw, type: flag, flag: --nofw }
+      - { name: norc, type: flag, flag: --norc }
+      - { name: pen_cansplice, type: integer, flag: --pen-cansplice }
+      - { name: pen_noncansplice, type: integer, flag: --pen-noncansplice }
+      - { name: pen_canintronlen, type: string, flag: --pen-canintronlen }
+      - { name: pen_noncanintronlen, type: string, flag: --pen-noncanintronlen }
+      - { name: min_intron, type: integer, flag: --min-intronlen }
+      - { name: max_intron, type: integer, flag: --max-intronlen }
+      - { name: no_temp_splicesite, type: flag, flag: --no-temp-splicesite }
+      - { name: no_spliced_alignment, type: flag, flag: --no-spliced-alignment }
+      - { name: rna_strandness, type: string, flag: --rna-strandness }
+      - { name: tmo, type: flag, flag: --tmo }
+      - { name: dta, type: flag, flag: --dta }
+      - { name: dta_cufflinks, type: flag, flag: --dta-cufflinks }
+      - { name: avoid_pseudogene, type: flag, flag: --avoid-pseudogene }
+      - { name: no_templatelen_adjustment, type: flag, flag: --no-templatelen-adjustment }
+      - { name: mismatch_penalty, type: string, flag: --mp }
+      - { name: softclip_penalty, type: string, flag: --sp }
+      - { name: no_softclip, type: flag, flag: --no-softclip }
+      - { name: n_penalty, type: integer, flag: --np }
+      - { name: read_gap_penalty, type: string, flag: --rdg }
+      - { name: ref_gap_penalty, type: string, flag: --rfg }
+      - { name: score_min, type: string, flag: --score-min }
+      - { name: max_alignments, type: integer, flag: -k }
+      - { name: max_seeds, type: integer, flag: --max-seeds }
+      - { name: all_alignments, type: flag, flag: -a }
+      - { name: min_fragment, type: integer, flag: -I }
+      - { name: max_fragment, type: integer, flag: -X }
+      - { name: mates_rf, type: flag, flag: --rf }
+      - { name: mates_ff, type: flag, flag: --ff }
+      - { name: no_mixed, type: flag, flag: --no-mixed }
+      - { name: no_discordant, type: flag, flag: --no-discordant }
+      - { name: time, type: flag, flag: -t }
+      - { name: new_summary, type: flag, flag: --new-summary }
+      - { name: no_unaligned, type: flag, flag: --no-unal }
+      - { name: no_head, type: flag, flag: --no-head }
+      - { name: no_sq, type: flag, flag: --no-sq }
+      - { name: rg_id, type: string, flag: --rg-id }
+      - { name: rg, type: string, flag: --rg }
+      - { name: omit_sec_seq, type: flag, flag: --omit-sec-seq }
+      - { name: reorder, type: flag, flag: --reorder }
+      - { name: seed, type: integer, flag: --seed }
+      - { name: non_deterministic, type: flag, flag: --non-deterministic }
+      - { name: remove_chrname, type: flag, flag: --remove-chrname }
+      - { name: add_chrname, type: flag, flag: --add-chrname }
+
+  - id: hisat2.build
+    name: Build Index (HISAT2)
+    category: Genomic Operations
+    bin: hisat2-build-s
+    description: "Build the HISAT2 index of a reference FASTA, as one HISAT2_INDEX file (a tar of ref.1.ht2 to ref.8.ht2). Give splice sites, and exons with them, to build a graph index that aligns across known junctions; give SNPs, and haplotypes with them, to align across known variants. In the browser, keep to small references, such as viral or bacterial genomes."
+    io:
+      inputs:
+        - { name: reference, types: [FASTA, Multi-FASTA], mode: file }
+        - { name: splice_sites, types: [HISAT2_SS], mode: file, flag: --ss }
+        - { name: exons, types: [HISAT2_EXON], mode: file, flag: --exon }
+        - { name: snps, types: [HISAT2_SNP], mode: file, flag: --snp }
+        - { name: haplotypes, types: [HISAT2_HAPLOTYPE], mode: file, flag: --haplotype }
+      outputs:
+        - { name: index, types: [HISAT2_INDEX], mode: file, flag: --bc-out }
+    parameters:
+      - { name: threads, type: integer, flag: -p, default: 1 }
+      - { name: noauto, type: flag, flag: -a }
+      - { name: bmax, type: integer, flag: --bmax }
+      - { name: bmaxdivn, type: integer, flag: --bmaxdivn }
+      - { name: dcv, type: integer, flag: --dcv }
+      - { name: offrate, type: integer, flag: -o }
+      - { name: ftabchars, type: integer, flag: -t }
+      - { name: localoffrate, type: integer, flag: --localoffrate }
+      - { name: localftabchars, type: integer, flag: --localftabchars }
+      - { name: seed, type: integer, flag: --seed }
+      - { name: quiet, type: flag, flag: -q }
+
+  - id: hisat2.inspect
+    name: Inspect Index (HISAT2)
+    category: Genomic Operations
+    bin: hisat2-inspect-s
+    description: "Write the reference sequences of a HISAT2 index as FASTA."
+    io:
+      inputs:
+        - { name: index, types: [HISAT2_INDEX], mode: file, flag: --bc-index }
+      outputs:
+        - { name: out, types: [FASTA], mode: stdout }
+    parameters:
+      - { name: across, type: integer, flag: -a }
+
+  - id: hisat2.inspect.summary
+    name: Index Summary (HISAT2)
+    category: Genomic Operations
+    bin: hisat2-inspect-s
+    description: "Summarise a HISAT2 index: its parameters, its sequences and their lengths, and its numbers of SNPs and splice sites."
+    io:
+      inputs:
+        - { name: index, types: [HISAT2_INDEX], mode: file, flag: --bc-index }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: summary, type: flag, flag: -s, required: true, hidden: true }
+
+  - id: hisat2.inspect.names
+    name: Index Sequence Names (HISAT2)
+    category: Genomic Operations
+    bin: hisat2-inspect-s
+    description: "List the names of the sequences in a HISAT2 index."
+    io:
+      inputs:
+        - { name: index, types: [HISAT2_INDEX], mode: file, flag: --bc-index }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: names, type: flag, flag: -n, required: true, hidden: true }
+
+  - id: hisat2.inspect.splicesites
+    name: Index Splice Sites (HISAT2)
+    category: Genomic Operations
+    bin: hisat2-inspect-s
+    description: "Write the splice sites of a HISAT2 index, in the format Build Index and Align Reads read."
+    io:
+      inputs:
+        - { name: index, types: [HISAT2_INDEX], mode: file, flag: --bc-index }
+      outputs:
+        - { name: out, types: [HISAT2_SS], mode: stdout }
+    parameters:
+      - { name: splice_sites, type: flag, flag: --ss, required: true, hidden: true }
+      - { name: all, type: flag, flag: --ss-all }
+
+  - id: hisat2.inspect.exons
+    name: Index Exons (HISAT2)
+    category: Genomic Operations
+    bin: hisat2-inspect-s
+    description: "Write the exons of a HISAT2 index, in the format Build Index reads."
+    io:
+      inputs:
+        - { name: index, types: [HISAT2_INDEX], mode: file, flag: --bc-index }
+      outputs:
+        - { name: out, types: [HISAT2_EXON], mode: stdout }
+    parameters:
+      - { name: exons, type: flag, flag: --exon, required: true, hidden: true }
+
+  - id: hisat2.inspect.snps
+    name: Index SNPs (HISAT2)
+    category: Genomic Operations
+    bin: hisat2-inspect-s
+    description: "Write the SNPs of a HISAT2 index, in the format Build Index reads."
+    io:
+      inputs:
+        - { name: index, types: [HISAT2_INDEX], mode: file, flag: --bc-index }
+      outputs:
+        - { name: out, types: [HISAT2_SNP], mode: stdout }
+    parameters:
+      - { name: snps, type: flag, flag: --snp, required: true, hidden: true }
