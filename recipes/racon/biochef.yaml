@@ -22,6 +22,7 @@ status: experimental
 build:
   wasm:
     strategy: emscripten
+    patches: [patches/stable-window-order.patch, patches/input-check-entry-point.patch, patches/wasm-single-threaded-thread-pool.patch]
     emscripten:
       emscriptenVersion: 4.0.18
       outputDir: build/bin
@@ -29,6 +30,7 @@ build:
   native:
     outputDir: build/bin
     buildScript: build-native.sh
+    patches: [patches/stable-window-order.patch, patches/input-check-entry-point.patch]
     buildTools: [make, gcc]
 
 runtime:
