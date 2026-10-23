@@ -23,11 +23,13 @@ status: experimental
 build:
   wasm:
     strategy: emscripten
+    patches: [patches/wasm-single-threaded-kthread.patch, patches/index-tar-entry-point.patch, patches/deterministic-sa-interval.patch, patches/wasm-mem-mark-primary-se-signature.patch]
     emscripten:
       emscriptenVersion: 4.0.18
       buildScript: build-wasm.sh
   native:
     buildScript: build-native.sh
+    patches: [patches/index-tar-entry-point.patch, patches/deterministic-sa-interval.patch]
     buildTools: [make]
 
 runtime:
