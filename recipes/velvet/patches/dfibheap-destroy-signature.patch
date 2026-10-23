@@ -1,0 +1,18 @@
+dfibHeap.h declares destroyNodeInDHeap as returning a pointer, and
+dfibHeap.c defines it as returning nothing. Natively the call works; in
+wasm a call through the wrong signature traps, as tour bus does on long
+reads.
+
+diff --git a/src/dfibHeap.h b/src/dfibHeap.h
+index f55bc71..0145e73 100644
+--- a/src/dfibHeap.h
++++ b/src/dfibHeap.h
+@@ -33,7 +33,7 @@ void destroyDHeap(DFibHeap * heap);
+ 
+ void replaceValueInDHeap(DFibHeapNode * node, Node * newValue);
+ 
+-void *destroyNodeInDHeap(DFibHeapNode * node, DFibHeap * heap);
++void destroyNodeInDHeap(DFibHeapNode * node, DFibHeap * heap);
+ 
+ Time getKey(DFibHeapNode * node);
+ #endif

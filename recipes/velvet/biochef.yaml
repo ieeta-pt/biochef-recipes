@@ -22,11 +22,13 @@ status: experimental
 build:
   wasm:
     strategy: emscripten
+    patches: [patches/biochef-entry-point.patch, patches/dfibheap-destroy-signature.patch]
     emscripten:
       outputDir: out
       emscriptenVersion: 4.0.18
       buildScript: build-wasm.sh
   native:
+    patches: [patches/biochef-entry-point.patch]
     buildScript: build-native.sh
     buildTools: [make, gcc]
 
