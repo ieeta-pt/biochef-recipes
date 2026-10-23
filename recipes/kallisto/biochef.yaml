@@ -1,0 +1,180 @@
+apiVersion: v1
+
+id: app.biochef.kallisto
+name: kallisto
+description: "kallisto quantifies RNA-seq without aligning: it pseudoaligns each read, or pair, to the transcripts whose k-mers it shares, in a de Bruijn graph index of the transcriptome, and estimates each transcript's abundance by expectation maximization, as counts and TPM. kallisto bus writes the pseudoalignments of single-cell reads as a BUS file, for bustools. Built without HDF5 and without BAM output."
+
+version: 0.52.0-bc.1
+homepage: https://github.com/pachterlab/kallisto
+license:
+  spdx: BSD-2-Clause
+  files: [license.txt]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/pachterlab/kallisto
+  commit: "4e9f29cf3b021260415430c057a22469ca081391"
+  version: "0.52.0"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    patches:
+      - patches/bifrost-datastorage-compile-fix.patch
+      - patches/bifrost-kmer-base-lookup.patch
+      - patches/ec-hash-shift-mask.patch
+      - patches/bias-hexamer-bounds.patch
+      - patches/dlist-bias-skip.patch
+      - patches/bifrost-fixed-seeds.patch
+      - patches/multinomial-bootstrap.patch
+      - patches/bifrost-built-separately.patch
+      - patches/wasm-single-thread.patch
+      - patches/biochef-entry-point.patch
+      - patches/wasm-no-avx2.patch
+    emscripten:
+      outputDir: out
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+  native:
+    patches:
+      - patches/bifrost-datastorage-compile-fix.patch
+      - patches/bifrost-kmer-base-lookup.patch
+      - patches/ec-hash-shift-mask.patch
+      - patches/bias-hexamer-bounds.patch
+      - patches/dlist-bias-skip.patch
+      - patches/bifrost-fixed-seeds.patch
+      - patches/multinomial-bootstrap.patch
+      - patches/bifrost-built-separately.patch
+      - patches/biochef-entry-point.patch
+      - patches/native-musl-math.patch
+    outputDir: out
+    buildScript: build-native.sh
+    buildTools: [make, gcc]
+
+runtime:
+  modes: [wasm, native]
+
+operations:
+  - id: kallisto.index
+    name: Build Index (kallisto)
+    category: Genomic Operations
+    bin: kallisto
+    description: "Build a kallisto index from transcripts in FASTA, for quant and bus. Transcripts need unique names, unless make_unique renames them. amino_acids builds it from protein sequences, for kallisto bus with amino_acids, which compares them with the reads translated."
+    io:
+      inputs:
+        - &transcripts { name: transcripts, types: [Multi-FASTA, FASTA], mode: file }
+      outputs:
+        - &index_out { name: index, types: [KALLISTO_INDEX], mode: file, flag: -i, filename: transcripts.idx }
+    parameters: &index_parameters
+      - { name: subcommand, type: string, default: index, required: true, hidden: true }
+      - { name: kmer_size, type: integer, flag: -k, default: 31 }
+      - { name: minimizer_size, type: integer, flag: -m }
+      - { name: ec_max_size, type: integer, flag: -e }
+      - { name: make_unique, type: flag, flag: --make-unique }
+      - { name: amino_acids, type: flag, flag: --aa }
+      - { name: distinguish, type: flag, flag: --distinguish }
+
+  - id: kallisto.index.dlist
+    name: Build Index with a D-list (kallisto)
+    category: Genomic Operations
+    bin: kallisto
+    description: "Build a kallisto index from transcripts in FASTA, with a D-list: sequences, such as the genome, whose k-mers not in the transcripts are kept as distinguishing, so reads from outside the transcripts are not pseudoaligned to them."
+    io:
+      inputs:
+        - *transcripts
+        - { name: d_list, types: [FASTA, Multi-FASTA], mode: file, flag: -d }
+      outputs:
+        - *index_out
+    parameters: *index_parameters
+
+  - id: kallisto.quant
+    name: Quantify Paired Reads (kallisto)
+    category: Sequence Analysis
+    bin: kallisto
+    description: "Estimate each transcript's abundance from paired-end reads in FASTQ, with an index from Build Index. kallisto estimates the fragment length from the pairs. Writes the abundances (target_id, length, eff_length, est_counts, tpm) and the run information in JSON."
+    io:
+      inputs:
+        - &index_in { name: index, types: [KALLISTO_INDEX], mode: file, flag: -i }
+        - { name: read1, types: [FASTQ], mode: file }
+        - { name: read2, types: [FASTQ], mode: file }
+      outputs:
+        - &abundance { name: abundance, types: [KALLISTO_ABUNDANCE], mode: file, flag: --bc-abundance, filename: abundance.tsv }
+        - &run_info { name: run_info, types: [JSON], mode: file, flag: --bc-run-info, filename: run_info.json }
+    parameters:
+      - { name: subcommand, type: string, default: quant, required: true, hidden: true }
+      - &bias { name: bias, type: flag, flag: --bias }
+
+  - id: kallisto.quant.single
+    name: Quantify Single Reads (kallisto)
+    category: Sequence Analysis
+    bin: kallisto
+    description: "Estimate each transcript's abundance from single-end reads in FASTQ, with an index from Build Index, and the mean and standard deviation of the fragment length, which single reads do not show. Writes the abundances and the run information in JSON."
+    io:
+      inputs:
+        - *index_in
+        - { name: reads, types: [FASTQ], mode: file }
+      outputs:
+        - *abundance
+        - *run_info
+    parameters:
+      - { name: subcommand, type: string, default: quant, required: true, hidden: true }
+      - { name: single, type: flag, flag: --single, required: true, hidden: true }
+      - { name: fragment_length, type: float, flag: -l, default: 200, required: true }
+      - { name: fragment_sd, type: float, flag: -s, default: 20, required: true }
+      - { name: single_overhang, type: flag, flag: --single-overhang }
+      - { name: fr_stranded, type: flag, flag: --fr-stranded }
+      - { name: rf_stranded, type: flag, flag: --rf-stranded }
+      - *bias
+
+  - id: kallisto.bus
+    name: Pseudoalign Single-Cell Reads (kallisto bus)
+    category: Sequence Analysis
+    bin: kallisto
+    description: "Pseudoalign single-cell RNA-seq reads in FASTQ, with an index from Build Index, and write each read's barcode, UMI and equivalence class as a BUS file, for bustools, with the equivalence classes and the transcripts' names. The technology (10xv3 by default; kallisto bus --list in kallisto's documentation names the others) sets where the barcode and UMI are; bulk takes plain reads, paired with --paired."
+    io:
+      inputs:
+        - *index_in
+        - { name: read1, types: [FASTQ], mode: file }
+        - { name: read2, types: [FASTQ], mode: file }
+      outputs:
+        - { name: bus, types: [BUS], mode: file, flag: --bc-bus, filename: output.bus }
+        - { name: equivalence_classes, types: [KALLISTO_EC], mode: file, flag: --bc-ec, filename: matrix.ec }
+        - { name: transcripts, types: [LIST], mode: file, flag: --bc-transcripts, filename: transcripts.txt }
+        - { name: run_info, types: [JSON], mode: file, flag: --bc-run-info, filename: run_info.json }
+    parameters:
+      - { name: subcommand, type: string, default: bus, required: true, hidden: true }
+      - { name: technology, type: string, flag: -x, default: 10xv3, required: true }
+      - { name: paired, type: flag, flag: --paired }
+      - { name: fr_stranded, type: flag, flag: --fr-stranded }
+      - { name: rf_stranded, type: flag, flag: --rf-stranded }
+      - { name: unstranded, type: flag, flag: --unstranded }
+      - { name: amino_acids, type: flag, flag: --aa }
+
+  - id: kallisto.inspect
+    name: Inspect Index (kallisto)
+    category: Genomic Operations
+    bin: kallisto
+    description: "Print what a kallisto index holds: its version, k-mer and minimizer lengths, transcripts, k-mers, unitigs and equivalence classes."
+    io:
+      inputs:
+        - { name: index, types: [KALLISTO_INDEX], mode: file }
+      outputs:
+        - { name: summary, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: subcommand, type: string, default: inspect, required: true, hidden: true }
+
+  - id: kallisto.inspect.gfa
+    name: Index Graph as GFA (kallisto)
+    category: Genomic Operations
+    bin: kallisto
+    description: "Write the de Bruijn graph of a kallisto index, its unitigs and their links, as GFA."
+    io:
+      inputs:
+        - { name: index, types: [KALLISTO_INDEX], mode: file }
+      outputs:
+        - { name: graph, types: [GFA], mode: file, flag: --gfa, filename: index.gfa }
+    parameters:
+      - { name: subcommand, type: string, default: inspect, required: true, hidden: true }

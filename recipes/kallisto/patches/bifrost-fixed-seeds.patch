@@ -1,0 +1,77 @@
+Bifrost seeded its Bloom filter and colour hashes from std::random_device,
+so the same transcripts gave another index in every run. The seeds are now
+fixed, and drawn from mt19937_64 itself: std::uniform_int_distribution and
+std::default_random_engine are the C++ library's own, and libstdc++, here,
+and libc++, in wasm, give other numbers from them.
+
+diff --git a/ext/bifrost/src/BlockedBloomFilter.cpp b/ext/bifrost/src/BlockedBloomFilter.cpp
+index f13e2dc..4b1c4c9 100755
+--- a/ext/bifrost/src/BlockedBloomFilter.cpp
++++ b/ext/bifrost/src/BlockedBloomFilter.cpp
+@@ -12,7 +12,7 @@ BlockedBloomFilter::BlockedBloomFilter(size_t nb_elem, size_t bits_per_elem) : t
+     if ((nb_elem != 0) && (bits_per_elem != 0)){
+ 
+         std::random_device rd;
+-        std::mt19937_64 gen(rd());
++        std::mt19937_64 gen(42);
+         std::uniform_int_distribution<unsigned long long> distribution;
+ 
+         blocks_ = (bits_per_elem * nb_elem + MASK_BITS_BLOCK) / NB_BITS_BLOCK;
+@@ -20,8 +20,8 @@ BlockedBloomFilter::BlockedBloomFilter(size_t nb_elem, size_t bits_per_elem) : t
+ 
+         if (fpp(bits_per_elem, k_) >= fpp(bits_per_elem, k_+1)) ++k_;
+ 
+-        seed1 = distribution(gen);
+-        seed2 = distribution(gen);
++        seed1 = gen();
++        seed2 = gen();
+ 
+         init_arrays();
+     }
+diff --git a/ext/bifrost/src/DataStorage.tcc b/ext/bifrost/src/DataStorage.tcc
+index b871b89..0b9bd87 100755
+--- a/ext/bifrost/src/DataStorage.tcc
++++ b/ext/bifrost/src/DataStorage.tcc
+@@ -6,10 +6,10 @@ DataStorage<U>::DataStorage() : color_sets(nullptr), shared_color_sets(nullptr),
+                                 nb_seeds(0), nb_cs(0), sz_cs(0), sz_shared_cs(0), pos_empty_cs(0) {
+ 
+     std::random_device rd; //Seed
+-    std::default_random_engine generator(rd()); //Random number generator
++    std::mt19937_64 generator(42);
+     std::uniform_int_distribution<long long unsigned> distribution(0, 0xFFFFFFFFFFFFFFFF); //Distribution on which to apply the generator
+ 
+-    for (size_t i = 0; i != 256; ++i) seeds[i] = distribution(generator); //Initialize the hash function seeds
++    for (size_t i = 0; i != 256; ++i) seeds[i] = generator(); //Initialize the hash function seeds
+ }
+ 
+ template<typename U>
+@@ -19,12 +19,12 @@ DataStorage<U>::DataStorage(const size_t nb_seeds_, const size_t sz_cs_, const s
+                             color_names(color_names_) {
+ 
+     std::random_device rd; //Seed
+-    std::default_random_engine generator(rd()); //Random number generator
++    std::mt19937_64 generator(42);
+     std::uniform_int_distribution<long long unsigned> distribution(0, 0xFFFFFFFFFFFFFFFF); //Distribution on which to apply the generator
+ 
+     const size_t sz_unitig_cs_link = (sz_cs >> 6) + ((sz_cs & 0x3F) != 0);
+ 
+-    for (size_t i = 0; i != 256; ++i) seeds[i] = distribution(generator); //Initialize the hash function seeds
++    for (size_t i = 0; i != 256; ++i) seeds[i] = generator(); //Initialize the hash function seeds
+ 
+     color_sets = new UnitigColors[sz_cs];
+     unitig_cs_link = new std::atomic<uint64_t>[sz_unitig_cs_link];
+@@ -40,12 +40,12 @@ inline DataStorage<void>::DataStorage(const size_t nb_seeds_, const size_t sz_cs
+                                 color_names(color_names_) {
+ 
+     std::random_device rd; //Seed
+-    std::default_random_engine generator(rd()); //Random number generator
++    std::mt19937_64 generator(42);
+     std::uniform_int_distribution<long long unsigned> distribution(0, 0xFFFFFFFFFFFFFFFF); //Distribution on which to apply the generator
+ 
+     const size_t sz_unitig_cs_link = (sz_cs >> 6) + ((sz_cs & 0x3F) != 0);
+ 
+-    for (int i = 0; i < 256; ++i) seeds[i] = distribution(generator); //Initialize the hash function seeds
++    for (int i = 0; i < 256; ++i) seeds[i] = generator(); //Initialize the hash function seeds
+ 
+     color_sets = new UnitigColors[sz_cs];
+     unitig_cs_link = new std::atomic<uint64_t>[sz_unitig_cs_link];
