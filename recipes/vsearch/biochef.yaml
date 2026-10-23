@@ -23,6 +23,7 @@ status: experimental
 build:
   wasm:
     strategy: emscripten
+    patches: [patches/tax-find-iterator.patch, patches/wasm-serial-threads.patch, patches/wasm-no-arch-flags.patch]
     emscripten:
       outputDir: out
       emscriptenVersion: 4.0.18
