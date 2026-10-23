@@ -22,12 +22,14 @@ status: experimental
 build:
   wasm:
     strategy: emscripten
+    patches: [patches/strict-input-entry-point.patch, patches/matrix-bounds-and-word-count-overflow.patch]
     emscripten:
       outputDir: out
       emscriptenVersion: 4.0.18
       buildScript: build-wasm.sh
   native:
     buildScript: build-native.sh
+    patches: [patches/strict-input-entry-point.patch, patches/matrix-bounds-and-word-count-overflow.patch]
     buildTools: [make, gcc]
 
 runtime:
