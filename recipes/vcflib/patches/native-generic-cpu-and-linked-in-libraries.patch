@@ -1,3 +1,9 @@
+Builds the native tools for a generic x86-64 CPU instead of -march=native,
+links vcflib's and WFA2's own libraries into each tool instead of building them
+as shared libraries, turns link-time optimisation off, and builds without the
+Python bindings when pybind11 is absent. System libraries (curl, libdeflate
+and the rest of htslib's) are still linked dynamically: ieeta-pt/biochef-hub#42.
+
 diff --git a/CMakeLists.txt b/CMakeLists.txt
 index af3fe67..6c586fd 100644
 --- a/CMakeLists.txt

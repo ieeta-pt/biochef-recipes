@@ -32,7 +32,7 @@ build:
       buildScript: build-wasm.sh
   native:
     buildScript: build-native.sh
-    patches: [patches/filter-operand-check-and-sample-lists.patch, patches/native-static-portable-build.patch]
+    patches: [patches/filter-operand-check-and-sample-lists.patch, patches/native-generic-cpu-and-linked-in-libraries.patch]
     buildTools: [make, gcc]
     outputDir: bin
 
