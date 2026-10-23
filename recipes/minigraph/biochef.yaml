@@ -22,6 +22,7 @@ status: experimental
 build:
   wasm:
     strategy: emscripten
+    patches: [patches/wasm-single-threaded-kthread.patch]
     emscripten:
       emscriptenVersion: 4.0.18
       buildScript: build-wasm.sh
