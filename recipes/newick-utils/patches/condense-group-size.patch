@@ -1,0 +1,18 @@
+condense allocates its group data with sizeof(grp_data), the size of the
+pointer. Native malloc rounds that up to enough room for the struct, but in
+wasm32 it is 4 of the 12 bytes the struct needs, and the rest overwrites the
+heap: condensed labels came out as "(null)".
+
+diff --git a/src/condense.c b/src/condense.c
+index 596002d..9b89eff 100755
+--- a/src/condense.c
++++ b/src/condense.c
+@@ -271,7 +271,7 @@ void collapse_by_groups(struct rooted_tree *tree, struct hash *group_map)
+ 
+ 	for (el = tree->nodes_in_order->head; NULL != el; el = el->next) {
+ 		struct rnode *current = el->data;
+-		grp_data = malloc(sizeof(grp_data));
++		grp_data = malloc(sizeof(*grp_data));
+ 		if (NULL == grp_data) { perror(NULL); exit (EXIT_FAILURE); }
+ 		current->data = grp_data;
+ 
