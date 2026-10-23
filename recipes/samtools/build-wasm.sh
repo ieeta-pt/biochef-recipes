@@ -12,7 +12,6 @@ cat > htslib-src/config.h <<'EOF_CONFIG'
 #endif
 #define HAVE_DRAND48 1
 EOF_CONFIG
-echo '/* zlib only, without curses */' > config.h
 VARS=(CC=emcc AR=emar RANLIB=emranlib CFLAGS="-O2 -sUSE_ZLIB=1" HTSDIR=htslib-src
       HTSLIB_LIB=htslib-src/libhts.a LIBS="-lz -lm" NONCONFIGURE_OBJS= CURSES_LIB=)
 emmake make -C htslib-src -j4 "${VARS[@]}" lib-static

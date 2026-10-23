@@ -12,7 +12,6 @@ cat > htslib-src/config.h <<'EOF_CONFIG'
 #endif
 #define HAVE_DRAND48 1
 EOF_CONFIG
-echo '/* zlib only, without curses */' > config.h
 VARS=(HTSDIR=htslib-src HTSLIB_LIB=htslib-src/libhts.a LIBS="-lz -lm" NONCONFIGURE_OBJS= CURSES_LIB=)
 make -C htslib-src -j4 "${VARS[@]}" lib-static
 make -j4 "${VARS[@]}" samtools
