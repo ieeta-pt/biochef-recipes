@@ -23,6 +23,7 @@ status: experimental
 build:
   wasm:
     strategy: emscripten
+    patches: [patches/biochef-entry-point.patch]
     emscripten:
       outputDir: core/out
       emscriptenVersion: 4.0.18
