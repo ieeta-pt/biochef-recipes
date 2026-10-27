@@ -1,0 +1,162 @@
+The k-mer walks of the genomes and of the reference stopped one k-mer short
+(`pos < length - keylen`), so the last k-mer of each sequence was never
+seen, and a k-mer shared only there passed for unique. After a base other
+than A, C, G or T, `continue` moved one base further than the k-mer it had
+rebuilt, so every later k-mer of that sequence missed a base. A sequence
+whose k-mers all held such a base made `return` skip every later sequence.
+Walk each sequence once instead, restarting the k-mer after any other base.
+
+The output walk had the same bound, and for a genome shorter than k its
+unsigned subtraction wrapped, so substr threw past the end and the run
+aborted.
+
+A hit of a seed too near either end of a reference contig for the whole
+k-mer stopped the check of that seed's other hits, so k-mers that map
+elsewhere in the reference were kept.
+
+diff --git a/src/genomes.cpp b/src/genomes.cpp
+index 4bafda0..66390e7 100644
+--- a/src/genomes.cpp
++++ b/src/genomes.cpp
+@@ -131,44 +131,21 @@ void Genomes::filterReferenceGenome() {
+ 
+     for(int c = 0; c < allseq.size(); c++) {
+         cerr << (c+1) << "/" << allseq.size() << ": " << allname[c] <<  endl;
+-        string seq = allseq[c];
+-        uint32 start = 0;
+-        bool valid;
+-        uint64 key = Kmer::seq2uint64(seq, start, keylen-1, valid);
+-        while(valid == false) {
+-            start++;
+-            key = Kmer::seq2uint64(seq, start, keylen-1, valid);
+-            // reach the tail
+-            if(start >= seq.length() - keylen)
+-                return;
+-        }
+-        for(uint32 pos = start; pos < seq.length() - keylen; pos++) {
+-            key = (key << 2);
+-            switch(seq[pos + keylen-1]) {
+-                case 'A': key += 0; break;
+-                case 'T': key += 1; break;
+-                case 'C': key += 2; break;
+-                case 'G': key += 3; break;
+-                case 'N':
+-                default:
+-                    // we have to skip the segments covering this N
+-                    pos++;
+-                    bool outterBreak = false;
+-                    key = Kmer::seq2uint64(seq, pos, keylen-1, valid);
+-                    while(valid == false) {
+-                        pos++;
+-                        key = Kmer::seq2uint64(seq, pos, keylen-1, valid);
+-                        // reach the tail
+-                        if(pos >= seq.length() - keylen) {
+-                            outterBreak = true;
+-                            break;
+-                        }
+-                    }
+-                    if(outterBreak)
+-                        break;
+-
+-                    continue;
++        string& seq = allseq[c];
++        uint64 key = 0;
++        uint32 run = 0;
++        for(uint32 end = 0; end < seq.length(); end++) {
++            switch(seq[end]) {
++                case 'A': key = (key << 2) + 0; break;
++                case 'T': key = (key << 2) + 1; break;
++                case 'C': key = (key << 2) + 2; break;
++                case 'G': key = (key << 2) + 3; break;
++                default: key = 0; run = 0; continue;
+             }
++            if(++run < (uint32)keylen)
++                continue;
++            uint32 pos = end + 1 - keylen;
++            (void)pos;
+             key = (key << blankBits) >> blankBits;
+ 
+             uint32 key32 = (uint32)key;
+@@ -251,7 +228,7 @@ void Genomes::filterReferenceGenome() {
+                             uint16 ctg = cp.contig;
+                             int compStart = pos - (mOptions->kmerKeyLen - keylen - offset);
+                             if(compStart <0 || compStart + mOptions->kmerKeyLen > allseq[ctg].size())
+-                                break;
++                                continue;
+ 
+                             /*if(debug) {
+                                 cerr << "compStart: " << compStart <<  endl;
+@@ -313,51 +290,20 @@ void Genomes::buildKmerTable(bool reversed) {
+         cerr << (i+1) << "/" << mGenomeNum << ": " << mNames[i] <<  endl;
+         if(seq.length() < keylen)
+             continue;
+-        // first calculate the first keylen-1 kmer
+-        uint32 start = 0;
+-        uint64 key = Kmer::seq2uint64(seq, start, keylen-1, valid);
+-        while(valid == false) {
+-            start++;
+-            key = Kmer::seq2uint64(seq, start, keylen-1, valid);
+-            // reach the tail
+-            if(start >= seq.length() - keylen)
+-                return;
+-        }
+-        for(uint32 pos = start; pos < seq.length() - keylen; pos++) {
+-            key = (key << 2);
+-            switch(seq[pos + keylen-1]) {
+-                case 'A':
+-                    key += 0;
+-                    break;
+-                case 'T':
+-                    key += 1;
+-                    break;
+-                case 'C':
+-                    key += 2;
+-                    break;
+-                case 'G':
+-                    key += 3;
+-                    break;
+-                case 'N':
+-                default:
+-                    // we have to skip the segments covering this N
+-                    pos++;
+-                    bool outterBreak = false;
+-                    key = Kmer::seq2uint64(seq, pos, keylen-1, valid);
+-                    while(valid == false) {
+-                        pos++;
+-                        key = Kmer::seq2uint64(seq, pos, keylen-1, valid);
+-                        // reach the tail
+-                        if(pos >= seq.length() - keylen) {
+-                            outterBreak = true;
+-                            break;
+-                        }
+-                    }
+-                    if(outterBreak)
+-                        break;
+-
+-                    continue;
++        uint64 key = 0;
++        uint32 run = 0;
++        for(uint32 end = 0; end < seq.length(); end++) {
++            switch(seq[end]) {
++                case 'A': key = (key << 2) + 0; break;
++                case 'T': key = (key << 2) + 1; break;
++                case 'C': key = (key << 2) + 2; break;
++                case 'G': key = (key << 2) + 3; break;
++                default: key = 0; run = 0; continue;
+             }
++            if(++run < (uint32)keylen)
++                continue;
++            uint32 pos = end + 1 - keylen;
++            (void)pos;
+             key = (key << blankBits) >> blankBits;
+             addKmer(key, i, reversed);
+         }
+@@ -408,7 +354,7 @@ string Genomes::outputKmer(int id, string& path, string& kmerFilename, int& coun
+         }
+     } else {
+         string& genome = mSequences[id];
+-        for(int pos=0; pos<genome.length() - mOptions->kmerKeyLen; pos++) {
++        for(int pos=0; pos + mOptions->kmerKeyLen <= (int)genome.length(); pos++) {
+             string seq = genome.substr(pos, mOptions->kmerKeyLen);
+             setiter = mUniqueKmers[id].find(seq);
+             if(setiter != mUniqueKmers[id].end()) {
