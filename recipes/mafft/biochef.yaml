@@ -1,0 +1,771 @@
+apiVersion: v1
+
+id: app.biochef.mafft
+name: MAFFT
+description: "MAFFT multiple sequence alignment. The mafft script, which picks a strategy and chains its programs, does not run in the browser, so each strategy is an operation here, running the program the script runs with the arguments it gives it. Strategies the script runs in several programs are several operations, chained in a workflow: L-INS-i, G-INS-i or E-INS-i then Refine (INS-i); FFT-NS-2 or NW-NS-2, Distances for Refinement and Refine (FFT-NS-i) for FFT-NS-i and NW-NS-i; the two PartTree steps; and the three steps of adding fragments, long or full-length sequences. Each operation gives the same result as mafft 7.471."
+
+version: 7.471-bc.1
+homepage: https://mafft.cbrc.jp/alignment/software/
+license:
+  spdx: BSD-3-Clause
+  files: [license]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/GSLBiotech/mafft
+  tag: "7.471-without-extensions-msvc"
+  version: "7.471"
+  commit: "26ecaba0130b533cf06a29200f0fb40829c00101"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    patches: [patches/biochef-entry-point.patch]
+    emscripten:
+      outputDir: core/out
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+
+runtime:
+  modes: [wasm]
+
+operations:
+  - id: mafft.fftns2
+    name: Align with FFT-NS-2 (MAFFT)
+    category: Sequence Analysis
+    bin: disttbfast
+    description: Fast progressive alignment with two rounds of guide tree building, the default of MAFFT, as mafft runs it. For FFT-NS-i or NW-NS-i, follow it with Distances for Refinement and Refine (FFT-NS-i).
+    io:
+      inputs:
+        - { name: sequences, types: [Multi-FASTA, FASTA], mode: file, flag: --bc-in }
+      outputs:
+        - { name: alignment, types: [Multi-FASTA, FASTA], mode: stdout }
+    parameters:
+      - { name: fixed_q, type: string, flag: -q, default: "0", required: true, hidden: true }
+      - { name: fixed_e_upper, type: string, flag: -E, default: "2", required: true, hidden: true }
+      - { name: gap_opening_distances, type: float, flag: -V, default: -1.53, required: true }
+      - { name: fixed_s, type: string, flag: -s, default: "0.0", required: true, hidden: true }
+      - { name: fixed_w_upper, type: string, flag: -W, default: "6", required: true, hidden: true }
+      - { name: fixed_o_upper, type: flag, flag: -O, required: true, hidden: true }
+      - { name: fixed_c_upper, type: string, flag: -C, default: "0-0", required: true, hidden: true }
+      - { name: fixed_b, type: string, flag: -b, default: "62", required: true, hidden: true }
+      - { name: fixed_g, type: string, flag: -g, default: "0", required: true, hidden: true }
+      - { name: gap_opening, type: float, flag: -f, default: -1.53, required: true }
+      - { name: fixed_q_upper, type: string, flag: -Q, default: "100.0", required: true, hidden: true }
+      - { name: fixed_h, type: string, flag: -h, default: "0", required: true, hidden: true }
+      - { name: fixed_f_upper, type: flag, flag: -F, required: true, hidden: true }
+      - { name: fixed_x_upper, type: string, flag: -X, default: "0.1", required: true, hidden: true }
+      - { name: fixed_x, type: string, flag: -x, default: "1000", required: true, hidden: true }
+
+  - id: mafft.fftns1
+    name: Align with FFT-NS-1 (MAFFT)
+    category: Sequence Analysis
+    bin: disttbfast
+    description: Very fast progressive alignment with one round of guide tree building, as mafft --retree 1 runs it. For FFT-NS-i or NW-NS-i, follow it with Distances for Refinement and Refine (FFT-NS-i).
+    io:
+      inputs:
+        - { name: sequences, types: [Multi-FASTA, FASTA], mode: file, flag: --bc-in }
+      outputs:
+        - { name: alignment, types: [Multi-FASTA, FASTA], mode: stdout }
+    parameters:
+      - { name: fixed_q, type: string, flag: -q, default: "0", required: true, hidden: true }
+      - { name: fixed_e_upper, type: string, flag: -E, default: "1", required: true, hidden: true }
+      - { name: gap_opening_distances, type: float, flag: -V, default: -1.53, required: true }
+      - { name: fixed_s, type: string, flag: -s, default: "0.0", required: true, hidden: true }
+      - { name: fixed_w_upper, type: string, flag: -W, default: "6", required: true, hidden: true }
+      - { name: fixed_o_upper, type: flag, flag: -O, required: true, hidden: true }
+      - { name: fixed_c_upper, type: string, flag: -C, default: "0-0", required: true, hidden: true }
+      - { name: fixed_b, type: string, flag: -b, default: "62", required: true, hidden: true }
+      - { name: fixed_g, type: string, flag: -g, default: "0", required: true, hidden: true }
+      - { name: gap_opening, type: float, flag: -f, default: -1.53, required: true }
+      - { name: fixed_q_upper, type: string, flag: -Q, default: "100.0", required: true, hidden: true }
+      - { name: fixed_h, type: string, flag: -h, default: "0", required: true, hidden: true }
+      - { name: fixed_f_upper, type: flag, flag: -F, required: true, hidden: true }
+      - { name: fixed_x_upper, type: string, flag: -X, default: "0.1", required: true, hidden: true }
+      - { name: fixed_x, type: string, flag: -x, default: "1000", required: true, hidden: true }
+
+  - id: mafft.nwns2
+    name: Align with NW-NS-2 (MAFFT)
+    category: Sequence Analysis
+    bin: disttbfast
+    description: Progressive alignment like FFT-NS-2, without the FFT approximation, as mafft --nofft runs it. For FFT-NS-i or NW-NS-i, follow it with Distances for Refinement and Refine (FFT-NS-i).
+    io:
+      inputs:
+        - { name: sequences, types: [Multi-FASTA, FASTA], mode: file, flag: --bc-in }
+      outputs:
+        - { name: alignment, types: [Multi-FASTA, FASTA], mode: stdout }
+    parameters:
+      - { name: fixed_q, type: string, flag: -q, default: "0", required: true, hidden: true }
+      - { name: fixed_e_upper, type: string, flag: -E, default: "2", required: true, hidden: true }
+      - { name: gap_opening_distances, type: float, flag: -V, default: -1.53, required: true }
+      - { name: fixed_s, type: string, flag: -s, default: "0.0", required: true, hidden: true }
+      - { name: fixed_w_upper, type: string, flag: -W, default: "6", required: true, hidden: true }
+      - { name: fixed_o_upper, type: flag, flag: -O, required: true, hidden: true }
+      - { name: fixed_c_upper, type: string, flag: -C, default: "0-0", required: true, hidden: true }
+      - { name: fixed_b, type: string, flag: -b, default: "62", required: true, hidden: true }
+      - { name: fixed_g, type: string, flag: -g, default: "0", required: true, hidden: true }
+      - { name: gap_opening, type: float, flag: -f, default: -1.53, required: true }
+      - { name: fixed_q_upper, type: string, flag: -Q, default: "100.0", required: true, hidden: true }
+      - { name: fixed_h, type: string, flag: -h, default: "0", required: true, hidden: true }
+      - { name: fixed_x_upper, type: string, flag: -X, default: "0.1", required: true, hidden: true }
+      - { name: fixed_x, type: string, flag: -x, default: "1000", required: true, hidden: true }
+
+  - id: mafft.nwns1
+    name: Align with NW-NS-1 (MAFFT)
+    category: Sequence Analysis
+    bin: disttbfast
+    description: Progressive alignment like FFT-NS-1, without the FFT approximation, as mafft --nofft --retree 1 runs it. For FFT-NS-i or NW-NS-i, follow it with Distances for Refinement and Refine (FFT-NS-i).
+    io:
+      inputs:
+        - { name: sequences, types: [Multi-FASTA, FASTA], mode: file, flag: --bc-in }
+      outputs:
+        - { name: alignment, types: [Multi-FASTA, FASTA], mode: stdout }
+    parameters:
+      - { name: fixed_q, type: string, flag: -q, default: "0", required: true, hidden: true }
+      - { name: fixed_e_upper, type: string, flag: -E, default: "1", required: true, hidden: true }
+      - { name: gap_opening_distances, type: float, flag: -V, default: -1.53, required: true }
+      - { name: fixed_s, type: string, flag: -s, default: "0.0", required: true, hidden: true }
+      - { name: fixed_w_upper, type: string, flag: -W, default: "6", required: true, hidden: true }
+      - { name: fixed_o_upper, type: flag, flag: -O, required: true, hidden: true }
+      - { name: fixed_c_upper, type: string, flag: -C, default: "0-0", required: true, hidden: true }
+      - { name: fixed_b, type: string, flag: -b, default: "62", required: true, hidden: true }
+      - { name: fixed_g, type: string, flag: -g, default: "0", required: true, hidden: true }
+      - { name: gap_opening, type: float, flag: -f, default: -1.53, required: true }
+      - { name: fixed_q_upper, type: string, flag: -Q, default: "100.0", required: true, hidden: true }
+      - { name: fixed_h, type: string, flag: -h, default: "0", required: true, hidden: true }
+      - { name: fixed_x_upper, type: string, flag: -X, default: "0.1", required: true, hidden: true }
+      - { name: fixed_x, type: string, flag: -x, default: "1000", required: true, hidden: true }
+
+  - id: mafft.linsi
+    name: Align with L-INS-i, Step 1 of 2 (MAFFT)
+    category: Sequence Analysis
+    bin: tbfast
+    description: "First step of L-INS-i (mafft --localpair --maxiterate 1000): progressive alignment with iterative refinement, guided by local pairwise alignments with affine gap costs; the most accurate for sequences with one alignable domain. Finish it with Refine (INS-i), giving it this step's alignment, distances and local alignments."
+    io:
+      inputs:
+        - { name: sequences, types: [Multi-FASTA, FASTA], mode: file, flag: --bc-in }
+      outputs:
+        - { name: alignment, types: [Multi-FASTA, FASTA], mode: file, filename: "pre" }
+        - { name: distances, types: [MAFFT_HAT2], mode: file, filename: "hat2" }
+        - { name: local_alignments, types: [MAFFT_HAT3], mode: file, filename: "hat3" }
+    parameters:
+      - { name: pairwise_options, type: string, default: "_", required: true, hidden: true }
+      - { name: fixed_u, type: string, flag: -u, default: "0.0", required: true, hidden: true }
+      - { name: fixed_l, type: string, flag: -l, default: "2.7", required: true, hidden: true }
+      - { name: fixed_c_upper, type: string, flag: -C, default: "0", required: true, hidden: true }
+      - { name: fixed_b, type: string, flag: -b, default: "62", required: true, hidden: true }
+      - { name: fixed_g, type: string, flag: -g, default: "-0.100", required: true, hidden: true }
+      - { name: fixed_f, type: string, flag: -f, default: "-2.00", required: true, hidden: true }
+      - { name: fixed_q_upper, type: string, flag: -Q, default: "100.0", required: true, hidden: true }
+      - { name: fixed_h, type: string, flag: -h, default: "0.1", required: true, hidden: true }
+      - { name: fixed_l_upper, type: flag, flag: -L, required: true, hidden: true }
+      - { name: pairwise_options_2, type: string, default: "_", required: true, hidden: true }
+      - { name: max_iterations, type: integer, flag: -+, default: 16, required: true }
+      - { name: fixed_w_upper, type: string, flag: -W, default: "0.00001", required: true, hidden: true }
+      - { name: gap_opening_distances, type: float, flag: -V, default: -1.53, required: true }
+      - { name: fixed_s, type: string, flag: -s, default: "0.0", required: true, hidden: true }
+      - { name: fixed_o_upper, type: flag, flag: -O, required: true, hidden: true }
+      - { name: fixed_c_upper_2, type: string, flag: -C, default: "0", required: true, hidden: true }
+      - { name: fixed_b_2, type: string, flag: -b, default: "62", required: true, hidden: true }
+      - { name: gap_opening, type: float, flag: -f, default: -1.53, required: true }
+      - { name: fixed_q_upper_2, type: string, flag: -Q, default: "100.0", required: true, hidden: true }
+      - { name: fixed_h_2, type: string, flag: -h, default: "0", required: true, hidden: true }
+      - { name: fixed_f_upper, type: flag, flag: -F, required: true, hidden: true }
+      - { name: fixed_l_2, type: string, flag: -l, default: "2.7", required: true, hidden: true }
+      - { name: fixed_x_upper, type: string, flag: -X, default: "0.1", required: true, hidden: true }
+      - { name: output_hat2, type: string, flag: --bc-output, default: "hat2", required: true, hidden: true }
+      - { name: output_hat3, type: string, flag: --bc-output, default: "hat3", required: true, hidden: true }
+
+  - id: mafft.ginsi
+    name: Align with G-INS-i, Step 1 of 2 (MAFFT)
+    category: Sequence Analysis
+    bin: tbfast
+    description: "First step of G-INS-i (mafft --globalpair --maxiterate 1000): progressive alignment with iterative refinement, guided by global pairwise alignments; for sequences of similar length that align over their whole length. Finish it with Refine (INS-i), giving it this step's alignment, distances and local alignments."
+    io:
+      inputs:
+        - { name: sequences, types: [Multi-FASTA, FASTA], mode: file, flag: --bc-in }
+      outputs:
+        - { name: alignment, types: [Multi-FASTA, FASTA], mode: file, filename: "pre" }
+        - { name: distances, types: [MAFFT_HAT2], mode: file, filename: "hat2" }
+        - { name: local_alignments, types: [MAFFT_HAT3], mode: file, filename: "hat3" }
+    parameters:
+      - { name: pairwise_options, type: string, default: "_", required: true, hidden: true }
+      - { name: fixed_u, type: string, flag: -u, default: "0.0", required: true, hidden: true }
+      - { name: fixed_l, type: string, flag: -l, default: "2.7", required: true, hidden: true }
+      - { name: fixed_c_upper, type: string, flag: -C, default: "0", required: true, hidden: true }
+      - { name: fixed_b, type: string, flag: -b, default: "62", required: true, hidden: true }
+      - { name: fixed_g, type: string, flag: -g, default: "-0.10", required: true, hidden: true }
+      - { name: fixed_f, type: string, flag: -f, default: "-2.00", required: true, hidden: true }
+      - { name: fixed_q_upper, type: string, flag: -Q, default: "100.0", required: true, hidden: true }
+      - { name: fixed_h, type: string, flag: -h, default: "0.1", required: true, hidden: true }
+      - { name: fixed_a_upper, type: flag, flag: -A, required: true, hidden: true }
+      - { name: pairwise_options_2, type: string, default: "_", required: true, hidden: true }
+      - { name: max_iterations, type: integer, flag: -+, default: 16, required: true }
+      - { name: fixed_w_upper, type: string, flag: -W, default: "0.00001", required: true, hidden: true }
+      - { name: gap_opening_distances, type: float, flag: -V, default: -1.53, required: true }
+      - { name: fixed_s, type: string, flag: -s, default: "0.0", required: true, hidden: true }
+      - { name: fixed_c_upper_2, type: string, flag: -C, default: "0", required: true, hidden: true }
+      - { name: fixed_b_2, type: string, flag: -b, default: "62", required: true, hidden: true }
+      - { name: gap_opening, type: float, flag: -f, default: -1.53, required: true }
+      - { name: fixed_q_upper_2, type: string, flag: -Q, default: "100.0", required: true, hidden: true }
+      - { name: fixed_h_2, type: string, flag: -h, default: "0", required: true, hidden: true }
+      - { name: fixed_f_upper, type: flag, flag: -F, required: true, hidden: true }
+      - { name: fixed_l_2, type: string, flag: -l, default: "2.7", required: true, hidden: true }
+      - { name: fixed_x_upper, type: string, flag: -X, default: "0.1", required: true, hidden: true }
+      - { name: output_hat2, type: string, flag: --bc-output, default: "hat2", required: true, hidden: true }
+      - { name: output_hat3, type: string, flag: --bc-output, default: "hat3", required: true, hidden: true }
+
+  - id: mafft.einsi
+    name: Align with E-INS-i, Step 1 of 2 (MAFFT)
+    category: Sequence Analysis
+    bin: tbfast
+    description: "First step of E-INS-i (mafft --genafpair --maxiterate 1000): progressive alignment with iterative refinement, guided by local pairwise alignments with generalized affine gap costs; for sequences with several conserved domains in long unalignable regions. Finish it with Refine (INS-i), giving it this step's alignment, distances and local alignments."
+    io:
+      inputs:
+        - { name: sequences, types: [Multi-FASTA, FASTA], mode: file, flag: --bc-in }
+      outputs:
+        - { name: alignment, types: [Multi-FASTA, FASTA], mode: file, filename: "pre" }
+        - { name: distances, types: [MAFFT_HAT2], mode: file, filename: "hat2" }
+        - { name: local_alignments, types: [MAFFT_HAT3], mode: file, filename: "hat3" }
+    parameters:
+      - { name: pairwise_options, type: string, default: "_", required: true, hidden: true }
+      - { name: fixed_u, type: string, flag: -u, default: "0.0", required: true, hidden: true }
+      - { name: fixed_l, type: string, flag: -l, default: "2.7", required: true, hidden: true }
+      - { name: fixed_c_upper, type: string, flag: -C, default: "0", required: true, hidden: true }
+      - { name: fixed_b, type: string, flag: -b, default: "62", required: true, hidden: true }
+      - { name: fixed_g, type: string, flag: -g, default: "0.0", required: true, hidden: true }
+      - { name: fixed_f, type: string, flag: -f, default: "-2.00", required: true, hidden: true }
+      - { name: fixed_q_upper, type: string, flag: -Q, default: "100.0", required: true, hidden: true }
+      - { name: fixed_h, type: string, flag: -h, default: "0.0", required: true, hidden: true }
+      - { name: fixed_o_upper, type: string, flag: -O, default: "-6.00", required: true, hidden: true }
+      - { name: fixed_e_upper, type: string, flag: -E, default: "-0.000", required: true, hidden: true }
+      - { name: fixed_n_upper, type: flag, flag: -N, required: true, hidden: true }
+      - { name: fixed_z_upper, type: flag, flag: -Z, required: true, hidden: true }
+      - { name: pairwise_options_2, type: string, default: "_", required: true, hidden: true }
+      - { name: max_iterations, type: integer, flag: -+, default: 16, required: true }
+      - { name: fixed_w_upper, type: string, flag: -W, default: "0.00001", required: true, hidden: true }
+      - { name: gap_opening_distances, type: float, flag: -V, default: -1.53, required: true }
+      - { name: fixed_s, type: string, flag: -s, default: "0.0", required: true, hidden: true }
+      - { name: fixed_o_upper_2, type: flag, flag: -O, required: true, hidden: true }
+      - { name: fixed_c_upper_2, type: string, flag: -C, default: "0", required: true, hidden: true }
+      - { name: fixed_b_2, type: string, flag: -b, default: "62", required: true, hidden: true }
+      - { name: gap_opening, type: float, flag: -f, default: -1.53, required: true }
+      - { name: fixed_q_upper_2, type: string, flag: -Q, default: "100.0", required: true, hidden: true }
+      - { name: fixed_h_2, type: string, flag: -h, default: "0.000", required: true, hidden: true }
+      - { name: fixed_f_upper, type: flag, flag: -F, required: true, hidden: true }
+      - { name: fixed_l_2, type: string, flag: -l, default: "2.7", required: true, hidden: true }
+      - { name: fixed_x_upper, type: string, flag: -X, default: "0.1", required: true, hidden: true }
+      - { name: output_hat2, type: string, flag: --bc-output, default: "hat2", required: true, hidden: true }
+      - { name: output_hat3, type: string, flag: --bc-output, default: "hat3", required: true, hidden: true }
+
+  - id: mafft.refine.insi
+    name: Refine (INS-i), Step 2 of 2 (MAFFT)
+    category: Sequence Analysis
+    bin: dvtditr
+    description: "Second step of L-INS-i, G-INS-i and E-INS-i: iterative refinement of the alignment from Step 1, using the distances and local alignments that step wrote. The distances and local alignments must come from the same run as the alignment."
+    io:
+      inputs:
+        - { name: alignment, types: [Multi-FASTA, FASTA], mode: file, flag: --bc-in }
+        - { name: distances, types: [MAFFT_HAT2], mode: file, flag: --bc-hat2 }
+        - { name: local_alignments, types: [MAFFT_HAT3], mode: file, flag: --bc-hat3 }
+      outputs:
+        - { name: alignment, types: [Multi-FASTA, FASTA], mode: file, filename: "pre" }
+    parameters:
+      - { name: fixed_w_upper, type: string, flag: -W, default: "0.00001", required: true, hidden: true }
+      - { name: fixed_e_upper, type: string, flag: -E, default: "0.0", required: true, hidden: true }
+      - { name: fixed_s, type: string, flag: -s, default: "0.0", required: true, hidden: true }
+      - { name: fixed_c_upper, type: string, flag: -C, default: "0", required: true, hidden: true }
+      - { name: fixed_t, type: string, flag: -t, default: "0", required: true, hidden: true }
+      - { name: fixed_f_upper, type: flag, flag: -F, required: true, hidden: true }
+      - { name: fixed_l, type: string, flag: -l, default: "2.7", required: true, hidden: true }
+      - { name: fixed_z, type: string, flag: -z, default: "50", required: true, hidden: true }
+      - { name: fixed_b, type: string, flag: -b, default: "62", required: true, hidden: true }
+      - { name: gap_opening, type: float, flag: -f, default: -1.53, required: true }
+      - { name: fixed_q_upper, type: string, flag: -Q, default: "100.0", required: true, hidden: true }
+      - { name: fixed_h, type: string, flag: -h, default: "0", required: true, hidden: true }
+      - { name: max_iterations, type: integer, flag: -I, default: 16, required: true }
+      - { name: fixed_x_upper, type: string, flag: -X, default: "0.1", required: true, hidden: true }
+      - { name: fixed_p, type: string, flag: -p, default: "BAATARI2", required: true, hidden: true }
+      - { name: fixed_k_upper, type: string, flag: -K, default: "0", required: true, hidden: true }
+
+  - id: mafft.refine.distances
+    name: Distances for Refinement (MAFFT)
+    category: Sequence Analysis
+    bin: dndpre
+    description: Distances between the sequences of an alignment from FFT-NS-2 or NW-NS-2, which Refine (FFT-NS-i) needs. Together they make FFT-NS-i (mafft --maxiterate 1000) or NW-NS-i (mafft --nofft --maxiterate 2, with 2 iterations).
+    io:
+      inputs:
+        - { name: alignment, types: [Multi-FASTA, FASTA], mode: file, flag: --bc-in }
+      outputs:
+        - { name: distances, types: [MAFFT_HAT2], mode: file, filename: "hat2" }
+    parameters:
+      - { name: fixed_b, type: string, flag: -b, default: "62", required: true, hidden: true }
+      - { name: fixed_m_upper, type: string, flag: -M, default: "2", required: true, hidden: true }
+      - { name: fixed_c_upper, type: string, flag: -C, default: "0", required: true, hidden: true }
+      - { name: output_hat2, type: string, flag: --bc-output, default: "hat2", required: true, hidden: true }
+
+  - id: mafft.refine.fftnsi
+    name: Refine (FFT-NS-i) (MAFFT)
+    category: Sequence Analysis
+    bin: dvtditr
+    description: Iterative refinement of an alignment from FFT-NS-2 or NW-NS-2, using the distances from Distances for Refinement on that alignment. This is the last step of FFT-NS-i (16 iterations) and NW-NS-i (2 iterations).
+    io:
+      inputs:
+        - { name: alignment, types: [Multi-FASTA, FASTA], mode: file, flag: --bc-in }
+        - { name: distances, types: [MAFFT_HAT2], mode: file, flag: --bc-hat2 }
+      outputs:
+        - { name: alignment, types: [Multi-FASTA, FASTA], mode: file, filename: "pre" }
+    parameters:
+      - { name: fixed_w_upper, type: string, flag: -W, default: "0.00001", required: true, hidden: true }
+      - { name: fixed_e_upper, type: string, flag: -E, default: "0.0", required: true, hidden: true }
+      - { name: fixed_s, type: string, flag: -s, default: "0.0", required: true, hidden: true }
+      - { name: fixed_c_upper, type: string, flag: -C, default: "0", required: true, hidden: true }
+      - { name: fixed_t, type: string, flag: -t, default: "0", required: true, hidden: true }
+      - { name: fixed_f_upper, type: flag, flag: -F, required: true, hidden: true }
+      - { name: fixed_z, type: string, flag: -z, default: "50", required: true, hidden: true }
+      - { name: fixed_b, type: string, flag: -b, default: "62", required: true, hidden: true }
+      - { name: gap_opening, type: float, flag: -f, default: -1.53, required: true }
+      - { name: fixed_q_upper, type: string, flag: -Q, default: "100.0", required: true, hidden: true }
+      - { name: fixed_h, type: string, flag: -h, default: "0", required: true, hidden: true }
+      - { name: max_iterations, type: integer, flag: -I, default: 16, required: true }
+      - { name: fixed_x_upper, type: string, flag: -X, default: "0.1", required: true, hidden: true }
+      - { name: fixed_p, type: string, flag: -p, default: "BAATARI2", required: true, hidden: true }
+      - { name: fixed_k_upper, type: string, flag: -K, default: "0", required: true, hidden: true }
+
+  - id: mafft.parttree
+    name: Align with PartTree, Step 1 of 2 (MAFFT)
+    category: Sequence Analysis
+    bin: splittbfast
+    description: "First step of PartTree (mafft --parttree), for tens of thousands of sequences: a guide tree from a few sequences instead of all pairs. Finish it with Align with PartTree, Step 2, given this alignment."
+    io:
+      inputs:
+        - { name: sequences, types: [Multi-FASTA, FASTA], mode: file, flag: -i }
+      outputs:
+        - { name: alignment, types: [Multi-FASTA, FASTA], mode: stdout }
+    parameters:
+      - { name: fixed_x, type: flag, flag: -x, required: true, hidden: true }
+      - { name: fixed_b, type: string, flag: -b, default: "62", required: true, hidden: true }
+      - { name: gap_opening, type: float, flag: -f, default: -1.53, required: true }
+      - { name: fixed_q_upper, type: string, flag: -Q, default: "100.0", required: true, hidden: true }
+      - { name: fixed_h, type: string, flag: -h, default: "0", required: true, hidden: true }
+      - { name: fixed_p, type: string, flag: -p, default: "50", required: true, hidden: true }
+      - { name: fixed_s, type: string, flag: -s, default: "-1", required: true, hidden: true }
+      - { name: fixed_x_upper, type: string, flag: -X, default: "0.1", required: true, hidden: true }
+
+  - id: mafft.parttree.step2
+    name: Align with PartTree, Step 2 of 2 (MAFFT)
+    category: Sequence Analysis
+    bin: splittbfast
+    description: "Second step of PartTree (mafft --parttree): realigns the alignment from Step 1 along a guide tree built from it."
+    io:
+      inputs:
+        - { name: alignment, types: [Multi-FASTA, FASTA], mode: file, flag: -i }
+      outputs:
+        - { name: alignment, types: [Multi-FASTA, FASTA], mode: stdout }
+    parameters:
+      - { name: fixed_z_upper, type: flag, flag: -Z, required: true, hidden: true }
+      - { name: fixed_x, type: flag, flag: -x, required: true, hidden: true }
+      - { name: fixed_b, type: string, flag: -b, default: "62", required: true, hidden: true }
+      - { name: gap_opening, type: float, flag: -f, default: -1.53, required: true }
+      - { name: fixed_q_upper, type: string, flag: -Q, default: "100.0", required: true, hidden: true }
+      - { name: fixed_h, type: string, flag: -h, default: "0", required: true, hidden: true }
+      - { name: fixed_p, type: string, flag: -p, default: "50", required: true, hidden: true }
+      - { name: fixed_s, type: string, flag: -s, default: "-1", required: true, hidden: true }
+      - { name: fixed_x_upper, type: string, flag: -X, default: "0.1", required: true, hidden: true }
+
+  - id: mafft.dpparttree
+    name: Align with DPPartTree (MAFFT)
+    category: Sequence Analysis
+    bin: splittbfast
+    description: "DPPartTree (mafft --dpparttree): like PartTree, with distances from dynamic programming instead of 6-mers; slower and more accurate."
+    io:
+      inputs:
+        - { name: sequences, types: [Multi-FASTA, FASTA], mode: file, flag: -i }
+      outputs:
+        - { name: alignment, types: [Multi-FASTA, FASTA], mode: stdout }
+    parameters:
+      - { name: fixed_u_upper, type: flag, flag: -U, required: true, hidden: true }
+      - { name: fixed_x, type: flag, flag: -x, required: true, hidden: true }
+      - { name: fixed_b, type: string, flag: -b, default: "62", required: true, hidden: true }
+      - { name: gap_opening, type: float, flag: -f, default: -1.53, required: true }
+      - { name: fixed_q_upper, type: string, flag: -Q, default: "100.0", required: true, hidden: true }
+      - { name: fixed_h, type: string, flag: -h, default: "0", required: true, hidden: true }
+      - { name: fixed_p, type: string, flag: -p, default: "50", required: true, hidden: true }
+      - { name: fixed_s, type: string, flag: -s, default: "-1", required: true, hidden: true }
+      - { name: fixed_x_upper, type: string, flag: -X, default: "0.1", required: true, hidden: true }
+
+  - id: mafft.add
+    name: Add Sequences (MAFFT)
+    category: Sequence Analysis
+    bin: disttbfast
+    description: Add new sequences to an existing alignment (mafft --add), aligning them with FFT-NS-2. With keep_length (--keeplength), the columns of the alignment are kept and insertions in the new sequences are deleted.
+    io:
+      inputs:
+        - { name: alignment, types: [Multi-FASTA, FASTA], mode: file, flag: --bc-in }
+        - { name: new_sequences, types: [FASTA, Multi-FASTA], mode: file, flag: --bc-add }
+      outputs:
+        - { name: alignment, types: [Multi-FASTA, FASTA], mode: stdout }
+    parameters:
+      - { name: fixed_q, type: string, flag: -q, default: "0", required: true, hidden: true }
+      - { name: fixed_e_upper, type: string, flag: -E, default: "2", required: true, hidden: true }
+      - { name: gap_opening_distances, type: float, flag: -V, default: -1.53, required: true }
+      - { name: fixed_s, type: string, flag: -s, default: "0.0", required: true, hidden: true }
+      - { name: fixed_w_upper, type: string, flag: -W, default: "6", required: true, hidden: true }
+      - { name: fixed_o_upper, type: flag, flag: -O, required: true, hidden: true }
+      - { name: fixed_k_upper, type: flag, flag: -K, required: true, hidden: true }
+      - { name: fixed_c_upper, type: string, flag: -C, default: "0-0", required: true, hidden: true }
+      - { name: fixed_b, type: string, flag: -b, default: "62", required: true, hidden: true }
+      - { name: fixed_g, type: string, flag: -g, default: "0", required: true, hidden: true }
+      - { name: gap_opening, type: float, flag: -f, default: -1.53, required: true }
+      - { name: fixed_q_upper, type: string, flag: -Q, default: "100.0", required: true, hidden: true }
+      - { name: fixed_h, type: string, flag: -h, default: "0", required: true, hidden: true }
+      - { name: fixed_f_upper, type: flag, flag: -F, required: true, hidden: true }
+      - { name: fixed_x_upper, type: string, flag: -X, default: "0.1", required: true, hidden: true }
+      - { name: fixed_x, type: string, flag: -x, default: "1000", required: true, hidden: true }
+      - { name: keep_length, type: flag, flag: -Y }
+
+  - id: mafft.addfragments.fast
+    name: Add Fragments, Fast (MAFFT)
+    category: Sequence Analysis
+    bin: addsingle
+    description: Add fragments, such as reads or partial sequences, to an existing alignment, placing each against the alignment without realigning it (mafft --addfragments --6merpair). Uses 6-mer distances; for the more accurate local alignments, use the three Add Fragments steps.
+    io:
+      inputs:
+        - { name: alignment, types: [Multi-FASTA, FASTA], mode: file, flag: --bc-in }
+        - { name: new_sequences, types: [FASTA, Multi-FASTA], mode: file, flag: --bc-add }
+      outputs:
+        - { name: alignment, types: [Multi-FASTA, FASTA], mode: file, filename: "pre" }
+    parameters:
+      - { name: fixed_q_upper, type: string, flag: -Q, default: "100", required: true, hidden: true }
+      - { name: fixed_w_upper, type: string, flag: -W, default: "6", required: true, hidden: true }
+      - { name: fixed_o_upper, type: flag, flag: -O, required: true, hidden: true }
+      - { name: fixed_k_upper, type: flag, flag: -K, required: true, hidden: true }
+      - { name: fixed_g, type: string, flag: -g, default: "-0.01", required: true, hidden: true }
+      - { name: fixed_c_upper, type: string, flag: -C, default: "0", required: true, hidden: true }
+      - { name: fixed_b, type: string, flag: -b, default: "62", required: true, hidden: true }
+      - { name: gap_opening, type: float, flag: -f, default: -1.53, required: true }
+      - { name: fixed_h, type: string, flag: -h, default: "0", required: true, hidden: true }
+      - { name: fixed_f_upper, type: flag, flag: -F, required: true, hidden: true }
+      - { name: fixed_x_upper, type: string, flag: -X, default: "0.1", required: true, hidden: true }
+
+  - id: mafft.addfragments.distances
+    name: "Add Fragments, Step 1 of 3: Distances (MAFFT)"
+    category: Sequence Analysis
+    bin: dndpre
+    description: "First step of mafft --addfragments: distances between the sequences of the alignment."
+    io:
+      inputs:
+        - { name: alignment, types: [Multi-FASTA, FASTA], mode: file, flag: --bc-in }
+        - { name: new_sequences, types: [FASTA, Multi-FASTA], mode: file, flag: --bc-add }
+      outputs:
+        - { name: distances, types: [MAFFT_HAT2], mode: file, filename: "hat2" }
+    parameters:
+      - { name: fixed_b, type: string, flag: -b, default: "62", required: true, hidden: true }
+      - { name: fixed_m_upper, type: string, flag: -M, default: "2", required: true, hidden: true }
+      - { name: fixed_k_upper, type: flag, flag: -K, required: true, hidden: true }
+      - { name: fixed_g, type: string, flag: -g, default: "-0.01", required: true, hidden: true }
+      - { name: fixed_c_upper, type: string, flag: -C, default: "0", required: true, hidden: true }
+      - { name: fixed_b_2, type: string, flag: -b, default: "62", required: true, hidden: true }
+      - { name: fixed_g_2, type: string, flag: -g, default: "-0.100", required: true, hidden: true }
+      - { name: fixed_f, type: string, flag: -f, default: "-2.00", required: true, hidden: true }
+      - { name: fixed_h, type: string, flag: -h, default: "0.1", required: true, hidden: true }
+      - { name: output_hat2, type: string, flag: --bc-output, default: "hat2", required: true, hidden: true }
+
+  - id: mafft.addfragments.local
+    name: "Add Fragments, Step 2 of 3: Local Alignments (MAFFT)"
+    category: Sequence Analysis
+    bin: pairlocalalign
+    description: "Second step of mafft --addfragments: local alignments of the new sequences against the alignment, and the distances between all of them."
+    io:
+      inputs:
+        - { name: alignment, types: [Multi-FASTA, FASTA], mode: file, flag: --bc-in }
+        - { name: new_sequences, types: [FASTA, Multi-FASTA], mode: file, flag: --bc-add }
+      outputs:
+        - { name: distances, types: [MAFFT_HAT2], mode: file, filename: "hat2" }
+        - { name: local_alignments, types: [MAFFT_HAT3], mode: file, filename: "hat3" }
+    parameters:
+      - { name: fixed_l, type: string, flag: -l, default: "2.7", required: true, hidden: true }
+      - { name: fixed_k_upper, type: flag, flag: -K, required: true, hidden: true }
+      - { name: fixed_g, type: string, flag: -g, default: "-0.01", required: true, hidden: true }
+      - { name: fixed_c_upper, type: string, flag: -C, default: "0", required: true, hidden: true }
+      - { name: fixed_b, type: string, flag: -b, default: "62", required: true, hidden: true }
+      - { name: fixed_g_2, type: string, flag: -g, default: "-0.100", required: true, hidden: true }
+      - { name: fixed_f, type: string, flag: -f, default: "-2.00", required: true, hidden: true }
+      - { name: fixed_q_upper, type: string, flag: -Q, default: "100.0", required: true, hidden: true }
+      - { name: fixed_h, type: string, flag: -h, default: "0.1", required: true, hidden: true }
+      - { name: fixed_y_upper, type: flag, flag: -Y, required: true, hidden: true }
+      - { name: output_hat2, type: string, flag: --bc-output, default: "hat2", required: true, hidden: true }
+      - { name: output_hat3, type: string, flag: --bc-output, default: "hat3", required: true, hidden: true }
+
+  - id: mafft.addfragments
+    name: Add Fragments, Step 3 of 3 (MAFFT)
+    category: Sequence Analysis
+    bin: addsingle
+    description: "Last step of mafft --addfragments: adds fragments, such as reads or partial sequences, to the alignment, using the distances from Step 1 (alignment_distances), and the distances and local alignments from Step 2 (all_distances, local_alignments). All must come from the same alignment and new sequences."
+    io:
+      inputs:
+        - { name: alignment, types: [Multi-FASTA, FASTA], mode: file, flag: --bc-in }
+        - { name: new_sequences, types: [FASTA, Multi-FASTA], mode: file, flag: --bc-add }
+        - { name: alignment_distances, types: [MAFFT_HAT2], mode: file, flag: --bc-hat2i }
+        - { name: all_distances, types: [MAFFT_HAT2], mode: file, flag: --bc-hat2n }
+        - { name: local_alignments, types: [MAFFT_HAT3], mode: file, flag: --bc-hat3 }
+      outputs:
+        - { name: alignment, types: [Multi-FASTA, FASTA], mode: file, filename: "pre" }
+    parameters:
+      - { name: fixed_q_upper, type: string, flag: -Q, default: "100", required: true, hidden: true }
+      - { name: fixed_d, type: flag, flag: -d, required: true, hidden: true }
+      - { name: fixed_o_upper, type: flag, flag: -O, required: true, hidden: true }
+      - { name: fixed_k_upper, type: flag, flag: -K, required: true, hidden: true }
+      - { name: fixed_g, type: string, flag: -g, default: "-0.01", required: true, hidden: true }
+      - { name: fixed_c_upper, type: string, flag: -C, default: "0", required: true, hidden: true }
+      - { name: fixed_b, type: string, flag: -b, default: "62", required: true, hidden: true }
+      - { name: gap_opening, type: float, flag: -f, default: -1.53, required: true }
+      - { name: fixed_h, type: string, flag: -h, default: "0", required: true, hidden: true }
+      - { name: fixed_f_upper, type: flag, flag: -F, required: true, hidden: true }
+      - { name: fixed_l, type: string, flag: -l, default: "2.7", required: true, hidden: true }
+      - { name: fixed_x_upper, type: string, flag: -X, default: "0.1", required: true, hidden: true }
+
+  - id: mafft.addlong.fast
+    name: Add Long Sequences, Fast (MAFFT)
+    category: Sequence Analysis
+    bin: addsingle
+    description: Add sequences much longer than the alignment, such as genomes, to an existing alignment, placing each against the alignment without realigning it (mafft --addlong --6merpair). Uses 6-mer distances; for the more accurate local alignments, use the three Add Long Sequences steps.
+    io:
+      inputs:
+        - { name: alignment, types: [Multi-FASTA, FASTA], mode: file, flag: --bc-in }
+        - { name: new_sequences, types: [FASTA, Multi-FASTA], mode: file, flag: --bc-add }
+      outputs:
+        - { name: alignment, types: [Multi-FASTA, FASTA], mode: file, filename: "pre" }
+    parameters:
+      - { name: fixed_q_upper, type: string, flag: -Q, default: "100", required: true, hidden: true }
+      - { name: fixed_w_upper, type: string, flag: -W, default: "6", required: true, hidden: true }
+      - { name: fixed_o_upper, type: flag, flag: -O, required: true, hidden: true }
+      - { name: fixed_v_upper, type: flag, flag: -V, required: true, hidden: true }
+      - { name: fixed_k_upper, type: flag, flag: -K, required: true, hidden: true }
+      - { name: fixed_p, type: flag, flag: -p, required: true, hidden: true }
+      - { name: fixed_c_upper, type: string, flag: -C, default: "0", required: true, hidden: true }
+      - { name: fixed_b, type: string, flag: -b, default: "62", required: true, hidden: true }
+      - { name: gap_opening, type: float, flag: -f, default: -1.53, required: true }
+      - { name: fixed_h, type: string, flag: -h, default: "0", required: true, hidden: true }
+      - { name: fixed_f_upper, type: flag, flag: -F, required: true, hidden: true }
+      - { name: fixed_x_upper, type: string, flag: -X, default: "0.1", required: true, hidden: true }
+
+  - id: mafft.addlong.distances
+    name: "Add Long Sequences, Step 1 of 3: Distances (MAFFT)"
+    category: Sequence Analysis
+    bin: dndpre
+    description: "First step of mafft --addlong: distances between the sequences of the alignment."
+    io:
+      inputs:
+        - { name: alignment, types: [Multi-FASTA, FASTA], mode: file, flag: --bc-in }
+        - { name: new_sequences, types: [FASTA, Multi-FASTA], mode: file, flag: --bc-add }
+      outputs:
+        - { name: distances, types: [MAFFT_HAT2], mode: file, filename: "hat2" }
+    parameters:
+      - { name: fixed_b, type: string, flag: -b, default: "62", required: true, hidden: true }
+      - { name: fixed_m_upper, type: string, flag: -M, default: "2", required: true, hidden: true }
+      - { name: fixed_k_upper, type: flag, flag: -K, required: true, hidden: true }
+      - { name: fixed_c_upper, type: string, flag: -C, default: "0", required: true, hidden: true }
+      - { name: fixed_b_2, type: string, flag: -b, default: "62", required: true, hidden: true }
+      - { name: fixed_g, type: string, flag: -g, default: "0.0", required: true, hidden: true }
+      - { name: fixed_f, type: string, flag: -f, default: "-2.00", required: true, hidden: true }
+      - { name: fixed_h, type: string, flag: -h, default: "0.0", required: true, hidden: true }
+      - { name: fixed_z_upper, type: flag, flag: -Z, required: true, hidden: true }
+      - { name: output_hat2, type: string, flag: --bc-output, default: "hat2", required: true, hidden: true }
+
+  - id: mafft.addlong.local
+    name: "Add Long Sequences, Step 2 of 3: Local Alignments (MAFFT)"
+    category: Sequence Analysis
+    bin: pairlocalalign
+    description: "Second step of mafft --addlong: local alignments of the new sequences against the alignment, and the distances between all of them."
+    io:
+      inputs:
+        - { name: alignment, types: [Multi-FASTA, FASTA], mode: file, flag: --bc-in }
+        - { name: new_sequences, types: [FASTA, Multi-FASTA], mode: file, flag: --bc-add }
+      outputs:
+        - { name: distances, types: [MAFFT_HAT2], mode: file, filename: "hat2" }
+        - { name: local_alignments, types: [MAFFT_HAT3], mode: file, filename: "hat3" }
+    parameters:
+      - { name: fixed_l, type: string, flag: -l, default: "2.7", required: true, hidden: true }
+      - { name: fixed_k_upper, type: flag, flag: -K, required: true, hidden: true }
+      - { name: fixed_c_upper, type: string, flag: -C, default: "0", required: true, hidden: true }
+      - { name: fixed_b, type: string, flag: -b, default: "62", required: true, hidden: true }
+      - { name: fixed_g, type: string, flag: -g, default: "0.0", required: true, hidden: true }
+      - { name: fixed_f, type: string, flag: -f, default: "-2.00", required: true, hidden: true }
+      - { name: fixed_q_upper, type: string, flag: -Q, default: "100.0", required: true, hidden: true }
+      - { name: fixed_h, type: string, flag: -h, default: "0.0", required: true, hidden: true }
+      - { name: fixed_y_upper, type: flag, flag: -Y, required: true, hidden: true }
+      - { name: fixed_z_upper, type: flag, flag: -Z, required: true, hidden: true }
+      - { name: output_hat2, type: string, flag: --bc-output, default: "hat2", required: true, hidden: true }
+      - { name: output_hat3, type: string, flag: --bc-output, default: "hat3", required: true, hidden: true }
+
+  - id: mafft.addlong
+    name: Add Long Sequences, Step 3 of 3 (MAFFT)
+    category: Sequence Analysis
+    bin: addsingle
+    description: "Last step of mafft --addlong: adds sequences much longer than the alignment, such as genomes, to the alignment, using the distances from Step 1 (alignment_distances), and the distances and local alignments from Step 2 (all_distances, local_alignments). All must come from the same alignment and new sequences."
+    io:
+      inputs:
+        - { name: alignment, types: [Multi-FASTA, FASTA], mode: file, flag: --bc-in }
+        - { name: new_sequences, types: [FASTA, Multi-FASTA], mode: file, flag: --bc-add }
+        - { name: alignment_distances, types: [MAFFT_HAT2], mode: file, flag: --bc-hat2i }
+        - { name: all_distances, types: [MAFFT_HAT2], mode: file, flag: --bc-hat2n }
+        - { name: local_alignments, types: [MAFFT_HAT3], mode: file, flag: --bc-hat3 }
+      outputs:
+        - { name: alignment, types: [Multi-FASTA, FASTA], mode: file, filename: "pre" }
+    parameters:
+      - { name: fixed_q_upper, type: string, flag: -Q, default: "100", required: true, hidden: true }
+      - { name: fixed_d, type: flag, flag: -d, required: true, hidden: true }
+      - { name: fixed_o_upper, type: flag, flag: -O, required: true, hidden: true }
+      - { name: fixed_v_upper, type: flag, flag: -V, required: true, hidden: true }
+      - { name: fixed_k_upper, type: flag, flag: -K, required: true, hidden: true }
+      - { name: fixed_p, type: flag, flag: -p, required: true, hidden: true }
+      - { name: fixed_c_upper, type: string, flag: -C, default: "0", required: true, hidden: true }
+      - { name: fixed_b, type: string, flag: -b, default: "62", required: true, hidden: true }
+      - { name: gap_opening, type: float, flag: -f, default: -1.53, required: true }
+      - { name: fixed_h, type: string, flag: -h, default: "0", required: true, hidden: true }
+      - { name: fixed_f_upper, type: flag, flag: -F, required: true, hidden: true }
+      - { name: fixed_l, type: string, flag: -l, default: "2.7", required: true, hidden: true }
+      - { name: fixed_x_upper, type: string, flag: -X, default: "0.1", required: true, hidden: true }
+
+  - id: mafft.addfull.fast
+    name: Add Full-Length Sequences, Fast (MAFFT)
+    category: Sequence Analysis
+    bin: addsingle
+    description: Add full-length sequences to an existing alignment, placing each against the alignment without realigning it (mafft --addfull --6merpair). Uses 6-mer distances; for the more accurate local alignments, use the three Add Full-Length Sequences steps.
+    io:
+      inputs:
+        - { name: alignment, types: [Multi-FASTA, FASTA], mode: file, flag: --bc-in }
+        - { name: new_sequences, types: [FASTA, Multi-FASTA], mode: file, flag: --bc-add }
+      outputs:
+        - { name: alignment, types: [Multi-FASTA, FASTA], mode: file, filename: "pre" }
+    parameters:
+      - { name: fixed_q_upper, type: string, flag: -Q, default: "100", required: true, hidden: true }
+      - { name: fixed_w_upper, type: string, flag: -W, default: "6", required: true, hidden: true }
+      - { name: fixed_o_upper, type: flag, flag: -O, required: true, hidden: true }
+      - { name: fixed_v_upper, type: flag, flag: -V, required: true, hidden: true }
+      - { name: fixed_k_upper, type: flag, flag: -K, required: true, hidden: true }
+      - { name: fixed_c_upper, type: string, flag: -C, default: "0", required: true, hidden: true }
+      - { name: fixed_b, type: string, flag: -b, default: "62", required: true, hidden: true }
+      - { name: gap_opening, type: float, flag: -f, default: -1.53, required: true }
+      - { name: fixed_h, type: string, flag: -h, default: "0", required: true, hidden: true }
+      - { name: fixed_f_upper, type: flag, flag: -F, required: true, hidden: true }
+      - { name: fixed_x_upper, type: string, flag: -X, default: "0.1", required: true, hidden: true }
+
+  - id: mafft.addfull.distances
+    name: "Add Full-Length Sequences, Step 1 of 3: Distances (MAFFT)"
+    category: Sequence Analysis
+    bin: dndpre
+    description: "First step of mafft --addfull: distances between the sequences of the alignment."
+    io:
+      inputs:
+        - { name: alignment, types: [Multi-FASTA, FASTA], mode: file, flag: --bc-in }
+        - { name: new_sequences, types: [FASTA, Multi-FASTA], mode: file, flag: --bc-add }
+      outputs:
+        - { name: distances, types: [MAFFT_HAT2], mode: file, filename: "hat2" }
+    parameters:
+      - { name: fixed_b, type: string, flag: -b, default: "62", required: true, hidden: true }
+      - { name: fixed_m_upper, type: string, flag: -M, default: "2", required: true, hidden: true }
+      - { name: fixed_k_upper, type: flag, flag: -K, required: true, hidden: true }
+      - { name: fixed_c_upper, type: string, flag: -C, default: "0", required: true, hidden: true }
+      - { name: fixed_b_2, type: string, flag: -b, default: "62", required: true, hidden: true }
+      - { name: fixed_g, type: string, flag: -g, default: "-0.100", required: true, hidden: true }
+      - { name: fixed_f, type: string, flag: -f, default: "-2.00", required: true, hidden: true }
+      - { name: fixed_h, type: string, flag: -h, default: "0.1", required: true, hidden: true }
+      - { name: output_hat2, type: string, flag: --bc-output, default: "hat2", required: true, hidden: true }
+
+  - id: mafft.addfull.local
+    name: "Add Full-Length Sequences, Step 2 of 3: Local Alignments (MAFFT)"
+    category: Sequence Analysis
+    bin: pairlocalalign
+    description: "Second step of mafft --addfull: local alignments of the new sequences against the alignment, and the distances between all of them."
+    io:
+      inputs:
+        - { name: alignment, types: [Multi-FASTA, FASTA], mode: file, flag: --bc-in }
+        - { name: new_sequences, types: [FASTA, Multi-FASTA], mode: file, flag: --bc-add }
+      outputs:
+        - { name: distances, types: [MAFFT_HAT2], mode: file, filename: "hat2" }
+        - { name: local_alignments, types: [MAFFT_HAT3], mode: file, filename: "hat3" }
+    parameters:
+      - { name: fixed_l, type: string, flag: -l, default: "2.7", required: true, hidden: true }
+      - { name: fixed_k_upper, type: flag, flag: -K, required: true, hidden: true }
+      - { name: fixed_c_upper, type: string, flag: -C, default: "0", required: true, hidden: true }
+      - { name: fixed_b, type: string, flag: -b, default: "62", required: true, hidden: true }
+      - { name: fixed_g, type: string, flag: -g, default: "-0.100", required: true, hidden: true }
+      - { name: fixed_f, type: string, flag: -f, default: "-2.00", required: true, hidden: true }
+      - { name: fixed_q_upper, type: string, flag: -Q, default: "100.0", required: true, hidden: true }
+      - { name: fixed_h, type: string, flag: -h, default: "0.1", required: true, hidden: true }
+      - { name: fixed_y_upper, type: flag, flag: -Y, required: true, hidden: true }
+      - { name: output_hat2, type: string, flag: --bc-output, default: "hat2", required: true, hidden: true }
+      - { name: output_hat3, type: string, flag: --bc-output, default: "hat3", required: true, hidden: true }
+
+  - id: mafft.addfull
+    name: Add Full-Length Sequences, Step 3 of 3 (MAFFT)
+    category: Sequence Analysis
+    bin: addsingle
+    description: "Last step of mafft --addfull: adds full-length sequences to the alignment, using the distances from Step 1 (alignment_distances), and the distances and local alignments from Step 2 (all_distances, local_alignments). All must come from the same alignment and new sequences."
+    io:
+      inputs:
+        - { name: alignment, types: [Multi-FASTA, FASTA], mode: file, flag: --bc-in }
+        - { name: new_sequences, types: [FASTA, Multi-FASTA], mode: file, flag: --bc-add }
+        - { name: alignment_distances, types: [MAFFT_HAT2], mode: file, flag: --bc-hat2i }
+        - { name: all_distances, types: [MAFFT_HAT2], mode: file, flag: --bc-hat2n }
+        - { name: local_alignments, types: [MAFFT_HAT3], mode: file, flag: --bc-hat3 }
+      outputs:
+        - { name: alignment, types: [Multi-FASTA, FASTA], mode: file, filename: "pre" }
+    parameters:
+      - { name: fixed_q_upper, type: string, flag: -Q, default: "100", required: true, hidden: true }
+      - { name: fixed_d, type: flag, flag: -d, required: true, hidden: true }
+      - { name: fixed_o_upper, type: flag, flag: -O, required: true, hidden: true }
+      - { name: fixed_v_upper, type: flag, flag: -V, required: true, hidden: true }
+      - { name: fixed_k_upper, type: flag, flag: -K, required: true, hidden: true }
+      - { name: fixed_c_upper, type: string, flag: -C, default: "0", required: true, hidden: true }
+      - { name: fixed_b, type: string, flag: -b, default: "62", required: true, hidden: true }
+      - { name: gap_opening, type: float, flag: -f, default: -1.53, required: true }
+      - { name: fixed_h, type: string, flag: -h, default: "0", required: true, hidden: true }
+      - { name: fixed_f_upper, type: flag, flag: -F, required: true, hidden: true }
+      - { name: fixed_l, type: string, flag: -l, default: "2.7", required: true, hidden: true }
+      - { name: fixed_x_upper, type: string, flag: -X, default: "0.1", required: true, hidden: true }
+
+  - id: mafft.profile
+    name: Profile-Profile Alignment (MAFFT)
+    category: Sequence Analysis
+    bin: mafft-profile
+    description: Align two alignments to each other (group-to-group), keeping the columns within each. Both inputs must already be aligned.
+    io:
+      inputs:
+        - { name: alignment1, types: [Multi-FASTA, FASTA], mode: file }
+        - { name: alignment2, types: [Multi-FASTA, FASTA], mode: file }
+      outputs:
+        - { name: alignment, types: [Multi-FASTA, FASTA], mode: stdout }
+    parameters: []
+
+  - id: mafft.distance
+    name: Distance Matrix (MAFFT)
+    category: Sequence Analysis
+    bin: mafft-distance
+    description: Distances between all pairs of unaligned sequences, from shared 6-mers, one pair per line as "i-j d=distance l=length_i,length_j".
+    io:
+      inputs:
+        - { name: sequences, types: [Multi-FASTA, FASTA], mode: file, flag: -i }
+      outputs:
+        - { name: distances, types: [MAFFT_DIST], mode: stdout }
+    parameters: []
+
+  - id: mafft.f2cl
+    name: FASTA to CLUSTAL (MAFFT)
+    category: Format Conversion
+    bin: f2cl
+    description: Convert an alignment to CLUSTAL format, as mafft --clustalout does. method is the name written in the CLUSTAL header.
+    io:
+      inputs:
+        - { name: alignment, types: [Multi-FASTA, FASTA], mode: file, flag: --bc-in }
+      outputs:
+        - { name: clustal, types: [CLUSTAL], mode: stdout }
+    parameters:
+      - { name: fixed_n, type: string, flag: -n, default: "-1", required: true, hidden: true }
+      - { name: method, type: string, flag: -c, default: "FFT-NS-2", required: true }
+      - { name: fixed_n_upper, type: flag, flag: -N, required: true, hidden: true }
