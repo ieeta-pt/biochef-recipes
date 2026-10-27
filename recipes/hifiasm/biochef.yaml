@@ -1,0 +1,445 @@
+apiVersion: v1
+
+id: app.biochef.hifiasm
+name: hifiasm
+description: hifiasm is a haplotype-resolved de novo assembler for PacBio HiFi reads, which also assembles Oxford Nanopore simplex reads and can add ultra-long reads. It writes the assembly graphs in GFA.
+
+version: 0.25.0-bc.1
+homepage: https://github.com/chhylp123/hifiasm
+license:
+  spdx: MIT
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/chhylp123/hifiasm
+  commit: "ec9a8b222d149d25b7355e83765698640d59b189"
+  version: "0.25.0"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    patches: [patches/wasm-single-threaded-kthread.patch, patches/bloom-filter-off-by-default.patch]
+    emscripten:
+      outputDir: out
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+  native:
+    buildScript: build-native.sh
+    patches: [patches/bloom-filter-off-by-default.patch]
+    buildTools: [make]
+    outputDir: .
+
+runtime:
+  modes: [wasm, native, remote]
+
+operations:
+  - id: hifiasm.assemble
+    name: Assemble (hifiasm)
+    category: Genomic Operations
+    bin: hifiasm
+    description: Assemble HiFi reads, or ONT simplex reads with the ONT option, into a primary assembly and two haplotype-resolved assemblies. Writes the contig graphs and the unitig graphs as GFA.
+    io:
+      inputs:
+        - { name: reads, types: [FASTQ, FASTA, Multi-FASTA], mode: file }
+      outputs:
+        - { name: primary_contigs, types: [GFA], mode: file, filename: asm.bp.p_ctg.gfa }
+        - { name: hap1_contigs, types: [GFA], mode: file, filename: asm.bp.hap1.p_ctg.gfa }
+        - { name: hap2_contigs, types: [GFA], mode: file, filename: asm.bp.hap2.p_ctg.gfa }
+        - { name: processed_unitigs, types: [GFA], mode: file, filename: asm.bp.p_utg.gfa }
+        - { name: raw_unitigs, types: [GFA], mode: file, filename: asm.bp.r_utg.gfa }
+    parameters:
+      - { name: prefix, type: string, flag: -o, default: asm, required: true, hidden: true }
+      - { name: threads, type: integer, flag: -t, default: 1 }
+      - { name: ont, type: flag, flag: --ont }
+      - { name: kmer_length, type: integer, flag: -k, default: 51 }
+      - { name: window_size, type: integer, flag: -w, default: 51 }
+      - { name: bloom_filter_bits, type: integer, flag: -f }
+      - { name: max_kmer_coverage_ratio, type: float, flag: -D, default: 5.0 }
+      - { name: max_overlaps, type: integer, flag: -N, default: 100 }
+      - { name: correction_rounds, type: integer, flag: -r, default: 3 }
+      - { name: adapter_length, type: integer, flag: -z, default: 0 }
+      - { name: max_kmer_occurrence, type: integer, flag: --max-kocc, default: 2000 }
+      - { name: genome_size, type: string, flag: --hg-size }
+      - { name: cleaning_rounds, type: integer, flag: -a, default: 4 }
+      - { name: contig_bubble_size, type: integer, flag: -m, default: 10000000 }
+      - { name: unitig_bubble_size, type: integer, flag: -p, default: 0 }
+      - { name: tip_unitig_reads, type: integer, flag: -n, default: 3 }
+      - { name: max_overlap_drop_ratio, type: float, flag: -x, default: 0.8 }
+      - { name: min_overlap_drop_ratio, type: float, flag: -y, default: 0.2 }
+      - { name: post_join, type: integer, flag: -u, default: 1 }
+      - { name: homozygous_coverage, type: integer, flag: --hom-cov }
+      - { name: low_quality_percent, type: integer, flag: --lowQ, default: 70 }
+      - { name: break_below_coverage, type: integer, flag: --b-cov, default: 0 }
+      - { name: break_above_coverage, type: integer, flag: --h-cov, default: -1 }
+      - { name: break_overlap_rate, type: float, flag: --m-rate, default: 0.75 }
+      - { name: tip_contig_reads, type: integer, flag: --ctg-n, default: 3 }
+      - { name: purge_level, type: integer, flag: -l }
+      - { name: purge_similarity, type: float, flag: -s }
+      - { name: purge_min_overlapped_reads, type: integer, flag: -O, default: 1 }
+      - { name: purge_max_coverage, type: integer, flag: --purge-max }
+      - { name: haplotypes, type: integer, flag: --n-hap, default: 2 }
+      - { name: telomere_motif, type: string, flag: --telo-m }
+      - { name: telomere_penalty, type: integer, flag: --telo-p, default: 1 }
+      - { name: telomere_max_drop, type: integer, flag: --telo-d, default: 2000 }
+      - { name: telomere_min_score, type: integer, flag: --telo-s, default: 500 }
+      - { name: ont_chimera_support, type: integer, flag: --chem-c, default: 1 }
+      - { name: ont_chimera_flank, type: integer, flag: --chem-f, default: 256 }
+      - { name: ont_min_length, type: integer, flag: --rl-cut, default: 1000 }
+      - { name: ont_min_quality, type: integer, flag: --sc-cut, default: 10 }
+      - { name: dual_scaffolding, type: flag, flag: --dual-scaf }
+      - { name: scaffold_max_gap, type: integer, flag: --scaf-gap, default: 3000000 }
+
+  - id: hifiasm.assemble.ultralong
+    name: Assemble With Ultra-Long Reads (hifiasm)
+    category: Genomic Operations
+    bin: hifiasm
+    description: Assemble HiFi reads, or ONT simplex reads with the ONT option, together with ultra-long reads, into a primary assembly and two haplotype-resolved assemblies. Writes the contig graphs and the unitig graphs as GFA.
+    io:
+      inputs:
+        - { name: reads, types: [FASTQ, FASTA, Multi-FASTA], mode: file }
+        - { name: ultra_long_reads, types: [FASTQ, FASTA, Multi-FASTA], mode: file, flag: --ul }
+      outputs:
+        - { name: primary_contigs, types: [GFA], mode: file, filename: asm.bp.p_ctg.gfa }
+        - { name: hap1_contigs, types: [GFA], mode: file, filename: asm.bp.hap1.p_ctg.gfa }
+        - { name: hap2_contigs, types: [GFA], mode: file, filename: asm.bp.hap2.p_ctg.gfa }
+        - { name: processed_unitigs, types: [GFA], mode: file, filename: asm.bp.p_utg.gfa }
+        - { name: raw_unitigs, types: [GFA], mode: file, filename: asm.bp.r_utg.gfa }
+    parameters:
+      - { name: prefix, type: string, flag: -o, default: asm, required: true, hidden: true }
+      - { name: threads, type: integer, flag: -t, default: 1 }
+      - { name: ont, type: flag, flag: --ont }
+      - { name: kmer_length, type: integer, flag: -k, default: 51 }
+      - { name: window_size, type: integer, flag: -w, default: 51 }
+      - { name: bloom_filter_bits, type: integer, flag: -f }
+      - { name: max_kmer_coverage_ratio, type: float, flag: -D, default: 5.0 }
+      - { name: max_overlaps, type: integer, flag: -N, default: 100 }
+      - { name: correction_rounds, type: integer, flag: -r, default: 3 }
+      - { name: adapter_length, type: integer, flag: -z, default: 0 }
+      - { name: max_kmer_occurrence, type: integer, flag: --max-kocc, default: 2000 }
+      - { name: genome_size, type: string, flag: --hg-size }
+      - { name: cleaning_rounds, type: integer, flag: -a, default: 4 }
+      - { name: contig_bubble_size, type: integer, flag: -m, default: 10000000 }
+      - { name: unitig_bubble_size, type: integer, flag: -p, default: 0 }
+      - { name: tip_unitig_reads, type: integer, flag: -n, default: 3 }
+      - { name: max_overlap_drop_ratio, type: float, flag: -x, default: 0.8 }
+      - { name: min_overlap_drop_ratio, type: float, flag: -y, default: 0.2 }
+      - { name: post_join, type: integer, flag: -u, default: 1 }
+      - { name: homozygous_coverage, type: integer, flag: --hom-cov }
+      - { name: low_quality_percent, type: integer, flag: --lowQ, default: 70 }
+      - { name: break_below_coverage, type: integer, flag: --b-cov, default: 0 }
+      - { name: break_above_coverage, type: integer, flag: --h-cov, default: -1 }
+      - { name: break_overlap_rate, type: float, flag: --m-rate, default: 0.75 }
+      - { name: tip_contig_reads, type: integer, flag: --ctg-n, default: 3 }
+      - { name: purge_level, type: integer, flag: -l }
+      - { name: purge_similarity, type: float, flag: -s }
+      - { name: purge_min_overlapped_reads, type: integer, flag: -O, default: 1 }
+      - { name: purge_max_coverage, type: integer, flag: --purge-max }
+      - { name: haplotypes, type: integer, flag: --n-hap, default: 2 }
+      - { name: ul_error_rate, type: float, flag: --ul-rate, default: 0.2 }
+      - { name: ul_tip_reads, type: integer, flag: --ul-tip, default: 6 }
+      - { name: max_path_drop_ratio, type: float, flag: --path-max, default: 0.6 }
+      - { name: min_path_drop_ratio, type: float, flag: --path-min, default: 0.2 }
+      - { name: min_ul_length, type: integer, flag: --ul-cut, default: 0 }
+      - { name: telomere_motif, type: string, flag: --telo-m }
+      - { name: telomere_penalty, type: integer, flag: --telo-p, default: 1 }
+      - { name: telomere_max_drop, type: integer, flag: --telo-d, default: 2000 }
+      - { name: telomere_min_score, type: integer, flag: --telo-s, default: 500 }
+      - { name: ont_chimera_support, type: integer, flag: --chem-c, default: 1 }
+      - { name: ont_chimera_flank, type: integer, flag: --chem-f, default: 256 }
+      - { name: ont_min_length, type: integer, flag: --rl-cut, default: 1000 }
+      - { name: ont_min_quality, type: integer, flag: --sc-cut, default: 10 }
+      - { name: dual_scaffolding, type: flag, flag: --dual-scaf }
+      - { name: scaffold_max_gap, type: integer, flag: --scaf-gap, default: 3000000 }
+
+  - id: hifiasm.assemble.primary
+    name: Assemble Primary and Alternate (hifiasm)
+    category: Genomic Operations
+    bin: hifiasm
+    description: Assemble HiFi reads, or ONT simplex reads with the ONT option, into a primary assembly and an alternate assembly instead of two haplotypes. Writes the contig graphs and the unitig graphs as GFA.
+    io:
+      inputs:
+        - { name: reads, types: [FASTQ, FASTA, Multi-FASTA], mode: file }
+      outputs:
+        - { name: primary_contigs, types: [GFA], mode: file, filename: asm.p_ctg.gfa }
+        - { name: alternate_contigs, types: [GFA], mode: file, filename: asm.a_ctg.gfa }
+        - { name: processed_unitigs, types: [GFA], mode: file, filename: asm.p_utg.gfa }
+        - { name: raw_unitigs, types: [GFA], mode: file, filename: asm.r_utg.gfa }
+    parameters:
+      - { name: primary, type: flag, flag: --primary, required: true, hidden: true }
+      - { name: prefix, type: string, flag: -o, default: asm, required: true, hidden: true }
+      - { name: threads, type: integer, flag: -t, default: 1 }
+      - { name: ont, type: flag, flag: --ont }
+      - { name: kmer_length, type: integer, flag: -k, default: 51 }
+      - { name: window_size, type: integer, flag: -w, default: 51 }
+      - { name: bloom_filter_bits, type: integer, flag: -f }
+      - { name: max_kmer_coverage_ratio, type: float, flag: -D, default: 5.0 }
+      - { name: max_overlaps, type: integer, flag: -N, default: 100 }
+      - { name: correction_rounds, type: integer, flag: -r, default: 3 }
+      - { name: adapter_length, type: integer, flag: -z, default: 0 }
+      - { name: max_kmer_occurrence, type: integer, flag: --max-kocc, default: 2000 }
+      - { name: genome_size, type: string, flag: --hg-size }
+      - { name: cleaning_rounds, type: integer, flag: -a, default: 4 }
+      - { name: contig_bubble_size, type: integer, flag: -m, default: 10000000 }
+      - { name: unitig_bubble_size, type: integer, flag: -p, default: 0 }
+      - { name: tip_unitig_reads, type: integer, flag: -n, default: 3 }
+      - { name: max_overlap_drop_ratio, type: float, flag: -x, default: 0.8 }
+      - { name: min_overlap_drop_ratio, type: float, flag: -y, default: 0.2 }
+      - { name: post_join, type: integer, flag: -u, default: 1 }
+      - { name: homozygous_coverage, type: integer, flag: --hom-cov }
+      - { name: low_quality_percent, type: integer, flag: --lowQ, default: 70 }
+      - { name: break_below_coverage, type: integer, flag: --b-cov, default: 0 }
+      - { name: break_above_coverage, type: integer, flag: --h-cov, default: -1 }
+      - { name: break_overlap_rate, type: float, flag: --m-rate, default: 0.75 }
+      - { name: tip_contig_reads, type: integer, flag: --ctg-n, default: 3 }
+      - { name: purge_level, type: integer, flag: -l }
+      - { name: purge_similarity, type: float, flag: -s }
+      - { name: purge_min_overlapped_reads, type: integer, flag: -O, default: 1 }
+      - { name: purge_max_coverage, type: integer, flag: --purge-max }
+      - { name: haplotypes, type: integer, flag: --n-hap, default: 2 }
+      - { name: telomere_motif, type: string, flag: --telo-m }
+      - { name: telomere_penalty, type: integer, flag: --telo-p, default: 1 }
+      - { name: telomere_max_drop, type: integer, flag: --telo-d, default: 2000 }
+      - { name: telomere_min_score, type: integer, flag: --telo-s, default: 500 }
+      - { name: ont_chimera_support, type: integer, flag: --chem-c, default: 1 }
+      - { name: ont_chimera_flank, type: integer, flag: --chem-f, default: 256 }
+      - { name: ont_min_length, type: integer, flag: --rl-cut, default: 1000 }
+      - { name: ont_min_quality, type: integer, flag: --sc-cut, default: 10 }
+
+  - id: hifiasm.assemble.primary.ultralong
+    name: Assemble Primary and Alternate With Ultra-Long Reads (hifiasm)
+    category: Genomic Operations
+    bin: hifiasm
+    description: Assemble HiFi reads, or ONT simplex reads with the ONT option, together with ultra-long reads, into a primary assembly and an alternate assembly instead of two haplotypes. Writes the contig graphs and the unitig graphs as GFA.
+    io:
+      inputs:
+        - { name: reads, types: [FASTQ, FASTA, Multi-FASTA], mode: file }
+        - { name: ultra_long_reads, types: [FASTQ, FASTA, Multi-FASTA], mode: file, flag: --ul }
+      outputs:
+        - { name: primary_contigs, types: [GFA], mode: file, filename: asm.p_ctg.gfa }
+        - { name: alternate_contigs, types: [GFA], mode: file, filename: asm.a_ctg.gfa }
+        - { name: processed_unitigs, types: [GFA], mode: file, filename: asm.p_utg.gfa }
+        - { name: raw_unitigs, types: [GFA], mode: file, filename: asm.r_utg.gfa }
+    parameters:
+      - { name: primary, type: flag, flag: --primary, required: true, hidden: true }
+      - { name: prefix, type: string, flag: -o, default: asm, required: true, hidden: true }
+      - { name: threads, type: integer, flag: -t, default: 1 }
+      - { name: ont, type: flag, flag: --ont }
+      - { name: kmer_length, type: integer, flag: -k, default: 51 }
+      - { name: window_size, type: integer, flag: -w, default: 51 }
+      - { name: bloom_filter_bits, type: integer, flag: -f }
+      - { name: max_kmer_coverage_ratio, type: float, flag: -D, default: 5.0 }
+      - { name: max_overlaps, type: integer, flag: -N, default: 100 }
+      - { name: correction_rounds, type: integer, flag: -r, default: 3 }
+      - { name: adapter_length, type: integer, flag: -z, default: 0 }
+      - { name: max_kmer_occurrence, type: integer, flag: --max-kocc, default: 2000 }
+      - { name: genome_size, type: string, flag: --hg-size }
+      - { name: cleaning_rounds, type: integer, flag: -a, default: 4 }
+      - { name: contig_bubble_size, type: integer, flag: -m, default: 10000000 }
+      - { name: unitig_bubble_size, type: integer, flag: -p, default: 0 }
+      - { name: tip_unitig_reads, type: integer, flag: -n, default: 3 }
+      - { name: max_overlap_drop_ratio, type: float, flag: -x, default: 0.8 }
+      - { name: min_overlap_drop_ratio, type: float, flag: -y, default: 0.2 }
+      - { name: post_join, type: integer, flag: -u, default: 1 }
+      - { name: homozygous_coverage, type: integer, flag: --hom-cov }
+      - { name: low_quality_percent, type: integer, flag: --lowQ, default: 70 }
+      - { name: break_below_coverage, type: integer, flag: --b-cov, default: 0 }
+      - { name: break_above_coverage, type: integer, flag: --h-cov, default: -1 }
+      - { name: break_overlap_rate, type: float, flag: --m-rate, default: 0.75 }
+      - { name: tip_contig_reads, type: integer, flag: --ctg-n, default: 3 }
+      - { name: purge_level, type: integer, flag: -l }
+      - { name: purge_similarity, type: float, flag: -s }
+      - { name: purge_min_overlapped_reads, type: integer, flag: -O, default: 1 }
+      - { name: purge_max_coverage, type: integer, flag: --purge-max }
+      - { name: haplotypes, type: integer, flag: --n-hap, default: 2 }
+      - { name: ul_error_rate, type: float, flag: --ul-rate, default: 0.2 }
+      - { name: ul_tip_reads, type: integer, flag: --ul-tip, default: 6 }
+      - { name: max_path_drop_ratio, type: float, flag: --path-max, default: 0.6 }
+      - { name: min_path_drop_ratio, type: float, flag: --path-min, default: 0.2 }
+      - { name: min_ul_length, type: integer, flag: --ul-cut, default: 0 }
+      - { name: telomere_motif, type: string, flag: --telo-m }
+      - { name: telomere_penalty, type: integer, flag: --telo-p, default: 1 }
+      - { name: telomere_max_drop, type: integer, flag: --telo-d, default: 2000 }
+      - { name: telomere_min_score, type: integer, flag: --telo-s, default: 500 }
+      - { name: ont_chimera_support, type: integer, flag: --chem-c, default: 1 }
+      - { name: ont_chimera_flank, type: integer, flag: --chem-f, default: 256 }
+      - { name: ont_min_length, type: integer, flag: --rl-cut, default: 1000 }
+      - { name: ont_min_quality, type: integer, flag: --sc-cut, default: 10 }
+
+  - id: hifiasm.assemble.trio
+    name: Assemble Trio (hifiasm)
+    category: Genomic Operations
+    bin: hifiasm
+    description: Assemble the reads of a child into its paternal and maternal haplotypes, using the k-mers of each parent counted with yak count (-1, -2). Writes the contig graphs and the unitig graphs as GFA.
+    io:
+      inputs:
+        - { name: reads, types: [FASTQ, FASTA, Multi-FASTA], mode: file }
+        - { name: paternal_kmers, types: [YAK], mode: file, flag: "-1" }
+        - { name: maternal_kmers, types: [YAK], mode: file, flag: "-2" }
+      outputs:
+        - { name: paternal_contigs, types: [GFA], mode: file, filename: asm.dip.hap1.p_ctg.gfa }
+        - { name: maternal_contigs, types: [GFA], mode: file, filename: asm.dip.hap2.p_ctg.gfa }
+        - { name: processed_unitigs, types: [GFA], mode: file, filename: asm.dip.p_utg.gfa }
+        - { name: raw_unitigs, types: [GFA], mode: file, filename: asm.dip.r_utg.gfa }
+    parameters:
+      - { name: prefix, type: string, flag: -o, default: asm, required: true, hidden: true }
+      - { name: threads, type: integer, flag: -t, default: 1 }
+      - { name: ont, type: flag, flag: --ont }
+      - { name: kmer_length, type: integer, flag: -k, default: 51 }
+      - { name: window_size, type: integer, flag: -w, default: 51 }
+      - { name: bloom_filter_bits, type: integer, flag: -f }
+      - { name: max_kmer_coverage_ratio, type: float, flag: -D, default: 5.0 }
+      - { name: max_overlaps, type: integer, flag: -N, default: 100 }
+      - { name: correction_rounds, type: integer, flag: -r, default: 3 }
+      - { name: adapter_length, type: integer, flag: -z, default: 0 }
+      - { name: max_kmer_occurrence, type: integer, flag: --max-kocc, default: 2000 }
+      - { name: genome_size, type: string, flag: --hg-size }
+      - { name: cleaning_rounds, type: integer, flag: -a, default: 4 }
+      - { name: contig_bubble_size, type: integer, flag: -m, default: 10000000 }
+      - { name: unitig_bubble_size, type: integer, flag: -p, default: 0 }
+      - { name: tip_unitig_reads, type: integer, flag: -n, default: 3 }
+      - { name: max_overlap_drop_ratio, type: float, flag: -x, default: 0.8 }
+      - { name: min_overlap_drop_ratio, type: float, flag: -y, default: 0.2 }
+      - { name: post_join, type: integer, flag: -u, default: 1 }
+      - { name: homozygous_coverage, type: integer, flag: --hom-cov }
+      - { name: low_quality_percent, type: integer, flag: --lowQ, default: 70 }
+      - { name: break_below_coverage, type: integer, flag: --b-cov, default: 0 }
+      - { name: break_above_coverage, type: integer, flag: --h-cov, default: -1 }
+      - { name: break_overlap_rate, type: float, flag: --m-rate, default: 0.75 }
+      - { name: tip_contig_reads, type: integer, flag: --ctg-n, default: 3 }
+      - { name: purge_level, type: integer, flag: -l }
+      - { name: purge_similarity, type: float, flag: -s }
+      - { name: purge_min_overlapped_reads, type: integer, flag: -O, default: 1 }
+      - { name: purge_max_coverage, type: integer, flag: --purge-max }
+      - { name: haplotypes, type: integer, flag: --n-hap, default: 2 }
+      - { name: telomere_motif, type: string, flag: --telo-m }
+      - { name: telomere_penalty, type: integer, flag: --telo-p, default: 1 }
+      - { name: telomere_max_drop, type: integer, flag: --telo-d, default: 2000 }
+      - { name: telomere_min_score, type: integer, flag: --telo-s, default: 500 }
+      - { name: ont_chimera_support, type: integer, flag: --chem-c, default: 1 }
+      - { name: ont_chimera_flank, type: integer, flag: --chem-f, default: 256 }
+      - { name: ont_min_length, type: integer, flag: --rl-cut, default: 1000 }
+      - { name: ont_min_quality, type: integer, flag: --sc-cut, default: 10 }
+      - { name: dual_scaffolding, type: flag, flag: --dual-scaf }
+      - { name: scaffold_max_gap, type: integer, flag: --scaf-gap, default: 3000000 }
+      - { name: binned_kmer_min, type: integer, flag: -c, default: 2 }
+      - { name: binned_kmer_max, type: integer, flag: -d, default: 5 }
+      - { name: max_unexpected_reads, type: integer, flag: --t-occ, default: 60 }
+      - { name: trio_dual, type: flag, flag: --trio-dual }
+
+  - id: hifiasm.assemble.trio.read.names
+    name: Assemble Trio From Read Names (hifiasm)
+    category: Genomic Operations
+    bin: hifiasm
+    description: Assemble the reads of a child into its paternal and maternal haplotypes, given the names of the reads that come from each parent (-3, -4). Writes the contig graphs and the unitig graphs as GFA.
+    io:
+      inputs:
+        - { name: reads, types: [FASTQ, FASTA, Multi-FASTA], mode: file }
+        - { name: paternal_read_names, types: [LIST, TEXT], mode: file, flag: "-3" }
+        - { name: maternal_read_names, types: [LIST, TEXT], mode: file, flag: "-4" }
+      outputs:
+        - { name: paternal_contigs, types: [GFA], mode: file, filename: asm.dip.hap1.p_ctg.gfa }
+        - { name: maternal_contigs, types: [GFA], mode: file, filename: asm.dip.hap2.p_ctg.gfa }
+        - { name: processed_unitigs, types: [GFA], mode: file, filename: asm.dip.p_utg.gfa }
+        - { name: raw_unitigs, types: [GFA], mode: file, filename: asm.dip.r_utg.gfa }
+    parameters:
+      - { name: prefix, type: string, flag: -o, default: asm, required: true, hidden: true }
+      - { name: threads, type: integer, flag: -t, default: 1 }
+      - { name: ont, type: flag, flag: --ont }
+      - { name: kmer_length, type: integer, flag: -k, default: 51 }
+      - { name: window_size, type: integer, flag: -w, default: 51 }
+      - { name: bloom_filter_bits, type: integer, flag: -f }
+      - { name: max_kmer_coverage_ratio, type: float, flag: -D, default: 5.0 }
+      - { name: max_overlaps, type: integer, flag: -N, default: 100 }
+      - { name: correction_rounds, type: integer, flag: -r, default: 3 }
+      - { name: adapter_length, type: integer, flag: -z, default: 0 }
+      - { name: max_kmer_occurrence, type: integer, flag: --max-kocc, default: 2000 }
+      - { name: genome_size, type: string, flag: --hg-size }
+      - { name: cleaning_rounds, type: integer, flag: -a, default: 4 }
+      - { name: contig_bubble_size, type: integer, flag: -m, default: 10000000 }
+      - { name: unitig_bubble_size, type: integer, flag: -p, default: 0 }
+      - { name: tip_unitig_reads, type: integer, flag: -n, default: 3 }
+      - { name: max_overlap_drop_ratio, type: float, flag: -x, default: 0.8 }
+      - { name: min_overlap_drop_ratio, type: float, flag: -y, default: 0.2 }
+      - { name: post_join, type: integer, flag: -u, default: 1 }
+      - { name: homozygous_coverage, type: integer, flag: --hom-cov }
+      - { name: low_quality_percent, type: integer, flag: --lowQ, default: 70 }
+      - { name: break_below_coverage, type: integer, flag: --b-cov, default: 0 }
+      - { name: break_above_coverage, type: integer, flag: --h-cov, default: -1 }
+      - { name: break_overlap_rate, type: float, flag: --m-rate, default: 0.75 }
+      - { name: tip_contig_reads, type: integer, flag: --ctg-n, default: 3 }
+      - { name: purge_level, type: integer, flag: -l }
+      - { name: purge_similarity, type: float, flag: -s }
+      - { name: purge_min_overlapped_reads, type: integer, flag: -O, default: 1 }
+      - { name: purge_max_coverage, type: integer, flag: --purge-max }
+      - { name: haplotypes, type: integer, flag: --n-hap, default: 2 }
+      - { name: telomere_motif, type: string, flag: --telo-m }
+      - { name: telomere_penalty, type: integer, flag: --telo-p, default: 1 }
+      - { name: telomere_max_drop, type: integer, flag: --telo-d, default: 2000 }
+      - { name: telomere_min_score, type: integer, flag: --telo-s, default: 500 }
+      - { name: ont_chimera_support, type: integer, flag: --chem-c, default: 1 }
+      - { name: ont_chimera_flank, type: integer, flag: --chem-f, default: 256 }
+      - { name: ont_min_length, type: integer, flag: --rl-cut, default: 1000 }
+      - { name: ont_min_quality, type: integer, flag: --sc-cut, default: 10 }
+      - { name: dual_scaffolding, type: flag, flag: --dual-scaf }
+      - { name: scaffold_max_gap, type: integer, flag: --scaf-gap, default: 3000000 }
+      - { name: binned_kmer_min, type: integer, flag: -c, default: 2 }
+      - { name: binned_kmer_max, type: integer, flag: -d, default: 5 }
+      - { name: max_unexpected_reads, type: integer, flag: --t-occ, default: 60 }
+      - { name: trio_dual, type: flag, flag: --trio-dual }
+
+  - id: hifiasm.correct
+    name: Correct Reads (hifiasm)
+    category: Sequence Analysis
+    bin: hifiasm
+    description: Run hifiasm and keep its error-corrected reads as FASTA and the overlaps between them as PAF.
+    io:
+      inputs:
+        - { name: reads, types: [FASTQ, FASTA, Multi-FASTA], mode: file }
+      outputs:
+        - { name: corrected_reads, types: [Multi-FASTA, FASTA], mode: file, filename: asm.ec.fa }
+        - { name: overlaps, types: [PAF], mode: file, filename: asm.ovlp.paf }
+    parameters:
+      - { name: write_corrected, type: flag, flag: --write-ec, required: true, hidden: true }
+      - { name: write_overlaps, type: flag, flag: --write-paf, required: true, hidden: true }
+      - { name: prefix, type: string, flag: -o, default: asm, required: true, hidden: true }
+      - { name: threads, type: integer, flag: -t, default: 1 }
+      - { name: ont, type: flag, flag: --ont }
+      - { name: kmer_length, type: integer, flag: -k, default: 51 }
+      - { name: window_size, type: integer, flag: -w, default: 51 }
+      - { name: bloom_filter_bits, type: integer, flag: -f }
+      - { name: max_kmer_coverage_ratio, type: float, flag: -D, default: 5.0 }
+      - { name: max_overlaps, type: integer, flag: -N, default: 100 }
+      - { name: correction_rounds, type: integer, flag: -r, default: 3 }
+      - { name: adapter_length, type: integer, flag: -z, default: 0 }
+      - { name: max_kmer_occurrence, type: integer, flag: --max-kocc, default: 2000 }
+      - { name: genome_size, type: string, flag: --hg-size }
+      - { name: cleaning_rounds, type: integer, flag: -a, default: 4 }
+      - { name: contig_bubble_size, type: integer, flag: -m, default: 10000000 }
+      - { name: unitig_bubble_size, type: integer, flag: -p, default: 0 }
+      - { name: tip_unitig_reads, type: integer, flag: -n, default: 3 }
+      - { name: max_overlap_drop_ratio, type: float, flag: -x, default: 0.8 }
+      - { name: min_overlap_drop_ratio, type: float, flag: -y, default: 0.2 }
+      - { name: post_join, type: integer, flag: -u, default: 1 }
+      - { name: homozygous_coverage, type: integer, flag: --hom-cov }
+      - { name: low_quality_percent, type: integer, flag: --lowQ, default: 70 }
+      - { name: break_below_coverage, type: integer, flag: --b-cov, default: 0 }
+      - { name: break_above_coverage, type: integer, flag: --h-cov, default: -1 }
+      - { name: break_overlap_rate, type: float, flag: --m-rate, default: 0.75 }
+      - { name: tip_contig_reads, type: integer, flag: --ctg-n, default: 3 }
+      - { name: purge_level, type: integer, flag: -l }
+      - { name: purge_similarity, type: float, flag: -s }
+      - { name: purge_min_overlapped_reads, type: integer, flag: -O, default: 1 }
+      - { name: purge_max_coverage, type: integer, flag: --purge-max }
+      - { name: haplotypes, type: integer, flag: --n-hap, default: 2 }
+      - { name: telomere_motif, type: string, flag: --telo-m }
+      - { name: telomere_penalty, type: integer, flag: --telo-p, default: 1 }
+      - { name: telomere_max_drop, type: integer, flag: --telo-d, default: 2000 }
+      - { name: telomere_min_score, type: integer, flag: --telo-s, default: 500 }
+      - { name: ont_chimera_support, type: integer, flag: --chem-c, default: 1 }
+      - { name: ont_chimera_flank, type: integer, flag: --chem-f, default: 256 }
+      - { name: ont_min_length, type: integer, flag: --rl-cut, default: 1000 }
+      - { name: ont_min_quality, type: integer, flag: --sc-cut, default: 10 }
