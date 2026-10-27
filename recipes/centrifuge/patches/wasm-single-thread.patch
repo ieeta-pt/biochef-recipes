@@ -1,0 +1,42 @@
+Under wasm there are no threads to run the search workers: run each in
+place.
+
+centrifuge-build's threads wait on each other, which wasm cannot run:
+build with one. The index is the same for any number of threads.
+
+diff --git a/centrifuge.cpp b/centrifuge.cpp
+index 23baba7..e1d0b0a 100644
+--- a/centrifuge.cpp
++++ b/centrifuge.cpp
+@@ -2806,11 +2806,16 @@ static void multiseedSearch(
+ 		for(int i = 0; i < nthreads; i++) {
+ 			// Thread IDs start at 1
+ 			tids[i] = i+1;
++#ifdef __EMSCRIPTEN__
++			multiseedSearchWorker((void*)&tids[i]);
++			threads[i] = NULL;
++#else
+ 			threads[i] = new tthread::thread(multiseedSearchWorker, (void*)&tids[i]);
++#endif
+ 		}
+ 
+ 		for (int i = 0; i < nthreads; i++)
+-			threads[i]->join();
++			if (threads[i] != NULL) threads[i]->join();
+ 
+ 	}
+ 	if(!metricsPerRead && (metricsOfb != NULL || metricsStderr)) {
+diff --git a/centrifuge_build.cpp b/centrifuge_build.cpp
+index dd44708..a014c1a 100644
+--- a/centrifuge_build.cpp
++++ b/centrifuge_build.cpp
+@@ -270,6 +270,9 @@ static void parseOptions(int argc, const char **argv) {
+ 			case 'c': format = CMDLINE; break;
+             case ARG_THREADS:
+ 			case 'p': nthreads = parseNumber<int>(1, "-p arg must be at least 1");
++#ifdef __EMSCRIPTEN__
++				nthreads = 1;
++#endif
+                 break;
+ 			case 'C':
+ 				cerr << "Error: -C specified but Bowtie 2 does not support colorspace input." << endl;
