@@ -1,0 +1,17 @@
+hisat2-build's threads wait on each other, which wasm cannot run: build with
+one. The index is the same for any number of threads.
+
+diff --git a/hisat2_build.cpp b/hisat2_build.cpp
+index 2b7e311..11dd35c 100644
+--- a/hisat2_build.cpp
++++ b/hisat2_build.cpp
+@@ -391,6 +391,9 @@ static void parseOptions(int argc, const char **argv) {
+ 			case 'r': writeRef = false; break;
+             case 'p':
+                 nthreads = parseNumber<int>(1, "-p arg must be at least 1");
++#ifdef __EMSCRIPTEN__
++                nthreads = 1;
++#endif
+                 break;
+ 
+ 			case -1: /* Done with options. */
