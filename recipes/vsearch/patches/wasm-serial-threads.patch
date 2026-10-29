@@ -1,0 +1,118 @@
+diff --git a/src/allpairs.cc b/src/allpairs.cc
+index 986dbd8d..d4fcbc43 100644
+--- a/src/allpairs.cc
++++ b/src/allpairs.cc
+@@ -71,6 +71,10 @@
+ #include <cstring>  // std::strlen
+ #include <limits>
+ #include <pthread.h>
++static void serial_xpthread_create(pthread_t *, pthread_attr_t const *, void * (*start_routine)(void *), void * arg) { start_routine(arg); }
++static void serial_xpthread_join(pthread_t, void **) {}
++#define xpthread_create serial_xpthread_create
++#define xpthread_join serial_xpthread_join
+ #include <vector>
+ 
+ 
+diff --git a/src/arch.cc b/src/arch.cc
+index 159343d8..4742de59 100644
+--- a/src/arch.cc
++++ b/src/arch.cc
+@@ -143,7 +143,7 @@ auto arch_get_cores() -> long
+   GetSystemInfo(&si);
+   return si.dwNumberOfProcessors;
+ #else
+-  return sysconf(_SC_NPROCESSORS_ONLN);
++  return 1;
+ #endif
+ }
+ 
+diff --git a/src/chimera.cc b/src/chimera.cc
+index d2428ad4..ab865caa 100644
+--- a/src/chimera.cc
++++ b/src/chimera.cc
+@@ -87,6 +87,10 @@
+ #include <memory>
+ #include <numeric>  // std::accumulate
+ #include <pthread.h>
++static void serial_xpthread_create(pthread_t *, pthread_attr_t const *, void * (*start_routine)(void *), void * arg) { start_routine(arg); }
++static void serial_xpthread_join(pthread_t, void **) {}
++#define xpthread_create serial_xpthread_create
++#define xpthread_join serial_xpthread_join
+ #include <vector>
+ 
+ 
+diff --git a/src/fastq_mergepairs.cc b/src/fastq_mergepairs.cc
+index 41acc67e..eab7cdd2 100644
+--- a/src/fastq_mergepairs.cc
++++ b/src/fastq_mergepairs.cc
+@@ -76,6 +76,10 @@
+ #include <cstdlib>  // std::exit, EXIT_FAILURE
+ #include <cstring>  // std::strlen
+ #include <pthread.h>
++static void serial_xpthread_create(pthread_t *, pthread_attr_t const *, void * (*start_routine)(void *), void * arg) { start_routine(arg); }
++static void serial_xpthread_join(pthread_t, void **) {}
++#define xpthread_create serial_xpthread_create
++#define xpthread_join serial_xpthread_join
+ #include <vector>
+ 
+ 
+diff --git a/src/mask.cc b/src/mask.cc
+index 09d034f0..20797328 100644
+--- a/src/mask.cc
++++ b/src/mask.cc
+@@ -71,6 +71,10 @@
+ #include <cstdio>  // std::FILE
+ #include <cstring>  // std::strcpy
+ #include <pthread.h>
++static void serial_xpthread_create(pthread_t *, pthread_attr_t const *, void * (*start_routine)(void *), void * arg) { start_routine(arg); }
++static void serial_xpthread_join(pthread_t, void **) {}
++#define xpthread_create serial_xpthread_create
++#define xpthread_join serial_xpthread_join
+ // #include <string>
+ #include <vector>
+ 
+diff --git a/src/search.cc b/src/search.cc
+index ac4d05f5..ad520d02 100644
+--- a/src/search.cc
++++ b/src/search.cc
+@@ -77,6 +77,10 @@
+ #include <cstdio>  // std::FILE, std::fprintf, std::fclose, std::size_t
+ #include <cstring>  // std::strlen, std::memset, std::strcpy
+ #include <pthread.h>
++static void serial_xpthread_create(pthread_t *, pthread_attr_t const *, void * (*start_routine)(void *), void * arg) { start_routine(arg); }
++static void serial_xpthread_join(pthread_t, void **) {}
++#define xpthread_create serial_xpthread_create
++#define xpthread_join serial_xpthread_join
+ #include <vector>
+ 
+ 
+diff --git a/src/search_exact.cc b/src/search_exact.cc
+index fa8beffd..e11759fb 100644
+--- a/src/search_exact.cc
++++ b/src/search_exact.cc
+@@ -70,6 +70,10 @@
+ #include <cstdio>  // std::FILE, std::fprintf, std::fclose, std::size_t
+ #include <cstring>  // std::strlen, std::memset, std::strcpy
+ #include <pthread.h>
++static void serial_xpthread_create(pthread_t *, pthread_attr_t const *, void * (*start_routine)(void *), void * arg) { start_routine(arg); }
++static void serial_xpthread_join(pthread_t, void **) {}
++#define xpthread_create serial_xpthread_create
++#define xpthread_join serial_xpthread_join
+ #include <vector>
+ 
+ 
+diff --git a/src/sintax.cc b/src/sintax.cc
+index a61ca856..550f436f 100644
+--- a/src/sintax.cc
++++ b/src/sintax.cc
+@@ -95,6 +95,10 @@
+ #include <cstdio>  // std::FILE, std::fprintf, std::fclose, std::size_t
+ #include <cstring>  // std::memset, std::strncmp, std::strcpy
+ #include <pthread.h>
++static void serial_xpthread_create(pthread_t *, pthread_attr_t const *, void * (*start_routine)(void *), void * arg) { start_routine(arg); }
++static void serial_xpthread_join(pthread_t, void **) {}
++#define xpthread_create serial_xpthread_create
++#define xpthread_join serial_xpthread_join
+ 
+ 
+ static struct searchinfo_s * si_plus;
