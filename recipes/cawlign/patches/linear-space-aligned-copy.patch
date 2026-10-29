@@ -1,0 +1,40 @@
+In linear space, the aligned sequences were a StringBuffer's, allocated with
+realloc, and freed with delete[]. They are now copied into new[].
+
+diff --git a/src/cawlign.cpp b/src/cawlign.cpp
+index 0ac4635..160d152 100644
+--- a/src/cawlign.cpp
++++ b/src/cawlign.cpp
+@@ -12,6 +12,14 @@
+ using namespace std;
+ using namespace argparse;
+ 
++static char *biochef_new_copy (const char *s) {
++    if (!s) s = "";
++    size_t n = strlen (s) + 1;
++    char *c = new char [n];
++    memcpy (c, s, n);
++    return c;
++}
++
+ const char      rc_tag []   = "|RC";
+ const char      empty_tag[] = "";
+ 
+@@ -391,15 +399,13 @@ int biochef_upstream_main (int argc, const char * argv[]) {
+                     
+                     
+                     result2.flip();
+-                    alignedQrySeq = result2.getString();
+-                    result2.detach();
++                    alignedQrySeq = biochef_new_copy (result2.getString());
+                     
+                     
+                     if (args.out_format == pairwise || args.out_format == refalign) {
+                         
+                         result1.flip();
+-                        alignedRefSeq = result1.getString();
+-                        result1.detach();
++                        alignedRefSeq = biochef_new_copy (result1.getString());
+                        
+                     }
+                     

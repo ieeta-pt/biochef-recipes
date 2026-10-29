@@ -1,0 +1,84 @@
+apiVersion: v1
+
+id: app.biochef.cawlign
+name: cawlign
+description: "cawlign aligns sequences to a reference, in nucleotide or codon space, and writes them as a multiple alignment against it, or as pairwise alignments. In codon space it keeps the reading frame through frameshifts, as in viral sequencing; it ships the scoring files, genetic codes and references (HIV-1 HXB2 genes, SARS-CoV-2 genes and the mouse COXI) it uses. It is a C++ port of bealign, from BioExt, part of the HIV-TRACE pipeline."
+
+version: 0.1.16-bc.1
+homepage: https://github.com/veg/cawlign
+license:
+  spdx: MIT
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/veg/cawlign
+  commit: "99814b395b50e5309a22b523fc70fa1e46ef73da"
+  version: "0.1.16"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      emscriptenVersion: 4.0.18
+      outputDir: out
+      buildScript: build-wasm.sh
+    patches: [patches/strict-entry-point.patch, patches/linear-space-refmap-loop.patch, patches/linear-space-aligned-copy.patch, patches/reverse-complement-one-base.patch]
+  native:
+    outputDir: out
+    buildScript: build-native.sh
+    buildTools: [make, gcc]
+    patches: [patches/strict-entry-point.patch, patches/linear-space-refmap-loop.patch, patches/linear-space-aligned-copy.patch, patches/reverse-complement-one-base.patch]
+
+runtime:
+  modes: [wasm, native, remote]
+
+operations:
+  - id: cawlign.align
+    name: Align to a Reference (cawlign)
+    category: Sequence Analysis
+    bin: cawlign
+    description: "Align sequences in FASTA to a reference in FASTA. In nucleotide space (the default) the scoring is cawlign's own, or NUC4.4. In codon space (-t codon) the reference must be in frame with no stop codon, and the scoring is HIV_BETWEEN_F or BLOSUM62, with the genetic code given (universal by default). refmap writes each sequence aligned to the reference, without its insertions; refalign keeps them in lower case; pairwise writes the reference and each sequence as pairs."
+    io:
+      inputs:
+        - &sequences { name: sequences, types: [Multi-FASTA, FASTA], mode: file }
+        - { name: reference, types: [FASTA, Multi-FASTA], mode: file, flag: -r }
+      outputs:
+        - &alignment { name: alignment, types: [Multi-FASTA, FASTA], mode: file, flag: -o, filename: cawlign.fasta }
+    parameters:
+      - { name: datatype, type: string, flag: -t, default: nucleotide }
+      - { name: scoring, type: string, flag: -s }
+      - { name: genetic_code, type: string, flag: -c }
+      - { name: alignment_mode, type: string, flag: -l, default: trim }
+      - { name: output_format, type: string, flag: -f, default: refmap }
+      - { name: space, type: string, flag: -S, default: quadratic }
+      - { name: reverse_complement, type: string, flag: -R, default: none }
+      - { name: no_affine, type: flag, flag: -a }
+      - { name: write_reference, type: flag, flag: -I }
+      - { name: quiet, type: flag, flag: -q }
+
+  - id: cawlign.align.builtin
+    name: Align to a Shipped Reference (cawlign)
+    category: Sequence Analysis
+    bin: cawlign
+    description: "Align sequences in FASTA to one of the references cawlign ships, by name: the HIV-1 HXB2 genes (HXB2_gag, HXB2_pol, HXB2_pr, HXB2_rt, HXB2_prrt, HXB2_int, HXB2_vif, HXB2_tat, HXB2_rev, HXB2_nef), the SARS-CoV-2 genes (CoV2-S, CoV2-N, CoV2-ORF1a and the others) and the mouse COXI (COXI-mouse), with the options of Align to a Reference."
+    io:
+      inputs:
+        - *sequences
+      outputs:
+        - *alignment
+    parameters:
+      - { name: reference, type: string, flag: -r, default: HXB2_pol, required: true }
+      - { name: datatype, type: string, flag: -t, default: nucleotide }
+      - { name: scoring, type: string, flag: -s }
+      - { name: genetic_code, type: string, flag: -c }
+      - { name: alignment_mode, type: string, flag: -l, default: trim }
+      - { name: output_format, type: string, flag: -f, default: refmap }
+      - { name: space, type: string, flag: -S, default: quadratic }
+      - { name: reverse_complement, type: string, flag: -R, default: none }
+      - { name: no_affine, type: flag, flag: -a }
+      - { name: write_reference, type: flag, flag: -I }
+      - { name: quiet, type: flag, flag: -q }
