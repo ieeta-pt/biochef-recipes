@@ -4,54 +4,95 @@ id: app.biochef.modbam2bed
 name: modbam2bed
 description: Summarize modified bases (e.g. 5mC methylation) from a modBAM alignment into a BED file with per-position counts and frequencies. Useful for Nanopore methylation analysis.
 
-version: 0.9.5-bc.1
+version: 0.10.0-bc.1
 homepage: https://github.com/epi2me-labs/modbam2bed
 license:
-  spdx: LicenseRef-ONT-Public-1.0
+  spdx: LicenseRef-ONT-Public-1.0 AND LGPL-2.1-or-later
   files: [LICENSE]
 maintainers:
   - name: Biochef
 
 source:
   repo: https://github.com/epi2me-labs/modbam2bed
-  tag: "v0.9.5"
-  version: "0.9.5"
-  commit: "a3bee2388da5cfa566f80e086baa36ad40677119"
+  tag: "v0.10.0"
+  version: "0.10.0"
+  commit: "15e281184f7c12c264aad40ddd7f011cbf2896d9"
 
 status: experimental
 
 build:
   wasm:
-    strategy: biowasm
-    biowasm:
-      package: modbam2bed
+    strategy: emscripten
+    emscripten:
+      outputDir: out
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+  native:
+    buildScript: build-native.sh
+    buildTools: [make, gcc]
+    outputDir: bin
 
 runtime:
-  modes: [wasm]
+  modes: [wasm, native]
 
 operations:
   - id: modbam2bed.summarize
     name: Summarize Methylation (modbam2bed)
     category: Genomic Operations
     bin: modbam2bed
-    description: Read a modBAM with MM/ML tags plus its reference and produce a BED summary of modification counts and frequencies per position.
+    description: Read a modBAM with MM/ML tags, its index and its reference, and write a bedMethyl of modification counts and frequencies per position. Enable at most one of CpG, CHH and CHG; with more than one, modbam2bed writes to files that are not collected.
     io:
       inputs:
         - { name: reference, types: [FASTA], mode: file }
-        - { name: bam, types: [BAM], mode: file }
+        - { name: bam, types: [BAM], mode: file, filename: in.bam }
+        - { name: index, types: [BAI, CSI], mode: sidecar, filename: in.bam.bai }
       outputs:
         - { name: out, types: [BED], mode: stdout }
     parameters:
       - { name: region, type: string, flag: -r }
       - { name: extended, type: flag, flag: -e }
-      - { name: aggregate, type: flag, flag: -a }
-      - { name: haplotype, type: integer, flag: --haplotype }
       - { name: mod_base, type: string, flag: -m }
-      - { name: canon_base, type: string, flag: -c }
       - { name: threshold, type: float, flag: -f }
-      - { name: cpg, type: flag, flag: --cpg }
-      - { name: chg, type: flag, flag: --chg }
-      - { name: chh, type: flag, flag: --chh }
       - { name: combine, type: flag, flag: --combine }
-      - { name: accumulated, type: flag, flag: --accumulated }
+      - { name: cpg, type: flag, flag: --cpg }
+      - { name: chh, type: flag, flag: --chh }
+      - { name: chg, type: flag, flag: --chg }
+      - { name: mask, type: flag, flag: -k }
+      - { name: max_depth, type: integer, flag: -d }
+      - { name: read_group, type: string, flag: -g }
+      - { name: tag_name, type: string, flag: --tag_name }
+      - { name: tag_value, type: integer, flag: --tag_value }
+      - { name: haplotype, type: integer, flag: --haplotype }
+      - { name: map_q, type: integer, flag: --map_q }
+      - { name: threads, type: integer, flag: -t, default: 1 }
+
+  - id: modbam2bed.summarize.cpg.combined
+    name: Summarize CpG With Strands Combined (modbam2bed)
+    category: Genomic Operations
+    bin: modbam2bed
+    description: Like Summarize Methylation restricted to CpG sites, and also write each CpG with the counts of both strands added together (--aggregate).
+    io:
+      inputs:
+        - { name: reference, types: [FASTA], mode: file }
+        - { name: bam, types: [BAM], mode: file, filename: in.bam }
+        - { name: index, types: [BAI, CSI], mode: sidecar, filename: in.bam.bai }
+      outputs:
+        - { name: out, types: [BED], mode: stdout }
+        - { name: combined, types: [BED], mode: file, filename: out.cpg.acc.bed }
+    parameters:
+      - { name: cpg, type: flag, flag: --cpg, required: true, hidden: true }
+      - { name: aggregate, type: flag, flag: --aggregate, required: true, hidden: true }
+      - { name: prefix, type: string, flag: -p, default: "out", required: true, hidden: true }
+      - { name: region, type: string, flag: -r }
+      - { name: extended, type: flag, flag: -e }
+      - { name: mod_base, type: string, flag: -m }
+      - { name: threshold, type: float, flag: -f }
+      - { name: combine, type: flag, flag: --combine }
+      - { name: mask, type: flag, flag: -k }
+      - { name: max_depth, type: integer, flag: -d }
+      - { name: read_group, type: string, flag: -g }
+      - { name: tag_name, type: string, flag: --tag_name }
+      - { name: tag_value, type: integer, flag: --tag_value }
+      - { name: haplotype, type: integer, flag: --haplotype }
+      - { name: map_q, type: integer, flag: --map_q }
       - { name: threads, type: integer, flag: -t, default: 1 }
