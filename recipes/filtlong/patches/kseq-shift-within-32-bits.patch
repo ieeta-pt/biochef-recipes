@@ -1,0 +1,17 @@
+kseq rounds buffer sizes up with a shift by 32, past the width of wasm's
+32-bit size_t: clang then compiles it to anything, and buffers come out too
+small. Two shifts by 16 do the same at either width.
+
+diff --git a/src/kseq.h b/src/kseq.h
+index a086d34..7977f0f 100644
+--- a/src/kseq.h
++++ b/src/kseq.h
+@@ -92,7 +92,7 @@ typedef struct __kstring_t {
+ #endif
+ 
+ #ifndef kroundup64
+-#define kroundup64(x) (--(x), (x)|=(x)>>1, (x)|=(x)>>2, (x)|=(x)>>4, (x)|=(x)>>8, (x)|=(x)>>16, (x)|=(x)>>32, ++(x))
++#define kroundup64(x) (--(x), (x)|=(x)>>1, (x)|=(x)>>2, (x)|=(x)>>4, (x)|=(x)>>8, (x)|=(x)>>16, (x)|=((x)>>16)>>16, ++(x))
+ #endif
+ 
+ #define __KS_GETUNTIL(__read, __bufsize) \
