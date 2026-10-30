@@ -1,0 +1,23 @@
+Bifrost is built on its own, with the flags of the rest, rather than by
+kallisto's CMake.
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 8a7c700..ce4f5ee 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -93,14 +93,7 @@ ExternalProject_Add(htslib
+ )
+ endif(USE_BAM)
+ 
+-ExternalProject_Add(bifrost
+-    PREFIX ${PROJECT_SOURCE_DIR}/ext/bifrost
+-    SOURCE_DIR ${PROJECT_SOURCE_DIR}/ext/bifrost
+-    BUILD_IN_SOURCE 1
+-    CONFIGURE_COMMAND mkdir -p build && cd build && cmake .. -DMAX_KMER_SIZE=${MAX_KMER_SIZE} -DCMAKE_INSTALL_PREFIX=${PREFIX} -DCMAKE_CXX_FLAGS=${PROJECT_BIFROST_CMAKE_CXX_FLAGS} ${DO_ENABLE_AVX2} ${DO_ENABLE_COMPILATION_ARCH}
+-    BUILD_COMMAND cd build && make
+-    INSTALL_COMMAND ""
+-)
++ExternalProject_Add(bifrost PREFIX ${PROJECT_SOURCE_DIR}/ext/bifrost SOURCE_DIR ${PROJECT_SOURCE_DIR}/ext/bifrost BUILD_IN_SOURCE 1 CONFIGURE_COMMAND "" BUILD_COMMAND "" INSTALL_COMMAND "")
+ 
+ if (ZLIBNG)
+     message("zlib-ng enabled.")

@@ -1,0 +1,16 @@
+The k-mers of a D-list belong to an id one past the last transcript, and
+with --bias kallisto wrote their blocks into that transcript's sequence,
+past the end of its list, and crashed. They are skipped.
+
+diff --git a/src/KmerIndex.cpp b/src/KmerIndex.cpp
+index 4bfd9c5..13c9892 100644
+--- a/src/KmerIndex.cpp
++++ b/src/KmerIndex.cpp
+@@ -2628,6 +2628,7 @@ void KmerIndex::loadTranscriptSequences() const {
+ 
+       const Roaring& trs = val.getIndices();
+       for (const auto& tr : trs) {
++        if (tr >= target_seqs.size()) continue;
+         auto um = dbg.find(km);
+         bool ecfound = true;
+         for (const auto& p : findPositions(tr, km, um, ecfound, 0)) {
