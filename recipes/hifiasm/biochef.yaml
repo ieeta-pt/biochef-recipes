@@ -29,7 +29,7 @@ build:
       buildScript: build-wasm.sh
   native:
     buildScript: build-native.sh
-    patches: [patches/bloom-filter-off-by-default.patch]
+    patches: [patches/bloom-filter-off-by-default.patch, patches/assembly-include-guard.patch]
     buildTools: [make]
     outputDir: .
 
