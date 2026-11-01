@@ -25,7 +25,7 @@ build:
     patches: [patches/biochef-entry-point.patch, patches/reproducible-build-info.patch, patches/version-file-rename.patch, patches/wasm-single-thread.patch]
     emscripten:
       outputDir: .
-      emscriptenVersion: 4.0.18
+      emscriptenVersion: 6.0.13
       buildScript: build-wasm.sh
   native:
     patches: [patches/biochef-entry-point.patch, patches/reproducible-build-info.patch]
