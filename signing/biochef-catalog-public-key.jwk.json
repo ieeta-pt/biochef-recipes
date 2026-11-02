@@ -1,0 +1,9 @@
+{
+  "alg": "ES256",
+  "crv": "P-256",
+  "kid": "biochef-catalog-key",
+  "kty": "EC",
+  "use": "sig",
+  "x": "96FNjTbbBMsn0LpaFDTJFToaxfBsCZcCTKkEjNJi_js",
+  "y": "mwG_hO5F6omiyrCD73nj4A4JCnaGheVHj9PuxpGHdf4"
+}
