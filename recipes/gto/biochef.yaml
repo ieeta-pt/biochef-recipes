@@ -4,7 +4,7 @@ id: app.biochef.gto
 name: GTO Toolkit
 description: Conjunto de utilitários GTO para manipulação de FASTA/SEQ e operações afins.
 
-version: 1.6.3-bc.7
+version: 1.6.3-bc.8
 homepage: https://github.com/cobilab/gto
 license:
   spdx: MIT
@@ -27,12 +27,12 @@ build:
       emscriptenVersion: 4.0.18
       outputDir: bin
       buildScript: build-wasm.sh
-    patches: [patches/usage-buffer-and-split-counter.patch, patches/split-reads-into-a-tar.patch]
+    patches: [patches/usage-buffer-and-split-counter.patch, patches/split-reads-into-a-tar.patch, patches/genomic-period-orders-from-memory.patch]
   native:
     outputDir: bin
     buildScript: build-native.sh
     buildTools: [make]
-    patches: [patches/usage-buffer-and-split-counter.patch, patches/split-reads-into-a-tar.patch]
+    patches: [patches/usage-buffer-and-split-counter.patch, patches/split-reads-into-a-tar.patch, patches/genomic-period-orders-from-memory.patch]
 
 runtime:
   modes: [wasm, native]
@@ -732,17 +732,17 @@ operations:
       - { name: nSymbols, type: integer, flag: -n }
       - { name: frequency, type: string, flag: -f }
 
-  # - id: gto.genomic.period
-  #   name: Genomic Period (GTO)
-  #   bin: gto_genomic_period
-  #   category: Genomic Operations
-  #   description: Calculates the best order depth of a sequence, using FCMs. It only works "ACGT", while the rest will be discarded.
-  #   io:
-  #     inputs:
-  #       - { name: in, types: [DNA], mode: stdin }
-  #     outputs:
-  #       - { name: out, types: [NUM], mode: stdout }
-  #   parameters: []
+  - id: gto.genomic.period
+    name: Genomic Period (GTO)
+    bin: gto_genomic_period
+    category: Genomic Operations
+    description: Calculates the best order depth of a sequence, using FCMs. It only works "ACGT", while the rest will be discarded. Writes a line per order, 1 to 20, with the order and its value, tab-separated.
+    io:
+      inputs:
+        - { name: in, types: [DNA], mode: stdin }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters: []
 
   - id: gto.genomic.rand.seq.extra.chars
     name: Genomic Rand Seq Extra Chars (GTO)

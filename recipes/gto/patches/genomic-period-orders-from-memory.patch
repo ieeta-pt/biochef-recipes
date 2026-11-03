@@ -1,0 +1,89 @@
+diff --git a/src/GenomicPeriod.c b/src/GenomicPeriod.c
+index 9759a4d..9b62e89 100644
+--- a/src/GenomicPeriod.c
++++ b/src/GenomicPeriod.c
+@@ -1,5 +1,6 @@
+ #include <stdio.h>
+ #include <stdlib.h>
++#include <string.h>
+ #include "defs.h"
+ #include "fcm.h"
+ #include "dna.h"
+@@ -17,11 +18,10 @@ int main(int argc, char *argv[])
+ {
+   uint32_t k, i, order = 1, max = 20;
+   uint8_t  s;
+-  uint64_t info[2][max];
++  uint64_t info[2][max + 1];
+   BUF      *B;
+   CBUF     *CB;
+   FCM      *Fcm;
+-  FILE     *PLOT = popen("gnuplot -p", "w");
+ 
+   char *programName = argv[0];
+   struct argparse_option options[] = {
+@@ -45,21 +45,34 @@ int main(int argc, char *argv[])
+   if(argc != 0 || isatty(STDIN_FILENO))
+     argparse_help_cb(&argparse, options);
+ 
+-  // SEQUENCE
++  // SEQUENCE, read once: every order goes over it again, and stdin may be a
++  // pipe, which cannot be rewound
++  uint8_t  *seq = NULL;
++  uint64_t seqSize = 0, seqCap = 0, p;
++  B = CreateBuffer(BUF_SIZE);
++  while((k = fread(B->buf, 1, B->size, stdin)))
++  {
++    if(seqSize + k > seqCap)
++    {
++      seqCap = (seqSize + k) * 2;
++      seq = (uint8_t *) Realloc(seq, seqCap, k);
++    }
++    memcpy(seq + seqSize, B->buf, k);
++    seqSize += k;
++  }
++  RemoveBuffer(B);
++
+   for(order = 1 ; order <= max ; ++order)
+   {
+     fprintf(stderr, "Running order: %u ... ", order);
+-    rewind(stdin);
+     info[0][order] = 0;
+     info[1][order] = 0;
+-    B   = CreateBuffer (BUF_SIZE);
+     CB  = CreateCBuffer(BUF_SIZE, GUARD);
+     Fcm = Create4DnaFCM(order, 1, 0, 4);
+ 
+-    while((k = fread(B->buf, 1, B->size, stdin)))
+-      for(i = 0 ; i < k ; ++i)
++    for(p = 0 ; p < seqSize ; ++p)
+       {
+-        s = B->buf[i];
++        s = seq[p];
+         if(s == 'A' || s == 'C' || s == 'G' || s == 'T')
+         {
+           s = S2N(s);
+@@ -74,23 +87,16 @@ int main(int argc, char *argv[])
+       }
+ 
+     fprintf(stderr, "Done!\n");
+-    RemoveBuffer (B);
+     RemoveCBuffer(CB);
+     Free4DnaModel(Fcm);
+   }
+   
+-  fprintf(PLOT, "plot '-' with lines\n");
+   for(order = 1 ; order <= max ; ++order)
+   {
+     fprintf(stdout, "%2u\t%.4g\n", order, (double) (2 * info[0][order]) /
+     info[1][order]); 
+-    fprintf(PLOT,   "%2u\t%.4g\n", order, (double) (2 * info[0][order]) /
+-    info[1][order]); 
+   }
+ 
+-  fprintf(PLOT, "e\n");
+-  fflush(PLOT);
+-  pclose(PLOT);
+ 
+   return EXIT_SUCCESS;
+ }
