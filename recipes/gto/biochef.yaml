@@ -4,7 +4,7 @@ id: app.biochef.gto
 name: GTO Toolkit
 description: Conjunto de utilitários GTO para manipulação de FASTA/SEQ e operações afins.
 
-version: 1.6.3-bc.3
+version: 1.6.3-bc.4
 homepage: https://github.com/cobilab/gto
 license:
   spdx: MIT
@@ -116,7 +116,7 @@ operations:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
       - { name: alphabet, type: string, flag: -a, required: true }
-      - { name: size, type: integer, flag: -s, required: true }
+      - { name: size, type: integer, flag: -s, required: true, default: 3 }
 
   - id: gto.char.to.line
     name: Char To Line (GTO)
