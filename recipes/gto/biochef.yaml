@@ -4,7 +4,7 @@ id: app.biochef.gto
 name: GTO Toolkit
 description: Conjunto de utilitários GTO para manipulação de FASTA/SEQ e operações afins.
 
-version: 1.6.3-bc.6
+version: 1.6.3-bc.7
 homepage: https://github.com/cobilab/gto
 license:
   spdx: MIT
@@ -27,12 +27,12 @@ build:
       emscriptenVersion: 4.0.18
       outputDir: bin
       buildScript: build-wasm.sh
-    patches: [patches/usage-buffer-and-split-counter.patch]
+    patches: [patches/usage-buffer-and-split-counter.patch, patches/split-reads-into-a-tar.patch]
   native:
     outputDir: bin
     buildScript: build-native.sh
     buildTools: [make]
-    patches: [patches/usage-buffer-and-split-counter.patch]
+    patches: [patches/usage-buffer-and-split-counter.patch, patches/split-reads-into-a-tar.patch]
 
 runtime:
   modes: [wasm, native]
@@ -320,20 +320,17 @@ operations:
         - { name: out, types: [FASTA, Multi-FASTA], mode: stdout }
     parameters: []
 
-  # TODO: The number of outputs is dynamic 
-  # We need to implement a way to deal with that
-  #
-  # - id: gto.fasta.split.reads
-  #   name: Fasta Split Reads (GTO)
-  #   bin: gto_fasta_split_reads
-  #   category: Sequence Manipulation
-  #   description: Splits a Multi-FASTA file to multiple FASTA files.
-  #   io:
-  #     inputs:
-  #       - { name: in, types: [Multi-FASTA], mode: stdin}
-  #     outputs:
-  #       - { name: out, types: [FASTA], mode: files }
-  #   parameters: []
+  - id: gto.fasta.split.reads
+    name: Fasta Split Reads (GTO)
+    bin: gto_fasta_split_reads
+    category: Sequence Manipulation
+    description: Splits a Multi-FASTA file into one FASTA file per record, out1.fasta, out2.fasta and so on, in a tar.
+    io:
+      inputs:
+        - { name: in, types: [Multi-FASTA], mode: stdin }
+      outputs:
+        - { name: out, types: [SEQUENCE_TAR], mode: file, flag: --bc-parts }
+    parameters: []
 
   - id: gto.fasta.split.streams
     name: Fasta Split Streams (GTO)
