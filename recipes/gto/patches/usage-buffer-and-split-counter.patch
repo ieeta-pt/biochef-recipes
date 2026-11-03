@@ -1,0 +1,54 @@
+diff --git a/src/FastqMinimumQualityScoreForward.c b/src/FastqMinimumQualityScoreForward.c
+index 3d1ddaa..04cdab0 100644
+--- a/src/FastqMinimumQualityScoreForward.c
++++ b/src/FastqMinimumQualityScoreForward.c
+@@ -33,8 +33,8 @@ int main(int argc, char *argv[])
+   };
+   struct argparse argparse;
+ 
+-  char usage[250] = "\nExample: "; 
+-  strcat(usage, programName);
++  char usage[4096] = "\nExample: ";
++  strncat(usage, programName, 1024);
+   strcat(usage, " -k <windowsize> -w <minavg> -m <minqs> < input.fastq > output.fastq\n"
+     "\nConsole output example:\n"
+     "Minimum QS       : value\n"
+diff --git a/src/FastqMinimumQualityScoreReverse.c b/src/FastqMinimumQualityScoreReverse.c
+index ce170b0..7561cb7 100644
+--- a/src/FastqMinimumQualityScoreReverse.c
++++ b/src/FastqMinimumQualityScoreReverse.c
+@@ -33,8 +33,8 @@ int main(int argc, char *argv[])
+   };
+   struct argparse argparse;
+ 
+-  char usage[250] = "\nExample: "; 
+-  strcat(usage, programName);
++  char usage[4096] = "\nExample: ";
++  strncat(usage, programName, 1024);
+   strcat(usage, " -k <windowsize> -w <minavg> -m <minqs> < input.fastq > output.fastq\n"
+     "\nConsole output example:\n"
+     "Minimum QS       : value\n"
+diff --git a/src/FastqSplit.c b/src/FastqSplit.c
+index 11110fa..c2e6a1f 100644
+--- a/src/FastqSplit.c
++++ b/src/FastqSplit.c
+@@ -16,7 +16,7 @@
+ int main(int argc, char *argv[])
+ {
+   Read      *Read = CreateRead(65536+GUARD, 65535+GUARD);
+-  uint64_t  total = 0, forward = 65535, reverse = 0, singleton = 0;
++  uint64_t  total = 0, forward = 0, reverse = 0, singleton = 0;
+   const char *output_forward = NULL;
+   const char *output_reverse = NULL;
+ 
+@@ -32,8 +32,8 @@ int main(int argc, char *argv[])
+   };
+   struct argparse argparse;
+ 
+-  char usage[250] = "\nExample: "; 
+-  strcat(usage, programName);
++  char usage[4096] = "\nExample: ";
++  strncat(usage, programName, 1024);
+   strcat(usage, " -f <output_forward.fastq> -r <output_reverse.fastq> < input.fastq > output\n"
+     "\nOutput example :\n"
+     "Total reads      : value\n"  
