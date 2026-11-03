@@ -4,7 +4,7 @@ id: app.biochef.gto
 name: GTO Toolkit
 description: Conjunto de utilitários GTO para manipulação de FASTA/SEQ e operações afins.
 
-version: 1.6.3-bc.2
+version: 1.6.3-bc.3
 homepage: https://github.com/cobilab/gto
 license:
   spdx: MIT
@@ -22,17 +22,17 @@ status: verified
 
 build:
   wasm:
-    strategy: auto
-    biowasm:
-      package: gto
+    strategy: emscripten
     emscripten:
       emscriptenVersion: 4.0.18
       outputDir: bin
       buildScript: build-wasm.sh
+    patches: [patches/usage-buffer-and-split-counter.patch]
   native:
     outputDir: bin
     buildScript: build-native.sh
     buildTools: [make]
+    patches: [patches/usage-buffer-and-split-counter.patch]
 
 runtime:
   modes: [wasm, native]
@@ -453,41 +453,35 @@ operations:
     parameters:
       - { name: size, type: integer, flag: -s, required: true }
 
-  # Note(andrade):
-  # This gives an `*** stack smashing detected ***: terminated` error in the tests
-  #
-  # - id: gto.fastq.minimum.local.quality.score.forward
-  #   name: Fastq Minimum Local Quality Score Forward (GTO)
-  #   bin: gto_fastq_minimum_local_quality_score_forward
-  #   category: Sequence Manipulation
-  #   description: Filters the reads considering the quality score average of a defined window size of bases.
-  #   io:
-  #     inputs:
-  #       - { name: in, types: [FASTQ], mode: stdin }
-  #     outputs:
-  #       - { name: out, types: [FASTQ], mode: stdout }
-  #   parameters:
-  #     - { name: windowsize, type: integer, flag: -k }
-  #     - { name: minavg, type: integer, flag: -w }
-  #     - { name: minqs, type: integer, flag: -m }
+  - id: gto.fastq.minimum.local.quality.score.forward
+    name: Fastq Minimum Local Quality Score Forward (GTO)
+    bin: gto_fastq_minimum_local_quality_score_forward
+    category: Sequence Manipulation
+    description: Filters the reads considering the quality score average of a defined window size of bases.
+    io:
+      inputs:
+        - { name: in, types: [FASTQ], mode: stdin }
+      outputs:
+        - { name: out, types: [FASTQ], mode: stdout }
+    parameters:
+      - { name: windowsize, type: integer, flag: -k }
+      - { name: minavg, type: integer, flag: -w }
+      - { name: minqs, type: integer, flag: -m }
 
-  # Note(andrade):
-  # This gives an `*** stack smashing detected ***: terminated` error in the tests
-  #
-  # - id: gto.fastq.minimum.local.quality.score.reverse
-  #   name: Fastq Minimum Local Quality Score Reverse (GTO)
-  #   bin: gto_fastq_minimum_local_quality_score_reverse
-  #   category: Sequence Manipulation
-  #   description: Filters the reverse reads, considering the quality score average of a defined window size of bases.
-  #   io:
-  #     inputs:
-  #       - { name: in, types: [FASTQ], mode: stdin }
-  #     outputs:
-  #       - { name: out, types: [FASTQ], mode: stdout }
-  #   parameters:
-  #     - { name: windowsize, type: integer, flag: -k }
-  #     - { name: minavg, type: integer, flag: -w }
-  #     - { name: minqs, type: integer, flag: -m }
+  - id: gto.fastq.minimum.local.quality.score.reverse
+    name: Fastq Minimum Local Quality Score Reverse (GTO)
+    bin: gto_fastq_minimum_local_quality_score_reverse
+    category: Sequence Manipulation
+    description: Filters the reverse reads, considering the quality score average of a defined window size of bases.
+    io:
+      inputs:
+        - { name: in, types: [FASTQ], mode: stdin }
+      outputs:
+        - { name: out, types: [FASTQ], mode: stdout }
+    parameters:
+      - { name: windowsize, type: integer, flag: -k }
+      - { name: minavg, type: integer, flag: -w }
+      - { name: minqs, type: integer, flag: -m }
 
   - id: gto.fastq.minimum.quality.score
     name: Fastq Minimum Quality Score (GTO)
@@ -609,22 +603,19 @@ operations:
         - { name: out, types: [FASTQ], mode: stdout }
     parameters: []
 
-  # TODO: This requires the output folders to be passed as arguments or it won't run
-  # we need to implement something that makes sure we create the files for the outputs before running
-  #
-  # - id: gto.fastq.split
-  #   name: Fastq Split (GTO)
-  #   bin: gto_fastq_split
-  #   category: Sequence Manipulation
-  #   description: Splits Paired End files according to the direction of the strand ('/1' or '/2'). It writes by default singleton reads as forward stands.
-  #   io:
-  #     inputs:
-  #       - { name: in, types: [FASTQ], mode: stdin }
-  #     outputs:
-  #       - { name: forward, types: [FASTQ], mode: file }  
-  #       - { name: reverse, types: [FASTQ], mode: file }
-  #       - { name: read_info, types: [TEXT], mode: stdout }
-  #   parameters: []
+  - id: gto.fastq.split
+    name: Fastq Split (GTO)
+    bin: gto_fastq_split
+    category: Sequence Manipulation
+    description: Splits Paired End files according to the direction of the strand ('/1' or '/2'). It writes by default singleton reads as forward stands.
+    io:
+      inputs:
+        - { name: in, types: [FASTQ], mode: stdin }
+      outputs:
+        - { name: forward, types: [FASTQ], mode: file, flag: -f }
+        - { name: reverse, types: [FASTQ], mode: file, flag: -r }
+        - { name: read_info, types: [TEXT], mode: stdout }
+    parameters: []
 
   - id: gto.fastq.to.fasta
     name: Fastq To Fasta (GTO)
