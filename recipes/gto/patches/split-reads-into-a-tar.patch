@@ -1,0 +1,166 @@
+diff --git a/src/FastaSplitReads.c b/src/FastaSplitReads.c
+index 5ede3d6..8e013cc 100644
+--- a/src/FastaSplitReads.c
++++ b/src/FastaSplitReads.c
+@@ -7,6 +7,65 @@
+ #include "buffer.h"
+ #include "argparse.h"
+ #include <unistd.h>
++#include <errno.h>
++#include <sys/stat.h>
++
++// BioChef: --bc-parts writes the files into one tar instead of a directory,
++// since an operation's output is one file. The members are out1.fasta,
++// out2.fasta and so on, in order, owned by nobody and dated 0.
++static void PutOctal(char *field, size_t width, unsigned long long value)
++{
++  snprintf(field, width, "%0*llo", (int) width - 1, value);
++}
++
++// Removes the files written so far and the directory they went in
++static void RemoveParts(const char *dir, uint32_t count)
++{
++  char path[128];
++  for(uint32_t n = 1 ; n <= count ; ++n)
++  {
++    sprintf(path, "%s/out%u.fasta", dir, n);
++    remove(path);
++  }
++  rmdir(dir);
++}
++
++static void TarMember(FILE *tar, const char *name, const char *path)
++{
++  char header[512];
++  struct stat st;
++  FILE *in;
++  if(stat(path, &st) || !(in = fopen(path, "rb")))
++  {
++    fprintf(stderr, "Error: cannot read %s\n", path);
++    exit(1);
++  }
++  memset(header, 0, sizeof header);
++  strncpy(header, name, 100);
++  PutOctal(header + 100, 8, 0644);
++  PutOctal(header + 108, 8, 0);
++  PutOctal(header + 116, 8, 0);
++  PutOctal(header + 124, 12, (unsigned long long) st.st_size);
++  PutOctal(header + 136, 12, 0);
++  header[156] = '0';
++  memcpy(header + 257, "ustar", 6);
++  memcpy(header + 263, "00", 2);
++  memset(header + 148, ' ', 8);
++  unsigned sum = 0;
++  for(int i = 0 ; i < 512 ; ++i)
++    sum += (unsigned char) header[i];
++  snprintf(header + 148, 8, "%06o", sum);
++  fwrite(header, 1, 512, tar);
++  // static: a 64 KiB frame would be the whole of a wasm build's stack
++  static char buf[65536];
++  size_t n;
++  while((n = fread(buf, 1, sizeof buf, in)) > 0)
++    fwrite(buf, 1, n, tar);
++  fclose(in);
++  static const char zeros[512] = { 0 };
++  size_t pad = (512 - st.st_size % 512) % 512;
++  fwrite(zeros, 1, pad, tar);
++}
+ 
+ /*
+  * This application splits a Multi-FASTA file to multiple FASTA files.
+@@ -18,6 +77,8 @@ int main(int argc, char *argv[])
+   uint64_t indexSymbol = 0;
+   uint8_t  value;
+   char *location = ".";
++  const char *parts = NULL;
++  char partsDir[] = "biochef-split-reads-XXXXXX";
+   BUF *Buffer;
+ 
+   char *programName = argv[0];
+@@ -27,12 +88,13 @@ int main(int argc, char *argv[])
+         OPT_BUFF('<', "input.mfasta", "Input Multi-FASTA file format (stdin)"),
+         OPT_GROUP("Optional options"),
+         OPT_STRING('l', "location", &location, "Location to store the files"),
++        OPT_STRING(0, "bc-parts", &parts, "Tar file to write the files to, instead of a location"),
+         OPT_END(),
+   };
+   struct argparse argparse;
+ 
+-  char usage[250] = "\nExample: "; 
+-  strcat(usage, programName);
++  char usage[4096] = "\nExample: ";
++  strncat(usage, programName, 1024);
+   strcat(usage, " < input.mfasta\n");
+ 
+   argparse_init(&argparse, options, NULL, programName, 0);
+@@ -43,6 +105,16 @@ int main(int argc, char *argv[])
+   if(argc != 0 || isatty(STDIN_FILENO))
+     argparse_help_cb(&argparse, options);
+ 
++  if(parts)
++  {
++    if(!mkdtemp(partsDir))
++    {
++      fprintf(stderr, "Error: cannot make a directory for the files (%s)\n", strerror(errno));
++      return 1;
++    }
++    location = partsDir;
++  }
++
+   Buffer = CreateBuffer(BUF_SIZE);
+ 
+   indexHeader = 0;
+@@ -71,11 +143,50 @@ int main(int argc, char *argv[])
+         fprintf(stderr, "%u : Splitting to file:%s\n", indexHeader, fileLocation);
+         OUT = Fopen(fileLocation, "w");
+       }
++      if(!OUT)
++      {
++        fprintf(stderr, "Error: the input is not FASTA: it does not start with '>'\n");
++        RemoveBuffer(Buffer);
++        if(parts) RemoveParts(partsDir, 0);
++        return 1;
++      }
+       fprintf(OUT, "%c", value);
+     }
+ 
+-  if(!OUT) fclose(OUT);
++  if(OUT) fclose(OUT);
++  RemoveBuffer(Buffer);
++
++  if(parts)
++  {
++    if(!indexHeader)
++    {
++      fprintf(stderr, "Error: the input has no FASTA record\n");
++      RemoveParts(partsDir, 0);
++      return 1;
++    }
++    FILE *TAR = fopen(parts, "wb");
++    if(!TAR)
++    {
++      fprintf(stderr, "Error: cannot write %s (%s)\n", parts, strerror(errno));
++      RemoveParts(partsDir, indexHeader);
++      return 1;
++    }
++    for(uint32_t n = 1 ; n <= indexHeader ; ++n)
++    {
++      char name[64], path[128];
++      sprintf(name, "out%u.fasta", n);
++      sprintf(path, "%s/%s", partsDir, name);
++      TarMember(TAR, name, path);
++    }
++    RemoveParts(partsDir, indexHeader);
++    static const char end[1024] = { 0 };
++    fwrite(end, 1, sizeof end, TAR);
++    if(fclose(TAR))
++    {
++      fprintf(stderr, "Error: cannot write %s\n", parts);
++      return 1;
++    }
++  }
+ 
+-  RemoveBuffer(Buffer); 
+   return EXIT_SUCCESS;
+ }
+\ No newline at end of file
