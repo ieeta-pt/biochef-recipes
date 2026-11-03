@@ -4,7 +4,7 @@ id: app.biochef.gto
 name: GTO Toolkit
 description: Conjunto de utilitários GTO para manipulação de FASTA/SEQ e operações afins.
 
-version: 1.6.3-bc.4
+version: 1.6.3-bc.5
 homepage: https://github.com/cobilab/gto
 license:
   spdx: MIT
@@ -525,20 +525,17 @@ operations:
       - { name: deletion-rate, type: float, flag: -d }
       - { name: insertion-rate, type: float, flag: -i }
 
-  # Note(andrade)
-  # This seems like a mess i don't want to deal with
-  #
-  # - id: gto.fastq.pack
-  #   name: Fastq Pack (GTO)
-  #   bin: gto_fastq_pack
-  #   category: Sequence Manipulation
-  #   description: Packages each FASTQ read in a single line. It can show the read score first or the dna sequence, depending on the execution mode.
-  #   io:
-  #     inputs:
-  #       - { name: in, types: [FASTQ], mode: stdin }
-  #     outputs:
-  #       - { name: out, types: [PackagedFASTQ], mode: stdout }
-  #   parameters: []
+  - id: gto.fastq.pack
+    name: Fastq Pack (GTO)
+    bin: gto_fastq_pack
+    category: Sequence Manipulation
+    description: Packages each FASTQ read in a single line. It can show the read score first or the dna sequence, depending on the execution mode.
+    io:
+      inputs:
+        - { name: in, types: [FASTQ], mode: stdin }
+      outputs:
+        - { name: out, types: [PackagedFASTQ], mode: stdout }
+    parameters: []
 
   - id: gto.fastq.quality.score.info
     name: Fastq Quality Score Info (GTO)
@@ -641,17 +638,17 @@ operations:
         - { name: out, types: [Multi-FASTA], mode: stdout }
     parameters: []
 
-  # - id: gto.fastq.unpack
-  #   name: Fastq Unpack (GTO)
-  #   bin: gto_fastq_unpack
-  #   category: Sequence Manipulation
-  #   description: Unpacks the FASTQ reads packaged using the gto_fastq_pack tool.
-  #   io:
-  #     inputs:
-  #       - { name: in, types: [PackagedFASTQ], mode: stdin }
-  #     outputs:
-  #       - { name: out, types: [FASTQ], mode: stdout }
-  #   parameters: []
+  - id: gto.fastq.unpack
+    name: Fastq Unpack (GTO)
+    bin: gto_fastq_unpack
+    category: Sequence Manipulation
+    description: Unpacks the FASTQ reads packaged using the gto_fastq_pack tool.
+    io:
+      inputs:
+        - { name: in, types: [PackagedFASTQ], mode: stdin }
+      outputs:
+        - { name: out, types: [FASTQ], mode: stdout }
+    parameters: []
 
   - id: gto.filter
     name: Filter (GTO)
