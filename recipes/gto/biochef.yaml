@@ -4,7 +4,7 @@ id: app.biochef.gto
 name: GTO Toolkit
 description: Conjunto de utilitários GTO para manipulação de FASTA/SEQ e operações afins.
 
-version: 1.6.3-bc.5
+version: 1.6.3-bc.6
 homepage: https://github.com/cobilab/gto
 license:
   spdx: MIT
@@ -255,20 +255,19 @@ operations:
         - { name: out, types: [TEXT], mode: stdout }
     parameters: []
 
-  # - id: gto.fasta.merge.streams
-  #   name: Fasta Merge Streams (GTO)
-  #   bin: gto_fasta_merge_streams
-  #   category: Sequence Manipulation
-  #   description: It merges the three channels of information (headers, extra and DNA) and writes it into a FASTA file.
-  #   io:
-  #     inputs:
-  #       - { name: in, types: [TEXT, DNA, AminoAcids, RNA], mode: file }
-  #     outputs:
-  #       - { name: out, types: [FASTA, Multi-FASTA], mode: stdout }
-  #   parameters:
-  #     - { name: headers, type: "" }
-  #     - { name: extra, type: "" }
-  #     - { name: dna, type: "" }
+  - id: gto.fasta.merge.streams
+    name: Fasta Merge Streams (GTO)
+    bin: gto_fasta_merge_streams
+    category: Sequence Manipulation
+    description: It merges the three channels of information (headers, extra and DNA) and writes it into a FASTA file.
+    io:
+      inputs:
+        - { name: headers, types: [GTO_HEADERS], mode: file, flag: -H }
+        - { name: extra, types: [GTO_EXTRA], mode: file, flag: -e }
+        - { name: dna, types: [DNA], mode: file, flag: -d }
+      outputs:
+        - { name: out, types: [FASTA, Multi-FASTA], mode: stdout }
+    parameters: []
 
   - id: gto.fasta.mutate
     name: Fasta Mutate (GTO)
@@ -345,8 +344,8 @@ operations:
       inputs:
         - { name: in, types: [FASTA, Multi-FASTA], mode: stdin }
       outputs:
-        - { name: headers, types: [TEXT], mode: file, flag: -H,  filename: "HEADERS.JV2"}
-        - { name: extra, types: [TEXT], mode: file, flag: -e, filename: "EXTRA.JV2"}
+        - { name: headers, types: [GTO_HEADERS, TEXT], mode: file, flag: -H,  filename: "HEADERS.JV2"}
+        - { name: extra, types: [GTO_EXTRA, TEXT], mode: file, flag: -e, filename: "EXTRA.JV2"}
         - { name: DNA, types: [TEXT, DNA, AminoAcids, RNA], mode: file, flag: -d, filename: "DNA.JV2"}
         
     parameters: []
