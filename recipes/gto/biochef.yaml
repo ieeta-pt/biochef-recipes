@@ -4,7 +4,7 @@ id: app.biochef.gto
 name: GTO Toolkit
 description: Conjunto de utilitários GTO para manipulação de FASTA/SEQ e operações afins.
 
-version: 1.6.3-bc.1
+version: 1.6.3-bc.2
 homepage: https://github.com/cobilab/gto
 license:
   spdx: MIT
@@ -133,24 +133,23 @@ operations:
         - { name: out, types: [TEXT], mode: stdout }
     parameters: []
 
-  # - id: gto.comparative.map
-  #   name: Comparative Map (GTO)
-  #   bin: gto_comparative_map
-  #   category: Information and Analysis
-  #   description: Creates a visualization for comparative maps.
-  #   io:
-  #     inputs:
-  #       - { name: in, types: [POS], mode: stdin }
-  #     outputs:
-  #       - { name: out, types: [SVG], mode: stdout }
-  #   parameters:
-  #     - { name: link, type: integer, flag: -l }
-  #     - { name: width, type: integer, flag: -w }
-  #     - { name: space, type: integer, flag: -s }
-  #     - { name: mult, type: integer, flag: -m }
-  #     - { name: begin, type: integer, flag: -b }
-  #     - { name: minimum, type: integer, flag: -c }
-  #     - { name: FILE, type: string, flag: -o }
+  - id: gto.comparative.map
+    name: Comparative Map (GTO)
+    bin: gto_comparative_map
+    category: Information and Analysis
+    description: Creates a visualization for comparative maps.
+    io:
+      inputs:
+        - { name: in, types: [POS], mode: file }
+      outputs:
+        - { name: out, types: [SVG], mode: file, flag: -o }
+    parameters:
+      - { name: link, type: integer, flag: -l }
+      - { name: width, type: integer, flag: -w }
+      - { name: space, type: integer, flag: -s }
+      - { name: mult, type: integer, flag: -m }
+      - { name: begin, type: integer, flag: -b }
+      - { name: minimum, type: integer, flag: -c }
 
   - id: gto.fasta.complement
     name: Fasta Complement (GTO)
