@@ -25,7 +25,8 @@ jobs:
 
           git fetch origin ${{ github.event.pull_request.base.ref }}
 
-          CHANGED=$(git diff --name-only FETCH_HEAD HEAD)
+          # Only what this PR changed since it left the base, not what the base changed since
+          CHANGED=$(git diff --name-only --diff-filter=d FETCH_HEAD...HEAD)
 
           FILES=$(echo "$CHANGED" | grep "biochef.yaml" | paste -sd " " - || true)
           
