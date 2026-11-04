@@ -1,0 +1,127 @@
+apiVersion: v1
+
+id: app.biochef.trimal
+name: trimAl
+description: >-
+  trimAl: automated alignment trimming for large-scale phylogenetic analyses. Removes poorly aligned
+  columns from an MSA and converts alignments between FASTA and CLUSTAL. Pairs with muscle or kalign
+  upstream and FastTree downstream.
+
+version: 1.5.1-bc.1
+homepage: https://trimal.readthedocs.io
+license:
+  spdx: GPL-3.0-or-later
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/inab/trimal
+  tag: "v1.5.1"
+  version: "1.5.1"
+  commit: "d637091abe33595775f40480970d1a18d87a7bcb"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      outputDir: source
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+  native:
+    outputDir: source
+    buildScript: build-native.sh
+    buildTools: [make, gcc]
+
+runtime:
+  modes: [wasm, native]
+
+operations:
+  - id: trimal.trim
+    name: Trim (trimAl)
+    category: Sequence Analysis
+    bin: trimal
+    description: >-
+      Trim an aligned multiple sequence alignment by removing gappy or poorly conserved columns. Use one
+      automatic method (gappyout, strict, strictplus, automated1, nogaps, noallgaps) or manual thresholds,
+      not both. With neither, the input is copied unchanged and unaligned input is not detected.
+      gapthreshold and simthreshold take 0 to 1 (gapthreshold 0.9 keeps columns with at most 10% gaps).
+      conservation is the minimum percentage of columns to keep (0 to 100); it is ignored unless
+      gapthreshold or simthreshold is set.
+    io:
+      inputs:
+        - { name: in, types: [Multi-FASTA, FASTA], mode: file, flag: -in }
+      outputs:
+        - { name: out, types: [Multi-FASTA, FASTA], mode: file, flag: -out }
+    parameters:
+      - { name: gappyout, type: flag, flag: -gappyout }
+      - { name: strict, type: flag, flag: -strict }
+      - { name: strictplus, type: flag, flag: -strictplus }
+      - { name: automated1, type: flag, flag: -automated1 }
+      - { name: nogaps, type: flag, flag: -nogaps }
+      - { name: noallgaps, type: flag, flag: -noallgaps }
+      - { name: gapthreshold, type: float, flag: -gt }
+      - { name: simthreshold, type: float, flag: -st }
+      - { name: conservation, type: float, flag: -cons }
+      - { name: keep_header, type: flag, flag: -keepheader }
+
+  - id: trimal.tofasta
+    name: Convert to FASTA (readal)
+    category: Sequence Analysis
+    bin: readal
+    description: Convert a multiple sequence alignment (FASTA or CLUSTAL) to FASTA, keeping the gaps.
+    io:
+      inputs:
+        - { name: in, types: [Multi-FASTA, FASTA, CLUSTAL], mode: file, flag: -in }
+      outputs:
+        - { name: out, types: [Multi-FASTA, FASTA], mode: file, flag: -out }
+    parameters:
+      - { name: fasta_output, type: flag, flag: -fasta, required: true, hidden: true }
+
+  - id: trimal.toclustal
+    name: Convert to CLUSTAL (readal)
+    category: Sequence Analysis
+    bin: readal
+    description: Convert an aligned FASTA file to CLUSTAL. Unaligned sequences are refused.
+    io:
+      inputs:
+        - { name: in, types: [Multi-FASTA, FASTA], mode: file, flag: -in }
+      outputs:
+        - { name: out, types: [CLUSTAL], mode: file, flag: -out }
+    parameters:
+      - { name: clustal_output, type: flag, flag: -clustal, required: true, hidden: true }
+
+  - id: trimal.degap
+    name: Remove gaps (readal)
+    category: Sequence Analysis
+    bin: readal
+    description: Strip the gap characters from an alignment (FASTA or CLUSTAL) and write the plain sequences as FASTA.
+    io:
+      inputs:
+        - { name: in, types: [Multi-FASTA, FASTA, CLUSTAL], mode: file, flag: -in }
+      outputs:
+        - { name: out, types: [Multi-FASTA, FASTA], mode: file, flag: -out }
+    parameters:
+      - { name: only_seqs, type: flag, flag: -onlyseqs, required: true, hidden: true }
+
+  - id: trimal.statal
+    name: Statal (trimAl)
+    category: Sequence Analysis
+    bin: statal
+    description: >-
+      Compute statistics for an aligned MSA (gap content, similarity, identity). Useful for inspecting
+      alignment quality before trimming. The accumulated gap distribution is always reported; tick others to add them.
+    io:
+      inputs:
+        - { name: in, types: [Multi-FASTA, FASTA, CLUSTAL], mode: file, flag: -in }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: gaps_total, type: flag, flag: -sgt, required: true }
+      - { name: gaps_per_column, type: flag, flag: -sgc }
+      - { name: similarity_per_column, type: flag, flag: -ssc }
+      - { name: similarity_total, type: flag, flag: -sst }
+      - { name: identity, type: flag, flag: -sident }
+      - { name: column_identity, type: flag, flag: -scolidentt }
