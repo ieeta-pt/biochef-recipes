@@ -1,0 +1,121 @@
+apiVersion: v1
+
+id: app.biochef.hyphy
+name: hyphy
+description: "HyPhy fits evolutionary models to sequence alignments. It tests a codon alignment and its tree for natural selection: across the gene and branches (BUSTED), per branch (aBSREL), and per site, pervasive (FEL) or episodic (MEME). The optimizers start from random points: a seed gives the same results again, natively or in the browser."
+
+version: 2.5.57-bc.1
+homepage: https://github.com/veg/hyphy
+license:
+  spdx: MIT
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/veg/hyphy
+  tag: "2.5.57"
+  version: "2.5.57"
+  commit: "c1f1ca1ce0123bc7e20fac39810a7aa8ba26377b"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    patches: [patches/entry-point-and-seed.patch, patches/wasm-postmessage-guard.patch]
+    emscripten:
+      emscriptenVersion: 4.0.18
+      outputDir: out
+      buildScript: build-wasm.sh
+  native:
+    outputDir: out
+    buildScript: build-native.sh
+    patches: [patches/entry-point-and-seed.patch, patches/native-musl-libm.patch, patches/native-no-openmp.patch]
+    buildTools: [make, gcc]
+
+runtime:
+  modes: [wasm, native]
+
+operations:
+  - id: hyphy.busted
+    name: BUSTED (HyPhy)
+    category: Genomic Operations
+    bin: hyphy
+    description: "Branch-Site Unrestricted Statistical Test for Episodic Diversification: a gene-wide test for episodic positive selection on all branches or on a subset. Needs an alignment in whole codons without stop codons, and a Newick tree whose leaves are its sequence names."
+    io:
+      inputs:
+        - { name: alignment, types: [CODON_ALIGNMENT, Multi-FASTA], mode: file, flag: --alignment }
+        - { name: tree, types: [NEWICK], mode: file, flag: --tree }
+      outputs:
+        - { name: out, types: [JSON], mode: file, flag: --output }
+    parameters:
+      - { name: command, type: string, default: BUSTED, required: true, hidden: true }
+      - { name: code, type: string, flag: --code, default: Universal }
+      - { name: seed, type: integer, flag: --bc-seed, default: 1 }
+      - { name: branches, type: string, flag: --branches, default: All }
+      - { name: srv, type: string, flag: --srv, default: "Yes" }
+      - { name: syn_rates, type: integer, flag: --syn-rates, default: 3 }
+      - { name: multiple_hits, type: string, flag: --multiple-hits, default: None }
+      - { name: starting_points, type: integer, flag: --starting-points, default: 1 }
+
+  - id: hyphy.meme
+    name: MEME (HyPhy)
+    category: Genomic Operations
+    bin: hyphy
+    description: "Mixed Effects Model of Evolution: a per-site test for episodic positive selection. Needs an alignment in whole codons without stop codons, and a Newick tree whose leaves are its sequence names."
+    io:
+      inputs:
+        - { name: alignment, types: [CODON_ALIGNMENT, Multi-FASTA], mode: file, flag: --alignment }
+        - { name: tree, types: [NEWICK], mode: file, flag: --tree }
+      outputs:
+        - { name: out, types: [JSON], mode: file, flag: --output }
+    parameters:
+      - { name: command, type: string, default: MEME, required: true, hidden: true }
+      - { name: code, type: string, flag: --code, default: Universal }
+      - { name: seed, type: integer, flag: --bc-seed, default: 1 }
+      - { name: branches, type: string, flag: --branches, default: All }
+      - { name: pvalue, type: float, flag: --pvalue, default: 0.1 }
+      - { name: multiple_hits, type: string, flag: --multiple-hits, default: None }
+      - { name: resample, type: integer, flag: --resample, default: 0 }
+
+  - id: hyphy.fel
+    name: FEL (HyPhy)
+    category: Genomic Operations
+    bin: hyphy
+    description: "Fixed Effects Likelihood: a per-site test for pervasive selection, dN/dS different from 1. Needs an alignment in whole codons without stop codons, and a Newick tree whose leaves are its sequence names."
+    io:
+      inputs:
+        - { name: alignment, types: [CODON_ALIGNMENT, Multi-FASTA], mode: file, flag: --alignment }
+        - { name: tree, types: [NEWICK], mode: file, flag: --tree }
+      outputs:
+        - { name: out, types: [JSON], mode: file, flag: --output }
+    parameters:
+      - { name: command, type: string, default: FEL, required: true, hidden: true }
+      - { name: code, type: string, flag: --code, default: Universal }
+      - { name: seed, type: integer, flag: --bc-seed, default: 1 }
+      - { name: branches, type: string, flag: --branches, default: All }
+      - { name: pvalue, type: float, flag: --pvalue, default: 0.1 }
+      - { name: srv, type: string, flag: --srv, default: "Yes" }
+      - { name: multiple_hits, type: string, flag: --multiple-hits, default: None }
+      - { name: ci, type: string, flag: --ci, default: "No" }
+      - { name: resample, type: integer, flag: --resample, default: 0 }
+
+  - id: hyphy.absrel
+    name: aBSREL (HyPhy)
+    category: Genomic Operations
+    bin: hyphy
+    description: "Adaptive Branch-Site Random Effects Likelihood: a test of each branch for episodic diversification, with as many rate categories as each branch needs. Needs an alignment in whole codons without stop codons, and a Newick tree whose leaves are its sequence names."
+    io:
+      inputs:
+        - { name: alignment, types: [CODON_ALIGNMENT, Multi-FASTA], mode: file, flag: --alignment }
+        - { name: tree, types: [NEWICK], mode: file, flag: --tree }
+      outputs:
+        - { name: out, types: [JSON], mode: file, flag: --output }
+    parameters:
+      - { name: command, type: string, default: aBSREL, required: true, hidden: true }
+      - { name: code, type: string, flag: --code, default: Universal }
+      - { name: seed, type: integer, flag: --bc-seed, default: 1 }
+      - { name: branches, type: string, flag: --branches, default: All }
+      - { name: srv, type: string, flag: --srv, default: "No" }
+      - { name: multiple_hits, type: string, flag: --multiple-hits, default: None }
