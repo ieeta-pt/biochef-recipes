@@ -1,0 +1,59 @@
+Tentative definitions in headers. These were merged into one symbol under
+the old -fcommon default; modern clang gives each translation unit its own
+copy and the link fails with duplicate symbols. -fcommon is not an option
+here: wasm has no COMMON section and it crashes the backend, so the
+declarations are corrected instead. address_parser_status.h even documents
+the intent ("we need to use an extern variable") and then omits extern.
+
+diff --git a/src/address_parser.y b/src/address_parser.y
+index 3f476ef..ce41929 100755
+--- a/src/address_parser.y
++++ b/src/address_parser.y
+@@ -37,6 +37,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ #include "enode.h"
+ #include "address_parser_status.h"
+ 
++enum address_parser_status_type address_parser_status;
++
+ extern int adslex (void);
+ 
+ /* The root of the expression (when represented as a parse tree) */
+diff --git a/src/address_parser_status.h b/src/address_parser_status.h
+index f149d77..6d74f18 100755
+--- a/src/address_parser_status.h
++++ b/src/address_parser_status.h
+@@ -13,4 +13,4 @@ enum address_parser_status_type {
+  * returns either \c NULL or the top-level enode of the address, so we need to
+  * use an extern variable to convey its status. */
+ 
+-enum address_parser_status_type address_parser_status;
++extern enum address_parser_status_type address_parser_status;
+diff --git a/src/set.c b/src/set.c
+index 45587a3..5d2c231 100644
+--- a/src/set.c
++++ b/src/set.c
+@@ -3,6 +3,9 @@
+ 
+ #include "set.h"
+ 
++const int SET_ADD_ERROR = 0;
++int MEMBER;
++
+ static const int DEFAULT_SET_SIZE = 100;
+ 
+ set_t* create_set()
+diff --git a/src/set.h b/src/set.h
+index 55a34d0..d661b1b 100644
+--- a/src/set.h
++++ b/src/set.h
+@@ -2,8 +2,8 @@
+ 
+ #include "hash.h"
+ 
+-const int SET_ADD_ERROR;
+-int MEMBER;
++extern const int SET_ADD_ERROR;
++extern int MEMBER;
+ 
+ typedef struct hash set_t;
+ 

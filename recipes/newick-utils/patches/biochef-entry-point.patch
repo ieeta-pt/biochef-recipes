@@ -1,0 +1,92 @@
+nw_prune, nw_clade, nw_reroot and nw_distance take their labels, and nw_trim
+its depth, as arguments after the tree, where BioChef puts no parameter.
+This entry point moves the labels of a file given with --bc-labels (one per
+line), and a value given with --bc-last, after the other arguments.
+
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index fef2ef2..25bd44b 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -180,3 +180,7 @@ if (LUA51_FOUND)
+ endif (LUA51_FOUND)
+ 
+ 
++foreach(app prune clade reroot distance trim)
++	target_sources(nw_${app} PRIVATE biochef_args.c)
++endforeach(app)
++set_source_files_properties(prune.c clade.c reroot.c distance.c trim.c PROPERTIES COMPILE_DEFINITIONS main=nw_main)
+diff --git a/src/biochef_args.c b/src/biochef_args.c
+new file mode 100644
+index 0000000..2bb7ba1
+--- /dev/null
++++ b/src/biochef_args.c
+@@ -0,0 +1,69 @@
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++
++int nw_main(int argc, char *argv[]);
++
++static void fail(const char *what, const char *path)
++{
++	fprintf(stderr, "[newick-utils] %s %s\n", what, path);
++	exit(EXIT_FAILURE);
++}
++
++static char **args;
++static int nargs, size;
++
++static void add(char *arg)
++{
++	if (nargs + 1 >= size) {
++		size = size ? 2 * size : 64;
++		args = realloc(args, size * sizeof *args);
++		if (!args) fail("out of memory for", "the arguments");
++	}
++	args[nargs++] = arg;
++}
++
++/* Reads one label per line, ignoring empty lines and line ends (\n, \r\n). */
++static int add_labels(const char *path, char ***labels, int n)
++{
++	FILE *fp = fopen(path, "r");
++	char *line = NULL;
++	size_t cap = 0;
++	ssize_t len;
++	if (!fp) fail("cannot read", path);
++	while ((len = getline(&line, &cap, fp)) >= 0) {
++		while (len && (line[len - 1] == '\n' || line[len - 1] == '\r')) line[--len] = 0;
++		if (!len) continue;
++		*labels = realloc(*labels, (n + 1) * sizeof **labels);
++		if (!*labels || !((*labels)[n] = strdup(line))) fail("out of memory for", path);
++		++n;
++	}
++	free(line);
++	fclose(fp);
++	return n;
++}
++
++int main(int argc, char *argv[])
++{
++	char **last = NULL;
++	int i, nlast = 0;
++	add(argv[0]);
++	for (i = 1; i < argc; ++i) {
++		if (!strcmp(argv[i], "--bc-labels") || !strcmp(argv[i], "--bc-last")) {
++			if (i + 1 >= argc) fail("needs a value:", argv[i]);
++			if (!strcmp(argv[i], "--bc-labels")) {
++				int before = nlast;
++				nlast = add_labels(argv[i + 1], &last, nlast);
++				if (nlast == before) fail("no labels in", argv[i + 1]);
++			} else {
++				last = realloc(last, (nlast + 1) * sizeof *last);
++				if (!last) fail("out of memory for", argv[i]);
++				last[nlast++] = argv[i + 1];
++			}
++			++i;
++		} else add(argv[i]);
++	}
++	for (i = 0; i < nlast; ++i) add(last[i]);
++	args[nargs] = NULL;
++	return nw_main(nargs, args);
++}

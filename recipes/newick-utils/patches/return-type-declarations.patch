@@ -1,0 +1,29 @@
+to_newick.h declares dump_newick as returning void; to_newick.c defines it
+returning int. Native builds tolerate the mismatch, but wasm type-checks
+calls and traps at run time, which silently breaks every tool that emits a
+tree. Correct the declaration to match the definition.
+The same mismatch in svg_graph_radial.h breaks radial SVG output (-r).
+
+diff --git a/src/svg_graph_radial.h b/src/svg_graph_radial.h
+index 03ccbf4..cdfae33 100755
+--- a/src/svg_graph_radial.h
++++ b/src/svg_graph_radial.h
+@@ -40,7 +40,7 @@ void set_svg_root_length(int);
+ 
+ /* Displays a radial tree in an SVG <g> element */
+ 
+-void display_svg_tree_radial(
++int display_svg_tree_radial(
+ 		struct rooted_tree *tree,
+ 		struct h_data hd,
+ 		int align_leaves,
+diff --git a/src/to_newick.h b/src/to_newick.h
+index 2990f85..feee8d9 100755
+--- a/src/to_newick.h
++++ b/src/to_newick.h
+@@ -72,4 +72,4 @@ struct llist *to_newick_i(struct rnode *root);
+  * to_newick_i() to get a representation of the tree as a list of strings,
+  * which it prints. It is therefore iterative (and hence fast). */
+ 
+-void dump_newick(struct rnode* root);
++int dump_newick(struct rnode* root);
