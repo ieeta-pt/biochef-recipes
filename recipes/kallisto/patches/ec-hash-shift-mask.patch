@@ -1,0 +1,17 @@
+The hash of an equivalence class shifted a 32-bit value by 64 - i and by
+i up to 63, undefined, and taken modulo 32 by both runtimes. It now masks
+the shifts as they do, and gives the same hashes.
+
+diff --git a/src/KmerIndex.h b/src/KmerIndex.h
+index 81f97df..e2ecb25 100755
+--- a/src/KmerIndex.h
++++ b/src/KmerIndex.h
+@@ -39,7 +39,7 @@ struct RoaringHasher {
+     for (auto x : rr) {
+       uint64_t t;
+       MurmurHash3_x64_64(&x, sizeof(x), 0, &t);
+-      t = (x>>i) | (x<<(64-i));
++      t = (x>>(i & 31)) | (uint32_t)(x<<((64-i) & 31));
+       r ^= t;
+       i = (i+1)&63; // (i+1)%64
+     }
