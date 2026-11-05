@@ -1,0 +1,15 @@
+Sampling from a FASTQ with one read in range set the sampling interval
+to half the reads, 0, and divided by it.
+
+diff --git a/src/pbsim.cpp b/src/pbsim.cpp
+index d53e648..d95e1be 100644
+--- a/src/pbsim.cpp
++++ b/src/pbsim.cpp
+@@ -1265,6 +1265,7 @@ int simulate_by_sampling() {
+     sampling_interval = (long)((double)(fastq.len_total_filtered / sampling_residue) * 2 + 0.5);
+     if (sampling_interval > (long)(fastq.num_filtered * 0.5)) {
+       sampling_interval = (long)(fastq.num_filtered * 0.5);
++      if (sampling_interval < 1) sampling_interval = 1;
+     }
+   }
+ 
