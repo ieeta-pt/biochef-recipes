@@ -4,7 +4,7 @@ id: app.biochef.seqtk
 name: seqtk
 description: Toolkit for processing sequences in FASTA/Q formats 
 
-version: 1.4-bc.1
+version: 1.5-bc.1
 homepage: https://github.com/lh3/seqtk
 license:
   spdx: MIT
@@ -14,23 +14,26 @@ maintainers:
 
 source:
   repo: https://github.com/lh3/seqtk
-  tag: v1.4
-  version: "1.4"
-  commit: "ae7defa8bead3ef77d241f12194dc66acdd40fca"
+  tag: v1.5
+  version: "1.5"
+  commit: "94e707082d39b0a038f234df676e32d9802c0dc7"
 
 status: experimental
 
 build:
   wasm:
-    strategy: biowasm
-    biowasm:
-      package: seqtk
+    strategy: emscripten
+    emscripten:
+      outputDir: out
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
   native:
     buildScript: build-native.sh
-    buildTools: [make]
-    
+    buildTools: [make, gcc]
+    outputDir: bin
+
 runtime:
-  modes: [wasm, native]
+  modes: [wasm, native, remote]
 
 operations:
   - id: seqtk.seq
@@ -52,10 +55,8 @@ operations:
       - { name: qual_shift, type: integer, flag: -Q }
       - { name: seed, type: integer, flag: -s }
       - { name: sample_fraction, type: float, flag: -f }
-      - { name: mask_file, type: string, flag: -M }
       - { name: min_length, type: integer, flag: -L }
       - { name: fake_qual, type: string, flag: -F }
-      - { name: mask_complement, type: flag, flag: -c }
       - { name: reverse_complement, type: flag, flag: -r }
       - { name: both_strands, type: flag, flag: -R }
       - { name: force_fasta, type: flag, flag: -A }
@@ -67,6 +68,23 @@ operations:
       - { name: uppercase_bases, type: flag, flag: -U }
       - { name: convert_lowercase, type: flag, flag: -x }
       - { name: strip_whitespace, type: flag, flag: -S }
+
+  - id: seqtk.seq.mask
+    name: Mask Regions (SEQTK)
+    category: Sequence Manipulation
+    bin: seqtk
+    description: Mask the regions of a BED file, or the sequences of a name list, in FASTA/Q
+    io:
+      inputs:
+        - { name: in, types: [FASTA, Multi-FASTA, FASTQ], mode: file }
+        - { name: regions, types: [BED, LIST], mode: file, flag: -M }
+      outputs:
+        - { name: out, types: [FASTA, Multi-FASTA, FASTQ], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: seq, required: true, hidden: true }
+      - { name: mask_complement, type: flag, flag: -c }
+      - { name: mask_char, type: string, flag: -n }
+      - { name: line_length, type: integer, flag: -l }
 
   - id: seqtk.trimfq
     name: Trimfq (SEQTK)
@@ -85,6 +103,7 @@ operations:
       - { name: trim_left, type: integer, flag: -b }
       - { name: trim_right, type: integer, flag: -e }
       - { name: max_retain_5prime, type: integer, flag: -L }
+      - { name: force_fastq, type: flag, flag: -Q }
 
   - id: seqtk.comp
     name: Comp (SEQTK)
@@ -93,13 +112,27 @@ operations:
     description: Get nucleotide composition of FASTA/Q
     io:
       inputs:
-        - { name: in, types: [FASTA, Multi-FASTA], mode: file }
+        - { name: in, types: [FASTA, Multi-FASTA, FASTQ], mode: file }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
       - { name: command, type: string, default: comp, required: true, hidden: true }
       - { name: unique, type: flag, flag: -u }
-      - { name: bed_regions, type: string, flag: -r }
+
+  - id: seqtk.comp.regions
+    name: Comp in Regions (SEQTK)
+    category: Information and Analysis
+    bin: seqtk
+    description: Get nucleotide composition of the regions of a BED file in FASTA/Q
+    io:
+      inputs:
+        - { name: in, types: [FASTA, Multi-FASTA, FASTQ], mode: file }
+        - { name: regions, types: [BED], mode: file, flag: -r }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: comp, required: true, hidden: true }
+      - { name: unique, type: flag, flag: -u }
 
   - id: seqtk.randbase
     name: Randbase (SEQTK)
@@ -260,7 +293,6 @@ operations:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
       - { name: command, type: string, default: hrun, required: true, hidden: true }
-      - { name: min_length, type: integer }
 
   # - id: seqtk.sample
   #   name: seqtk_sample
@@ -332,31 +364,32 @@ operations:
     parameters:
       - { name: command, type: string, default: hpc, required: true, hidden: true }
 
-  # - id: seqtk.rename
-  #   name: seqtk_rename
-  #   bin: seqtk
-  #   description: Rename sequence entries with a prefix
-  #   io:
-  #     inputs:
-  #       - { name: in, types: [FASTA, FASTQ], mode: file }
-  #       - { name: prefix, types: [TEXT], mode: arg, optional: true }
-  #     outputs:
-  #       - { name: out, types: [FASTA, FASTQ], mode: stdout }
-  #   parameters:
-  #     - { name: command, type: string, default: rename, required: true, hidden: true }
+  - id: seqtk.rename
+    name: Rename (SEQTK)
+    category: Sequence Manipulation
+    bin: seqtk
+    description: Rename the sequences to 1, 2, 3 and so on, keeping the comments
+    io:
+      inputs:
+        - { name: in, types: [FASTA, Multi-FASTA, FASTQ], mode: file }
+      outputs:
+        - { name: out, types: [FASTA, Multi-FASTA, FASTQ], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: rename, required: true, hidden: true }
 
-  # - id: seqtk.kfreq
-  #   name: seqtk_kfreq
-  #   bin: seqtk
-  #   description: Count frequencies of a given k-mer
-  #   io:
-  #     inputs:
-  #       - { name: kmer, types: [TEXT], mode: arg }
-  #       - { name: in, types: [FASTA], mode: file }
-  #     outputs:
-  #       - { name: out, types: [TEXT], mode: stdout }
-  #   parameters:
-  #     - { name: command, type: string, default: kfreq, required: true, hidden: true }
+  - id: seqtk.kfreq
+    name: Kfreq (SEQTK)
+    category: Information and Analysis
+    bin: seqtk
+    description: Count the occurrences of a k-mer on each strand of each sequence
+    io:
+      inputs:
+        - { name: in, types: [FASTA, Multi-FASTA], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: kfreq, required: true, hidden: true }
+      - { name: kmer, type: string, default: ACGT, required: true }
 
   - id: seqtk.fqchk
     name: Fqchk (SEQTK)
@@ -379,7 +412,7 @@ operations:
     description: Count number of sequences and bases
     io:
       inputs:
-        - { name: in, types: [FASTQ], mode: file }
+        - { name: in, types: [FASTA, Multi-FASTA, FASTQ], mode: file }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
@@ -392,12 +425,16 @@ operations:
     description: Identify telomere repeats in assemblies or long reads
     io:
       inputs:
-        - { name: in, types: [FASTQ], mode: file }
+        - { name: in, types: [FASTA, Multi-FASTA, FASTQ], mode: file }
       outputs:
         - { name: out, types: [TEXT], mode: stdout }
     parameters:
       - { name: command, type: string, default: telo, required: true, hidden: true }
       - { name: motif, type: string, flag: -m }
+      - { name: penalty, type: integer, flag: -p }
+      - { name: max_drop, type: integer, flag: -d }
+      - { name: min_score, type: integer, flag: -s }
+      - { name: print_scoring, type: flag, flag: -P }
       - { name: penalty, type: integer, flag: -p }
       - { name: max_drop, type: integer, flag: -d }
       - { name: min_score, type: integer, flag: -s }
