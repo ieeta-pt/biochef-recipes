@@ -1,0 +1,15 @@
+Reads are read by their content, gzip or not, whatever the file's name.
+
+diff --git a/src/fastqreader.cpp b/src/fastqreader.cpp
+index d1a968b..59c8e1f 100644
+--- a/src/fastqreader.cpp
++++ b/src/fastqreader.cpp
+@@ -15,7 +15,7 @@ FastqReader::~FastqReader(){
+ }
+ 
+ void FastqReader::init(){
+-	if (isZipFastq(mFilename)){
++	if (true){
+ 		mZipFile = gzopen(mFilename.c_str(), "r");
+ 		mZipped = true;
+ 	}

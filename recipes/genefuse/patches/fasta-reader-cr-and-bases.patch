@@ -1,0 +1,24 @@
+The reference's names end at a '\r' too, and a line's first character is
+kept only as a base, as the rest of the line is.
+
+diff --git a/src/fastareader.cpp b/src/fastareader.cpp
+index 032c697..7d5f3e4 100644
+--- a/src/fastareader.cpp
++++ b/src/fastareader.cpp
+@@ -63,7 +63,7 @@ void FastaReader::readNext()
+                 if(mForceUpperCase && c>='a' && c<='z') {
+                     c -= ('a' - 'A');
+                 }
+-                ssSeq << c;
++                if(isalpha(c) || c == '-' || c == '*') ssSeq << c;
+             }
+             else
+                 ssHeader << c;
+@@ -84,6 +84,7 @@ void FastaReader::readNext()
+     }
+     mCurrentSequence = ssSeq.str();
+     string header = ssHeader.str();
++    if(!header.empty() && header[header.size()-1] == '\r') header.erase(header.size()-1);
+ 
+     int space = header.find(" ");
+     mCurrentID = header.substr(0, space);

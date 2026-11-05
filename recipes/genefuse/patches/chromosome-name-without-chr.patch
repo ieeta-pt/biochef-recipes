@@ -1,0 +1,15 @@
+Without chr, a chromosome's name was its name past the first c.
+
+diff --git a/src/util.h b/src/util.h
+index e9cb3fb..ec67bc4 100644
+--- a/src/util.h
++++ b/src/util.h
+@@ -80,7 +80,7 @@ inline string replace(const string& str, const string& src, const string& dest)
+     {
+         ret.append(str.data() + pos_begin, pos - pos_begin);
+         ret += dest;
+-        pos_begin = pos + 1;
++        pos_begin = pos + src.length();
+         pos       = str.find(src, pos_begin);
+     }
+     if (pos_begin < str.length())
