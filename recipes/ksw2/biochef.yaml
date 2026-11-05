@@ -4,7 +4,7 @@ id: app.biochef.ksw2
 name: ksw2
 description: ksw2 — fast SIMD-vectorized pairwise sequence alignment kernel library. Implements multiple algorithms — global Needleman-Wunsch (gg), banded global with SIMD (gg2_sse), Z-drop extension (extz, extz2_sse), and gap-affine variants (extd, extd2_sse). The same alignment kernels are used inside minimap2 and bwa-mem; the standalone `ksw2-test` CLI exposes them for direct pairwise alignment of a target/query pair.
 
-version: 0.1-bc.1
+version: 0.1-bc.2
 homepage: https://github.com/lh3/ksw2
 license:
   spdx: MIT
@@ -22,6 +22,7 @@ status: experimental
 build:
   wasm:
     strategy: emscripten
+    patches: [patches/wasm-64bit-allocations.patch]
     emscripten:
       outputDir: .
       buildScript: build-wasm.sh
