@@ -4,7 +4,7 @@ id: app.biochef.muscle
 name: muscle
 description: Multiple sequence alignment with high accuracy and high throughput.
 
-version: 5.1.0-bc.1
+version: 5.3-bc.1
 homepage: https://github.com/rcedgar/muscle
 license:
   spdx: GPL-3.0-only
@@ -14,24 +14,26 @@ maintainers:
 
 source:
   repo: https://github.com/rcedgar/muscle
-  tag: "5.1.0"
-  version: "5.1.0"
-  commit: "6c601163998616bb88991931e443c645858e162c"
+  tag: "v5.3"
+  version: "5.3"
+  commit: "2cf9d33078c9a85697e38a6f3ad827e6862420df"
 
 status: experimental
 
 build:
   wasm:
-    strategy: biowasm
-    biowasm:
-      package: muscle
+    strategy: emscripten
+    emscripten:
+      outputDir: out
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
   native:
     buildScript: build-native.sh
-    buildTools: [make]
-    outputDir: src/Linux
+    buildTools: [gcc]
+    outputDir: bin
 
 runtime:
-  modes: [wasm, native]
+  modes: [wasm, native, remote]
 
 operations:
   - id: muscle.align
@@ -52,8 +54,6 @@ operations:
       - { name: stratified, type: flag, flag: -stratified }
       - { name: diversified, type: flag, flag: -diversified }
       - { name: replicates, type: integer, flag: -replicates }
-      - { name: max_gap_fraction, type: float, flag: -maxgapfract }
-      - { name: min_confidence, type: float, flag: -minconf }
       - { name: threads, type: integer, flag: -threads, default: 1 }
 
   - id: muscle.super5
@@ -84,7 +84,7 @@ operations:
       outputs:
         - { name: out, types: [EFA], mode: file, flag: -output }
     parameters:
-      - { name: max_gap_fraction, type: float, flag: -maxgapfract }
+      - { name: max_gap_fraction, type: float, flag: -max_gap_fract }
       - { name: min_confidence, type: float, flag: -minconf }
       - { name: replicates, type: integer, flag: -replicates }
 
@@ -98,4 +98,30 @@ operations:
         - { name: in, types: [EFA], mode: file, flag: -disperse }
       outputs:
         - { name: out, types: [TEXT], mode: file, flag: -log }
+    parameters:
+      - { name: max_gap_fraction, type: float, flag: -max_gap_fract }
+
+  - id: muscle.maxcc
+    name: Best Replicate (muscle)
+    category: Genomic Operations
+    bin: muscle
+    description: Extract the replicate of an ensemble with the highest total column confidence
+    io:
+      inputs:
+        - { name: in, types: [EFA], mode: file, flag: -maxcc }
+      outputs:
+        - { name: out, types: [Multi-FASTA, FASTA], mode: file, flag: -output }
+    parameters: []
+
+  - id: muscle.letterconf
+    name: Letter Confidence (muscle)
+    category: Information and Analysis
+    bin: muscle
+    description: Letter confidence of an alignment against an ensemble, as aligned FASTA with a digit from 0 to 9 in place of each letter
+    io:
+      inputs:
+        - { name: in, types: [EFA], mode: file, flag: -letterconf }
+        - { name: ref, types: [Multi-FASTA, FASTA], mode: file, flag: -ref }
+      outputs:
+        - { name: out, types: [TEXT], mode: file, flag: -output }
     parameters: []
