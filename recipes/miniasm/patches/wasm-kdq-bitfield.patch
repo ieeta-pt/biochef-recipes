@@ -1,0 +1,15 @@
+kdq's 58-bit field does not fit wasm's 32-bit size_t.
+
+diff --git a/kdq.h b/kdq.h
+index edd55b5..b2c5371 100644
+--- a/kdq.h
++++ b/kdq.h
+@@ -6,7 +6,7 @@
+ 
+ #define __KDQ_TYPE(type) \
+ 	typedef struct { \
+-		size_t front:58, bits:6, count, mask; \
++		uint64_t front:58, bits:6; size_t count, mask; \
+ 		type *a; \
+ 	} kdq_##type##_t;
+ 
