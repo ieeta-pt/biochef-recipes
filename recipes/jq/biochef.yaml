@@ -4,30 +4,36 @@ id: app.biochef.jq
 name: jq
 description: Lightweight command-line JSON processor.
 
-version: 1.6-bc.1
+version: 1.8.2-bc.1
 homepage: https://github.com/jqlang/jq
 license:
-  spdx: MIT AND CC-BY-3.0 AND dtoa
+  spdx: MIT AND CC-BY-3.0 AND dtoa AND ICU AND BSD-2-Clause
   files: [COPYING]
 maintainers:
   - name: Biochef
 
 source:
-  repo: https://github.com/stedolan/jq
-  tag: "jq-1.6"
-  version: "1.6"
-  commit: "2e01ff1fb69609540b2bdc4e62a60499f2b2fb8e"
+  repo: https://github.com/jqlang/jq
+  tag: "jq-1.8.2"
+  version: "1.8.2"
+  commit: "34f7186b86743a083a589741b6cea95293524108"
 
 status: experimental
 
 build:
   wasm:
-    strategy: biowasm
-    biowasm:
-      package: jq
+    strategy: emscripten
+    emscripten:
+      outputDir: out
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+  native:
+    buildScript: build-native.sh
+    buildTools: [make, gcc]
+    outputDir: bin
 
 runtime:
-  modes: [wasm, remote]
+  modes: [wasm, native, remote]
 
 operations:
   - id: jq.query
@@ -43,6 +49,7 @@ operations:
     parameters:
       - { name: compact, type: flag, flag: -c }
       - { name: raw_output, type: flag, flag: -r }
+      - { name: raw_output0, type: flag, flag: --raw-output0 }
       - { name: raw_input, type: flag, flag: -R }
       - { name: slurp, type: flag, flag: -s }
       - { name: null_input, type: flag, flag: -n }
@@ -57,5 +64,34 @@ operations:
       - { name: seq, type: flag, flag: --seq }
       - { name: stream, type: flag, flag: --stream }
       - { name: stream_errors, type: flag, flag: --stream-errors }
-      - { name: search_path, type: string, flag: -L }
       - { name: filter, type: string, required: true }
+
+  - id: jq.from.file
+    name: From File (jq)
+    category: Text Processing
+    bin: jq
+    description: Apply a jq filter loaded from a file (filter connected as workflow input)
+    io:
+      inputs:
+        - { name: filter, types: [TEXT], mode: file, flag: -f }
+        - { name: in, types: [JSON, TEXT], mode: file }
+      outputs:
+        - { name: out, types: [JSON, TEXT], mode: stdout }
+    parameters:
+      - { name: compact, type: flag, flag: -c }
+      - { name: raw_output, type: flag, flag: -r }
+      - { name: raw_output0, type: flag, flag: --raw-output0 }
+      - { name: raw_input, type: flag, flag: -R }
+      - { name: slurp, type: flag, flag: -s }
+      - { name: null_input, type: flag, flag: -n }
+      - { name: exit_status, type: flag, flag: -e }
+      - { name: sort_keys, type: flag, flag: -S }
+      - { name: ascii_output, type: flag, flag: -a }
+      - { name: monochrome_output, type: flag, flag: -M, required: true, hidden: true }
+      - { name: join_output, type: flag, flag: -j }
+      - { name: tab, type: flag, flag: --tab }
+      - { name: indent, type: integer, flag: --indent }
+      - { name: unbuffered, type: flag, flag: --unbuffered }
+      - { name: seq, type: flag, flag: --seq }
+      - { name: stream, type: flag, flag: --stream }
+      - { name: stream_errors, type: flag, flag: --stream-errors }
