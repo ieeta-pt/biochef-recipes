@@ -1,0 +1,25 @@
+Under wasm there are no threads to run the search workers: run each in
+place.
+
+diff --git a/hisat2.cpp b/hisat2.cpp
+index d46404b..14ab7dc 100644
+--- a/hisat2.cpp
++++ b/hisat2.cpp
+@@ -3688,11 +3688,16 @@ static void multiseedSearch(
+ 		for(int i = 0; i < nthreads; i++) {
+ 			// Thread IDs start at 1
+ 			tids[i] = i+1;
++#ifdef __EMSCRIPTEN__
++            multiseedSearchWorker_hisat2((void*)&tids[i]);
++            threads[i] = NULL;
++#else
+             threads[i] = new tthread::thread(multiseedSearchWorker_hisat2, (void*)&tids[i]);
++#endif
+ 		}
+ 
+         for (int i = 0; i < nthreads; i++)
+-            threads[i]->join();
++            if (threads[i] != NULL) threads[i]->join();
+ 
+ 	}
+ 	if(!metricsPerRead && (metricsOfb != NULL || metricsStderr)) {
