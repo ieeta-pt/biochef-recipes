@@ -1,0 +1,21 @@
+diff --git a/src/Makefile.am b/src/Makefile.am
+index c63ffdcf..82d4f312 100644
+--- a/src/Makefile.am
++++ b/src/Makefile.am
+@@ -8,13 +8,13 @@ AM_CFLAGS += -pg -O1
+ endif
+ 
+ if TARGET_PPC
+-AM_CFLAGS += -mcpu=powerpc64le -maltivec
++AM_CFLAGS += 
+ else
+ if TARGET_AARCH64
+-AM_CFLAGS += -march=armv8-a+simd -mtune=generic
++AM_CFLAGS += 
+ else
+ if TARGET_X86_64_SIMD
+-AM_CFLAGS += -march=x86-64 -mtune=generic
++AM_CFLAGS += 
+ endif
+ endif
+ endif
