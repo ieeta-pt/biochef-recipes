@@ -1,0 +1,144 @@
+Filtlong skips, without a word, what comes before the first record, and
+scores empty reads and qualities below '!' as not a number. This entry
+point, linked in front of Filtlong's main, reads every input first and
+refuses those.
+
+diff --git a/src/biochef_main.cpp b/src/biochef_main.cpp
+new file mode 100644
+index 0000000..b021962
+--- /dev/null
++++ b/src/biochef_main.cpp
+@@ -0,0 +1,120 @@
++// The entry point of Filtlong: it reads every input first, as Filtlong
++// does, and refuses what Filtlong would skip without a word or score as not
++// a number, then runs Filtlong.
++#include <ctype.h>
++#include <errno.h>
++#include <stdarg.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <zlib.h>
++#include <string>
++
++#include "kseq.h"
++
++KSEQ_INIT(gzFile, gzread)
++
++int biochef_upstream_main(int argc, char **argv);
++
++static void fail(const char *format, ...)
++{
++	va_list ap;
++	va_start(ap, format);
++	fputs("[filtlong] ", stderr);
++	vfprintf(stderr, format, ap);
++	fputc('\n', stderr);
++	va_end(ap);
++	exit(1);
++}
++
++static std::string shown(int c)
++{
++	char s[8];
++	if (c >= 33 && c <= 126) snprintf(s, sizeof s, "'%c'", c);
++	else snprintf(s, sizeof s, "0x%02X", c);
++	return s;
++}
++
++// Reads a file of sequences as Filtlong's kseq does; what names it in messages
++static void check_reads(const char *path, const char *what, bool fasta_ok, bool fastq_ok)
++{
++	gzFile in = gzopen(path, "rb");
++	if (!in) fail("cannot open %s, %s (%s)", path, what, strerror(errno));
++
++	// kseq skips whatever comes before the first '>' or '@'
++	int c;
++	while ((c = gzgetc(in)) != -1 && isspace(c));
++	if (c == -1) fail("%s, %s, holds no sequences", path, what);
++	if (c != '>' && c != '@') fail("%s, %s, is not FASTA or FASTQ: it starts with %s", path, what, shown(c).c_str());
++	if (c == '>' && !fasta_ok) fail("%s, %s, is FASTA: FASTQ is needed here%s", path, what, fastq_ok ? ", or a reference (-a, or -1 and -2) to score FASTA reads by" : "");
++	if (c == '@' && !fastq_ok) fail("%s, %s, is FASTQ: FASTA is needed here", path, what);
++	gzrewind(in);
++
++	kseq_t *seq = kseq_init(in);
++	long records = 0;
++	int l;
++	while ((l = kseq_read(seq)) >= 0) {
++		records++;
++		if (!seq->name.l) fail("record %ld of %s, %s, has no name", records, path, what);
++		if (!seq->seq.l) fail("record %ld of %s, %s, %s, has no bases", records, path, what, seq->name.s);
++		if (strlen(seq->seq.s) != seq->seq.l || strlen(seq->name.s) != seq->name.l) fail("record %ld of %s, %s, holds a NUL byte", records, path, what);
++		for (size_t i = 0; i < seq->seq.l; i++) {
++			unsigned char b = (unsigned char)seq->seq.s[i];
++			if (!isalpha(b)) fail("record %ld of %s, %s, %s, has %s in its sequence", records, path, what, seq->name.s, shown(b).c_str());
++		}
++		if (seq->qual.l) {
++			for (size_t i = 0; i < seq->qual.l; i++) {
++				unsigned char q = (unsigned char)seq->qual.s[i];
++				if (q < 33 || q > 126) fail("record %ld of %s, %s, %s, has %s in its quality, which is not a quality from '!' to '~'", records, path, what, seq->name.s, shown(q).c_str());
++			}
++		}
++	}
++	if (l == -2) fail("record %ld of %s, %s, has a quality not as long as its sequence", records + 1, path, what);
++	if (l < -1) fail("cannot read %s, %s", path, what);
++	if (!records) fail("%s, %s, holds no sequences", path, what);
++	kseq_destroy(seq);
++	gzclose(in);
++}
++
++int main(int argc, char **argv)
++{
++	const char *reads = NULL, *assembly = NULL, *short1 = NULL, *short2 = NULL;
++	bool reference = false;
++	for (int i = 1; i < argc; i++) {
++		const char *a = argv[i];
++		bool takes_value = !strcmp(a, "-a") || !strcmp(a, "--assembly") || !strcmp(a, "-1") || !strcmp(a, "--short_1")
++			|| !strcmp(a, "-2") || !strcmp(a, "--short_2");
++		if (takes_value) {
++			if (i + 1 >= argc) fail("%s needs a file", a);
++			const char **slot = &short2;
++			if (!strcmp(a, "-a") || !strcmp(a, "--assembly")) slot = &assembly;
++			else if (!strcmp(a, "-1") || !strcmp(a, "--short_1")) slot = &short1;
++			if (*slot) fail("%s is given twice", a);
++			*slot = argv[++i];
++			reference = true;
++			continue;
++		}
++		if (a[0] == '-' && a[1]) {
++			// Filtlong's options that take a value, as two arguments
++			static const char *const with_value[] = { "-t", "--target_bases", "-p", "--keep_percent", "-l", "--min_length", "-L", "--max_length",
++				"-q", "--min_mean_q", "--min_window_q", "--length_weight", "--mean_q_weight", "--window_q_weight", "--window_size", "--split", NULL };
++			static const char *const without_value[] = { "--trim", "--verbose", "-h", "--help", "--version", NULL };
++			bool known = false;
++			for (const char *const *w = with_value; *w && !known; w++)
++				if (!strcmp(a, *w)) known = true, i++;
++			for (const char *const *w = without_value; *w && !known; w++)
++				if (!strcmp(a, *w)) known = true;
++			if (!known) fail("unknown option %s", a);
++			continue;
++		}
++		if (reads) fail("unexpected argument \"%s\": the long reads are %s", a, reads);
++		reads = a;
++	}
++	if (short1 && !short2) fail("-1 needs -2: the short reads come in pairs");
++	if (short2 && !short1) fail("-2 needs -1: the short reads come in pairs");
++	if (assembly) check_reads(assembly, "the assembly (-a)", true, false);
++	if (short1) check_reads(short1, "the first short reads (-1)", true, true);
++	if (short2) check_reads(short2, "the second short reads (-2)", true, true);
++	if (reads) check_reads(reads, "the long reads", reference, true);
++	return biochef_upstream_main(argc, argv);
++}
+diff --git a/src/main.cpp b/src/main.cpp
+index 2d3f426..6eba7fe 100644
+--- a/src/main.cpp
++++ b/src/main.cpp
+@@ -34,7 +34,7 @@
+ KSEQ_INIT(gzFile, gzread)
+ 
+ 
+-int main(int argc, char **argv)
++int biochef_upstream_main(int argc, char **argv)
+ {
+     Arguments args(argc, argv);
+     if (args.parsing_result == BAD)

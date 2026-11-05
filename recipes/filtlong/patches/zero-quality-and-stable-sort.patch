@@ -1,0 +1,32 @@
+When every read has the same mean quality, or a read's is 0, Filtlong
+divides by 0 and scores the reads as not a number; they now score as the
+best. Reads of the same score keep their order (stable_sort), where
+std::sort orders them as libstdc++ or libc++ happens to.
+
+diff --git a/src/main.cpp b/src/main.cpp
+index 6eba7fe..0b0b901 100644
+--- a/src/main.cpp
++++ b/src/main.cpp
+@@ -200,11 +200,11 @@ int biochef_upstream_main(int argc, char **argv)
+         std::cerr << "\n\n" << "Read name" << "\t" << "Length score" << "\t" << "Mean quality score" << "\t"
+                   << "Window quality score" << "\t" << "Final score" << "\n";
+     for (auto read : reads2) {
+-        double window_ratio = read->m_window_quality / read->m_mean_quality;
++        double window_ratio = read->m_mean_quality > 0.0 ? read->m_window_quality / read->m_mean_quality : 1.0;
+         if (window_ratio > 1.0)
+             window_ratio = 1.0;
+         double quality_z_score = (read->m_mean_quality - mean_quality) / stdev_quality;
+-        read->m_mean_quality = 100.0 * (quality_z_score - min_z_score) / max_min_z_diff;
++        read->m_mean_quality = max_min_z_diff > 0.0 ? 100.0 * (quality_z_score - min_z_score) / max_min_z_diff : 100.0;
+         read->m_window_quality = read->m_mean_quality * window_ratio;
+         read->set_final_score(args.length_weight, args.mean_q_weight, args.window_q_weight);
+         if (args.verbose)
+@@ -244,7 +244,7 @@ int biochef_upstream_main(int argc, char **argv)
+         }
+         else {
+             // Sort reads from best to worst.
+-            std::sort(reads2.begin(), reads2.end(),
++            std::stable_sort(reads2.begin(), reads2.end(),
+                       [](const Read* a, const Read* b) {return a->m_final_score > b->m_final_score;});
+ 
+             // Fail all reads after the threshold has been met.
