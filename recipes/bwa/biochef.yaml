@@ -1,0 +1,289 @@
+apiVersion: v1
+
+id: app.biochef.bwa
+name: bwa
+description: "BWA (Burrows-Wheeler Aligner) aligns reads to a reference through its FM-index. Index the reference once, then align with Mem (bwa) for reads of 70 bp and longer, Aln (bwa) and Samse or Sampe for shorter reads, or BWA-SW. The index passes between operations as one BWA_INDEX file, a tar of the files bwa index writes (ref.amb, ref.ann, ref.bwt, ref.pac, ref.sa, and ref.alt for ALT contigs)."
+
+version: 0.7.19-bc.2
+homepage: https://github.com/lh3/bwa
+license:
+  spdx: GPL-3.0-or-later
+  files: [COPYING]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/lh3/bwa
+  tag: "v0.7.19"
+  version: "0.7.19"
+  commit: "b92993c1161e73167181558856567ef2f367e3f0"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    patches: [patches/wasm-single-threaded-kthread.patch, patches/index-tar-entry-point.patch, patches/deterministic-sa-interval.patch, patches/wasm-mem-mark-primary-se-signature.patch]
+    emscripten:
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+  native:
+    buildScript: build-native.sh
+    patches: [patches/index-tar-entry-point.patch, patches/deterministic-sa-interval.patch]
+    buildTools: [make]
+
+runtime:
+  modes: [wasm, native, remote]
+
+operations:
+  - id: bwa.index
+    name: Index (bwa)
+    category: Genomic Operations
+    bin: bwa
+    description: "Build the FM-index of a reference FASTA that the bwa aligners read, as one BWA_INDEX file (a tar of ref.amb, ref.ann, ref.bwt, ref.pac and ref.sa). Give alt_contigs, a list of alternate contigs with their alignments to the primary assembly (as bwa-kit's .alt files, in SAM), to make bwa mem ALT-aware; it is kept in the index as ref.alt."
+    io:
+      inputs:
+        - { name: reference, types: [FASTA, Multi-FASTA], mode: file }
+        - { name: alt_contigs, types: [SAM], mode: file, flag: --bc-alt }
+      outputs:
+        - { name: index, types: [BWA_INDEX], mode: file, flag: --bc-out }
+    parameters:
+      - { name: command, type: string, default: index, required: true, hidden: true }
+      - { name: algorithm, type: string, flag: -a }
+      - { name: block_size, type: integer, flag: -b }
+
+  - id: bwa.mem
+    name: Mem (bwa)
+    category: Genomic Operations
+    bin: bwa
+    description: "Align reads to an indexed reference with BWA-MEM, for reads of 70 bp and longer. Give mates for paired-end reads, or set paired for interleaved pairs in reads. Writes SAM."
+    io:
+      inputs:
+        - { name: index, types: [BWA_INDEX], mode: file, flag: --bc-index }
+        - { name: reads, types: [FASTQ, FASTA], mode: file }
+        - { name: mates, types: [FASTQ, FASTA], mode: file }
+      outputs:
+        - { name: out, types: [SAM], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: mem, required: true, hidden: true }
+      - { name: threads, type: integer, flag: -t, default: 1 }
+      - { name: min_seed_len, type: integer, flag: -k }
+      - { name: band_width, type: integer, flag: -w }
+      - { name: zdrop, type: integer, flag: -d }
+      - { name: reseed_ratio, type: float, flag: -r }
+      - { name: third_round_occurrence, type: integer, flag: -y }
+      - { name: max_occurrence, type: integer, flag: -c }
+      - { name: drop_chain_fraction, type: float, flag: -D }
+      - { name: min_chain_seeded_bases, type: integer, flag: -W }
+      - { name: mate_rescue_rounds, type: integer, flag: -m }
+      - { name: skip_mate_rescue, type: flag, flag: -S }
+      - { name: skip_pairing, type: flag, flag: -P }
+      - { name: match_score, type: integer, flag: -A }
+      - { name: mismatch_penalty, type: integer, flag: -B }
+      - { name: gap_open, type: string, flag: -O }
+      - { name: gap_extension, type: string, flag: -E }
+      - { name: clipping_penalty, type: string, flag: -L }
+      - { name: unpaired_penalty, type: integer, flag: -U }
+      - { name: read_type, type: string, flag: -x }
+      - { name: paired, type: flag, flag: -p }
+      - { name: read_group, type: string, flag: -R }
+      - { name: header_lines, type: string, flag: -H }
+      - { name: ignore_alt, type: flag, flag: -j }
+      - { name: primary_smallest_query, type: flag, flag: "-5" }
+      - { name: keep_supplementary_mapq, type: flag, flag: -q }
+      - { name: batch_bases, type: integer, flag: -K }
+      - { name: verbose, type: integer, flag: -v }
+      - { name: min_score, type: integer, flag: -T }
+      - { name: max_xa_hits, type: string, flag: -h }
+      - { name: xa_score_fraction, type: float, flag: -z }
+      - { name: all_alignments, type: flag, flag: -a }
+      - { name: append_comment, type: flag, flag: -C }
+      - { name: reference_header_tag, type: flag, flag: -V }
+      - { name: soft_clip_supplementary, type: flag, flag: -Y }
+      - { name: output_secondary, type: flag, flag: -M }
+      - { name: insert_size, type: string, flag: -I }
+      - { name: xb_tag, type: flag, flag: -u }
+
+  - id: bwa.fastmap
+    name: Fastmap (bwa)
+    category: Genomic Operations
+    bin: bwa
+    description: "Find the super-maximal exact matches (SMEMs) between queries and an indexed reference."
+    io:
+      inputs:
+        - { name: index, types: [BWA_INDEX], mode: file, flag: --bc-index }
+        - { name: reads, types: [FASTQ, FASTA], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: fastmap, required: true, hidden: true }
+      - { name: min_smem_len, type: integer, flag: -l }
+      - { name: max_interval_size, type: integer, flag: -w }
+      - { name: min_interval_size, type: integer, flag: -i }
+      - { name: max_mem_len, type: integer, flag: -L }
+      - { name: stop_interval_size, type: integer, flag: -I }
+
+  - id: bwa.aln
+    name: Aln (bwa)
+    category: Genomic Operations
+    bin: bwa
+    description: "Find the alignments of short reads (under 70 bp) with BWA's backtracking algorithm, as SAI. Turn them into SAM with Samse, or Sampe for pairs."
+    io:
+      inputs:
+        - { name: index, types: [BWA_INDEX], mode: file, flag: --bc-index }
+        - { name: reads, types: [FASTQ, FASTA], mode: file }
+      outputs:
+        - { name: out, types: [SAI], mode: file, flag: --bc-to }
+    parameters:
+      - { name: command, type: string, default: aln, required: true, hidden: true }
+      - { name: threads, type: integer, flag: -t, default: 1 }
+      - { name: max_diff, type: string, flag: -n }
+      - { name: max_gap_open, type: integer, flag: -o }
+      - { name: max_gap_ext, type: integer, flag: -e }
+      - { name: indel_end_skip, type: integer, flag: -i }
+      - { name: max_deletion_occurrence, type: integer, flag: -d }
+      - { name: seed_length, type: integer, flag: -l }
+      - { name: max_seed_diff, type: integer, flag: -k }
+      - { name: max_queue_entries, type: integer, flag: -m }
+      - { name: mismatch_penalty, type: integer, flag: -M }
+      - { name: gap_open_penalty, type: integer, flag: -O }
+      - { name: gap_extension_penalty, type: integer, flag: -E }
+      - { name: max_best_hits, type: integer, flag: -R }
+      - { name: quality_trim, type: integer, flag: -q }
+      - { name: barcode_length, type: integer, flag: -B }
+      - { name: log_gap_penalty, type: flag, flag: -L }
+      - { name: non_iterative, type: flag, flag: -N }
+      - { name: illumina_quality, type: flag, flag: -I }
+      - { name: filter_casava, type: flag, flag: -Y }
+
+  - id: bwa.aln.bam
+    name: Aln from BAM (bwa)
+    category: Genomic Operations
+    bin: bwa
+    description: "Aln (bwa) for reads in a BAM file. By default all reads are aligned; set single_end_only, first_of_pair or second_of_pair to take only those."
+    io:
+      inputs:
+        - { name: index, types: [BWA_INDEX], mode: file, flag: --bc-index }
+        - { name: reads, types: [BAM], mode: file }
+      outputs:
+        - { name: out, types: [SAI], mode: file, flag: --bc-to }
+    parameters:
+      - { name: command, type: string, default: aln, required: true, hidden: true }
+      - { name: bam_input, type: flag, flag: -b, required: true, hidden: true }
+      - { name: single_end_only, type: flag, flag: "-0" }
+      - { name: first_of_pair, type: flag, flag: "-1" }
+      - { name: second_of_pair, type: flag, flag: "-2" }
+      - { name: threads, type: integer, flag: -t, default: 1 }
+      - { name: max_diff, type: string, flag: -n }
+      - { name: max_gap_open, type: integer, flag: -o }
+      - { name: max_gap_ext, type: integer, flag: -e }
+      - { name: indel_end_skip, type: integer, flag: -i }
+      - { name: max_deletion_occurrence, type: integer, flag: -d }
+      - { name: seed_length, type: integer, flag: -l }
+      - { name: max_seed_diff, type: integer, flag: -k }
+      - { name: max_queue_entries, type: integer, flag: -m }
+      - { name: mismatch_penalty, type: integer, flag: -M }
+      - { name: gap_open_penalty, type: integer, flag: -O }
+      - { name: gap_extension_penalty, type: integer, flag: -E }
+      - { name: max_best_hits, type: integer, flag: -R }
+      - { name: quality_trim, type: integer, flag: -q }
+      - { name: barcode_length, type: integer, flag: -B }
+      - { name: log_gap_penalty, type: flag, flag: -L }
+      - { name: non_iterative, type: flag, flag: -N }
+      - { name: illumina_quality, type: flag, flag: -I }
+      - { name: filter_casava, type: flag, flag: -Y }
+
+  - id: bwa.samse
+    name: Samse (bwa)
+    category: Genomic Operations
+    bin: bwa
+    description: "Turn the alignments Aln (bwa) found for single-end reads (SAI) into SAM. The reads are the ones given to Aln."
+    io:
+      inputs:
+        - { name: index, types: [BWA_INDEX], mode: file, flag: --bc-index }
+        - { name: sai, types: [SAI], mode: file }
+        - { name: reads, types: [FASTQ, FASTA, BAM], mode: file }
+      outputs:
+        - { name: out, types: [SAM], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: samse, required: true, hidden: true }
+      - { name: max_hits, type: integer, flag: -n }
+      - { name: read_group, type: string, flag: -r }
+
+  - id: bwa.sampe
+    name: Sampe (bwa)
+    category: Genomic Operations
+    bin: bwa
+    description: "Turn the alignments Aln (bwa) found for each end of paired reads (two SAI) into paired SAM. The reads are the ones given to Aln, in the same order."
+    io:
+      inputs:
+        - { name: index, types: [BWA_INDEX], mode: file, flag: --bc-index }
+        - { name: sai1, types: [SAI], mode: file }
+        - { name: sai2, types: [SAI], mode: file }
+        - { name: reads1, types: [FASTQ, FASTA, BAM], mode: file }
+        - { name: reads2, types: [FASTQ, FASTA, BAM], mode: file }
+      outputs:
+        - { name: out, types: [SAM], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: sampe, required: true, hidden: true }
+      - { name: max_insert_size, type: integer, flag: -a }
+      - { name: max_occurrence, type: integer, flag: -o }
+      - { name: max_hits, type: integer, flag: -n }
+      - { name: max_discordant_hits, type: integer, flag: -N }
+      - { name: chimeric_rate, type: float, flag: -c }
+      - { name: read_group, type: string, flag: -r }
+      - { name: preload_index, type: flag, flag: -P }
+      - { name: no_mate_smith_waterman, type: flag, flag: -s }
+      - { name: no_insert_size_estimate, type: flag, flag: -A }
+
+  - id: bwa.bwasw
+    name: BWA-SW (bwa)
+    category: Genomic Operations
+    bin: bwa
+    description: "Align long queries (reads, contigs) to an indexed reference with BWA-SW. Give mates for paired queries. Writes SAM. Superseded by Mem (bwa) upstream."
+    io:
+      inputs:
+        - { name: index, types: [BWA_INDEX], mode: file, flag: --bc-index }
+        - { name: reads, types: [FASTQ, FASTA], mode: file }
+        - { name: mates, types: [FASTQ, FASTA], mode: file }
+      outputs:
+        - { name: out, types: [SAM], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: bwasw, required: true, hidden: true }
+      - { name: threads, type: integer, flag: -t, default: 1 }
+      - { name: match_score, type: integer, flag: -a }
+      - { name: mismatch_penalty, type: integer, flag: -b }
+      - { name: gap_open, type: integer, flag: -q }
+      - { name: gap_extension, type: integer, flag: -r }
+      - { name: band_width, type: integer, flag: -w }
+      - { name: mask_level, type: float, flag: -m }
+      - { name: hard_clipping, type: flag, flag: -H }
+      - { name: append_comment, type: flag, flag: -C }
+      - { name: output_secondary, type: flag, flag: -M }
+      - { name: skip_pairing, type: flag, flag: -S }
+      - { name: max_insert_for_inference, type: integer, flag: -I }
+      - { name: min_score, type: integer, flag: -T }
+      - { name: length_threshold_coefficient, type: float, flag: -c }
+      - { name: z_best, type: integer, flag: -z }
+      - { name: max_seed_interval, type: integer, flag: -s }
+      - { name: reverse_alignment_seeds, type: integer, flag: -N }
+      - { name: max_chain_gap, type: integer, flag: -G }
+
+  - id: bwa.pemerge
+    name: Merge Read Pairs (bwa)
+    category: Sequence Analysis
+    bin: bwa
+    description: "Merge the two ends of read pairs that overlap into one read (bwa pemerge, experimental upstream). Give the second ends in mates, or the pairs interleaved in reads. By default writes merged and unmerged reads; set merged_only or unmerged_only for one kind."
+    io:
+      inputs:
+        - { name: reads, types: [FASTQ], mode: file }
+        - { name: mates, types: [FASTQ], mode: file }
+      outputs:
+        - { name: out, types: [FASTQ], mode: stdout }
+    parameters:
+      - { name: command, type: string, default: pemerge, required: true, hidden: true }
+      - { name: merged_only, type: flag, flag: -m }
+      - { name: unmerged_only, type: flag, flag: -u }
+      - { name: threads, type: integer, flag: -t, default: 1 }
+      - { name: min_overlap, type: integer, flag: -T }
+      - { name: max_errors, type: integer, flag: -Q }
