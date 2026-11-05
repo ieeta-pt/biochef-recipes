@@ -1,0 +1,363 @@
+peek and validate wrote their reports to stderr, so the output was empty.
+
+index wrote the index next to its input, under a name the caller cannot
+choose, took an uncompressed VCF and then failed without a word, and stopped
+silently on a file it could not open or index. It now takes -o, refuses a
+file that is not BGZF-compressed VCF or BCF, and says why it stops.
+
+diff --git a/index.cpp b/index.cpp
+index 3c4f392..4eba96c 100644
+--- a/index.cpp
++++ b/index.cpp
+@@ -35,6 +35,7 @@ class Igor : Program
+     ///////////
+     std::string input_vcf_file;
+     kstring_t output_vcf_index_file;
++    std::string output_index_file;
+     bool print;
+ 
+     Igor(int argc, char **argv)
+@@ -52,12 +53,14 @@ class Igor : Program
+             VTOutput my;
+             cmd.setOutput(&my);
+             TCLAP::SwitchArg arg_print("p", "p", "print options and summary []", cmd, false);
++            TCLAP::ValueArg<std::string> arg_output_index_file("o", "o", "output index file [<in.vcf>.tbi or <in.bcf>.csi]", false, "", "str", cmd);
+             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
+ 
+             cmd.parse(argc, argv);
+ 
+             input_vcf_file = arg_input_vcf_file.getValue();
+             print = arg_print.getValue();
++            output_index_file = arg_output_index_file.getValue();
+         }
+         catch (TCLAP::ArgException &e)
+         {
+@@ -75,11 +78,13 @@ class Igor : Program
+         htsFile *file = hts_open(input_vcf_file.c_str(), "r");
+         if (file==NULL)
+         {
++            fprintf(stderr, "[%s:%d %s] Cannot open %s\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_file.c_str());
+             exit(1);
+         }    
+         
+         htsFormat ftype = file->format;
+-        if (ftype.compression!=bgzf&&ftype.format!=vcf&&ftype.format!=bcf)
++        hts_close(file);
++        if (ftype.compression!=bgzf || (ftype.format!=vcf && ftype.format!=bcf))
+         {
+             fprintf(stderr, "[%s:%d %s] Not a BGZF VCF/BCF file: %s\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_file.c_str());
+             exit(1);
+@@ -87,27 +92,27 @@ class Igor : Program
+ 
+         int32_t min_shift;
+         output_vcf_index_file = {0,0,0};
+-        int32_t ret;
++        int32_t ret = -1;
+         if (ftype.format==bcf)
+         {
+-            kputs(input_vcf_file.c_str(), &output_vcf_index_file);
+-            kputs(".csi", &output_vcf_index_file);
++            kputs(output_index_file.empty() ? (input_vcf_file + ".csi").c_str() : output_index_file.c_str(), &output_vcf_index_file);
+             min_shift = 14;
+ 
+-            ret = bcf_index_build(input_vcf_file.c_str(), min_shift);
++            ret = bcf_index_build2(input_vcf_file.c_str(), output_vcf_index_file.s, min_shift);
+         }
+         else if (ftype.format==vcf)
+         {
+-            kputs(input_vcf_file.c_str(), &output_vcf_index_file);
+-            kputs(".tbi", &output_vcf_index_file);
++            kputs(output_index_file.empty() ? (input_vcf_file + ".tbi").c_str() : output_index_file.c_str(), &output_vcf_index_file);
+             min_shift = 0;
+             tbx_conf_t conf = tbx_conf_vcf;
+ 
+-            ret = tbx_index_build(input_vcf_file.c_str(), min_shift, &conf);
++            ret = tbx_index_build2(input_vcf_file.c_str(), output_vcf_index_file.s, min_shift, &conf);
+         }
+ 
+         if (ret)
+         {
++            fprintf(stderr, "[%s:%d %s] Cannot index %s: %s\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_file.c_str(),
++                    ret==-2 ? "it is not BGZF-compressed" : "it is malformed or unsorted");
+             exit(1);
+         }
+     };
+diff --git a/peek.cpp b/peek.cpp
+index ed7fe8a..7c7fb38 100644
+--- a/peek.cpp
++++ b/peek.cpp
+@@ -370,12 +370,12 @@ class Igor : Program
+             VAR_DEL[POLYMORPHIC][vtype] = VAR_DEL[BIALLELIC][vtype] + VAR_DEL[GE_TRIALLELIC][vtype];
+         }
+ 
+-        fprintf(stderr, "\n");
+-        fprintf(stderr, "stats: no. of samples                     : %10d\n", no_samples);
+-        fprintf(stderr, "       no. of chromosomes                 : %10d\n", no_chromosomes);
+-        fprintf(stderr, "\n");
+-        fprintf(stderr, "       ========== Micro variants ==========\n");
+-        fprintf(stderr, "\n");
++        fprintf(stdout, "\n");
++        fprintf(stdout, "stats: no. of samples                     : %10d\n", no_samples);
++        fprintf(stdout, "       no. of chromosomes                 : %10d\n", no_chromosomes);
++        fprintf(stdout, "\n");
++        fprintf(stdout, "       ========== Micro variants ==========\n");
++        fprintf(stdout, "\n");
+ 
+         int32_t vtypes[] = {VT_SNP, VT_MNP, VT_INDEL, 3, 5, 6, 7, 8, 9, 10, 11 ,12 , 13, 14, 15, 0};
+ 
+@@ -384,7 +384,7 @@ class Igor : Program
+         {
+             int32_t vtype = vtypes[i];
+             if (!VAR_COUNT[POLYMORPHIC][vtype]) continue;
+-            fprintf(stderr, "       no. of %-21s       : %10d\n", Variant::vtype2string(vtype).c_str(), VAR_COUNT[POLYMORPHIC][vtype]);
++            fprintf(stdout, "       no. of %-21s       : %10d\n", Variant::vtype2string(vtype).c_str(), VAR_COUNT[POLYMORPHIC][vtype]);
+             for (int32_t no_alleles=1; no_alleles<=4; ++no_alleles)
+             {
+                 total_no_micro_variants += VAR_COUNT[no_alleles][vtype];
+@@ -392,23 +392,23 @@ class Igor : Program
+                 {
+                     if (no_alleles==4)
+                     {
+-                        fprintf(stderr, "           >=%d alleles                    : %15d", no_alleles+1, VAR_COUNT[no_alleles][vtype]);
++                        fprintf(stdout, "           >=%d alleles                    : %15d", no_alleles+1, VAR_COUNT[no_alleles][vtype]);
+                     }
+                     else
+                     {
+-                        fprintf(stderr, "           %d alleles                      : %15d", no_alleles+1, VAR_COUNT[no_alleles][vtype]);
++                        fprintf(stdout, "           %d alleles                      : %15d", no_alleles+1, VAR_COUNT[no_alleles][vtype]);
+                     }
+-                    if (vtype&(VT_SNP|VT_MNP)) fprintf(stderr, " (%.2f) [%d/%d]", (float)VAR_TS[no_alleles][vtype]/VAR_TV[no_alleles][vtype], VAR_TS[no_alleles][vtype],VAR_TV[no_alleles][vtype]);
+-                    if (vtype&VT_INDEL) fprintf(stderr, " (%.2f) [%d/%d]", (float)VAR_INS[no_alleles][vtype]/VAR_DEL[no_alleles][vtype], VAR_INS[no_alleles][vtype], VAR_DEL[no_alleles][vtype]);
+-                    fprintf(stderr, "\n");
++                    if (vtype&(VT_SNP|VT_MNP)) fprintf(stdout, " (%.2f) [%d/%d]", (float)VAR_TS[no_alleles][vtype]/VAR_TV[no_alleles][vtype], VAR_TS[no_alleles][vtype],VAR_TV[no_alleles][vtype]);
++                    if (vtype&VT_INDEL) fprintf(stdout, " (%.2f) [%d/%d]", (float)VAR_INS[no_alleles][vtype]/VAR_DEL[no_alleles][vtype], VAR_INS[no_alleles][vtype], VAR_DEL[no_alleles][vtype]);
++                    fprintf(stdout, "\n");
+                 }
+             }
+-            fprintf(stderr, "\n");
++            fprintf(stdout, "\n");
+         }
+-        fprintf(stderr, "       no. of micro variants              : %10d\n", total_no_micro_variants);
+-        fprintf(stderr, "\n");
+-        fprintf(stderr, "       ++++++ Other useful categories +++++\n");
+-        fprintf(stderr, "\n");
++        fprintf(stdout, "       no. of micro variants              : %10d\n", total_no_micro_variants);
++        fprintf(stdout, "\n");
++        fprintf(stdout, "       ++++++ Other useful categories +++++\n");
++        fprintf(stdout, "\n");
+         int32_t other_vtypes[3] = {VT_NAIVE_CLUMPED, VT_BLKSUB, VT_CPLXSUB};
+ 
+         for (int32_t i=0; i<3; ++i)
+@@ -417,47 +417,47 @@ class Igor : Program
+ 
+             if (!VAR_COUNT[POLYMORPHIC][vtype])  continue;
+             std::string variant_desc = vtype==VT_BLKSUB ? "block substitutions" : (vtype==VT_NAIVE_CLUMPED ? "clumped variants" : "complex substitutions");
+-            fprintf(stderr, "        no. of %-21s      : %10d\n", variant_desc.c_str(), VAR_COUNT[POLYMORPHIC][vtype]);
++            fprintf(stdout, "        no. of %-21s      : %10d\n", variant_desc.c_str(), VAR_COUNT[POLYMORPHIC][vtype]);
+             for (int32_t no_alleles=1; no_alleles<=4; ++no_alleles)
+             {
+                 if (VAR_COUNT[no_alleles][vtype])
+                 {
+                     if (no_alleles==4)
+                     {
+-                        fprintf(stderr, "           >=%d alleles                    : %15d", no_alleles+1, VAR_COUNT[no_alleles][vtype]);
++                        fprintf(stdout, "           >=%d alleles                    : %15d", no_alleles+1, VAR_COUNT[no_alleles][vtype]);
+                     }
+                     else
+                     {
+-                        fprintf(stderr, "           %d alleles                      : %15d", no_alleles+1, VAR_COUNT[no_alleles][vtype]);
++                        fprintf(stdout, "           %d alleles                      : %15d", no_alleles+1, VAR_COUNT[no_alleles][vtype]);
+                     }
+-                    fprintf(stderr, " (%.2f) [%d/%d]", (float)VAR_TS[no_alleles][vtype]/VAR_TV[no_alleles][vtype], VAR_TS[no_alleles][vtype],VAR_TV[no_alleles][vtype]);
+-                    if (vtype!=VT_BLKSUB) fprintf(stderr, " (%.2f) [%d/%d]", (float)VAR_INS[no_alleles][vtype]/VAR_DEL[no_alleles][vtype], VAR_INS[no_alleles][vtype], VAR_DEL[no_alleles][vtype]);
+-                    fprintf(stderr, "\n");
++                    fprintf(stdout, " (%.2f) [%d/%d]", (float)VAR_TS[no_alleles][vtype]/VAR_TV[no_alleles][vtype], VAR_TS[no_alleles][vtype],VAR_TV[no_alleles][vtype]);
++                    if (vtype!=VT_BLKSUB) fprintf(stdout, " (%.2f) [%d/%d]", (float)VAR_INS[no_alleles][vtype]/VAR_DEL[no_alleles][vtype], VAR_INS[no_alleles][vtype], VAR_DEL[no_alleles][vtype]);
++                    fprintf(stdout, "\n");
+                 }
+             }
+-            fprintf(stderr, "\n");
++            fprintf(stdout, "\n");
+         }
+ 
+         if (VAR_COUNT[POLYMORPHIC][VT_VNTR])
+         {    
+-            fprintf(stderr, "       ============== VNTR ===============\n");
+-            fprintf(stderr, "\n");
+-            fprintf(stderr, "       no. of VNTRs                       : %10d\n", VAR_COUNT[POLYMORPHIC][VT_VNTR]);
++            fprintf(stdout, "       ============== VNTR ===============\n");
++            fprintf(stdout, "\n");
++            fprintf(stdout, "       no. of VNTRs                       : %10d\n", VAR_COUNT[POLYMORPHIC][VT_VNTR]);
+             for (int32_t i=0; i<NO_MOTIF_LEN_CATEGORIES; ++i)
+             {
+                 if (VAR_MOTIF_LEN[i])
+                 {
+                     if (i<NO_MOTIF_LEN_CATEGORIES-1)
+                     {
+-                        fprintf(stderr, "           no. of %d bp motifs                   : %10d\n", i+1, VAR_MOTIF_LEN[i]);
++                        fprintf(stdout, "           no. of %d bp motifs                   : %10d\n", i+1, VAR_MOTIF_LEN[i]);
+                     }
+                     else
+                     {
+-                        fprintf(stderr, "           no. of >%d bp motifs                   : %10d\n", i+1, VAR_MOTIF_LEN[i]);
++                        fprintf(stdout, "           no. of >%d bp motifs                   : %10d\n", i+1, VAR_MOTIF_LEN[i]);
+                     }
+                 }
+             }
+-            fprintf(stderr, "\n");
++            fprintf(stdout, "\n");
+     
+             if (VAR_COUNT[POLYMORPHIC][VT_VNTR])
+             {
+@@ -468,62 +468,62 @@ class Igor : Program
+         std::vector<SVNode*> s = sv_tree->enumerate_dfs();
+         if (s[0]->count+s[0]->mcount)
+         {
+-            fprintf(stderr, "       ======= Structural variants ========\n");
+-            fprintf(stderr, "\n");
+-            fprintf(stderr, "       no. of structural variants         : %10d\n", s[0]->count+s[0]->mcount);
++            fprintf(stdout, "       ======= Structural variants ========\n");
++            fprintf(stdout, "\n");
++            fprintf(stdout, "       no. of structural variants         : %10d\n", s[0]->count+s[0]->mcount);
+             if (s[0]->count)
+             {
+-                fprintf(stderr, "           2 alleles                      : %15d\n", s[0]->count);
++                fprintf(stdout, "           2 alleles                      : %15d\n", s[0]->count);
+                 for (size_t i=1; i<s.size(); ++i)
+                 {
+                     if (s[i]->count)
+                     {
+-                        fprintf(stderr, "            ");
+-                        for (int32_t j=0; j<s[i]->depth; ++j) std::cerr << "   ";
++                        fprintf(stdout, "            ");
++                        for (int32_t j=0; j<s[i]->depth; ++j) std::cout << "   ";
+                         std::string desc = s[i]->sv_type2string(s[i]->type.s);
+-                        fprintf(stderr, "%s", desc.c_str());
+-                        for (int32_t j=0; j<30-desc.size()-s[i]->depth*3; ++j) std::cerr << " ";
+-                        fprintf(stderr, ":           ");
+-                        for (int32_t j=0; j<s[i]->depth; ++j) std::cerr << "    ";
+-                        fprintf(stderr, "%6d\n", s[i]->count);
++                        fprintf(stdout, "%s", desc.c_str());
++                        for (int32_t j=0; j<30-desc.size()-s[i]->depth*3; ++j) std::cout << " ";
++                        fprintf(stdout, ":           ");
++                        for (int32_t j=0; j<s[i]->depth; ++j) std::cout << "    ";
++                        fprintf(stdout, "%6d\n", s[i]->count);
+                     }
+                 }
+             }
+     
+             if (s[0]->mcount)
+             {
+-                fprintf(stderr, "           >=3 alleles                    : %15d\n", s[0]->mcount);
++                fprintf(stdout, "           >=3 alleles                    : %15d\n", s[0]->mcount);
+                 for (size_t i=1; i<s.size(); ++i)
+                 {
+                     if (s[i]->mcount)
+                     {
+-                        fprintf(stderr, "            ");
+-                        for (int32_t j=0; j<s[i]->depth; ++j) std::cerr << "   ";
++                        fprintf(stdout, "            ");
++                        for (int32_t j=0; j<s[i]->depth; ++j) std::cout << "   ";
+                         std::string desc = s[i]->sv_type2string(s[i]->type.s);
+-                        fprintf(stderr, "%s", desc.c_str());
+-                        for (int32_t j=0; j<30-desc.size()-s[i]->depth*3; ++j) std::cerr << " ";
+-                        fprintf(stderr, ":           ");
+-                        for (int32_t j=0; j<s[i]->depth; ++j) std::cerr << "    ";
+-                        fprintf(stderr, "%6d\n", s[i]->mcount);
++                        fprintf(stdout, "%s", desc.c_str());
++                        for (int32_t j=0; j<30-desc.size()-s[i]->depth*3; ++j) std::cout << " ";
++                        fprintf(stdout, ":           ");
++                        for (int32_t j=0; j<s[i]->depth; ++j) std::cout << "    ";
++                        fprintf(stdout, "%6d\n", s[i]->mcount);
+                     }
+                 }
+             }
+     
+             if (sv_tree->mixed_sv_count)
+             {
+-                fprintf(stderr, "            mixed sv                      :  %15d\n", sv_tree->mixed_sv_count);
++                fprintf(stdout, "            mixed sv                      :  %15d\n", sv_tree->mixed_sv_count);
+             }
+         }
+ 
+-        fprintf(stderr, "\n");
+-        fprintf(stderr, "       ========= General summary ==========\n");
+-        fprintf(stderr, "\n");
+-        fprintf(stderr, "       no. of VCF records                        : %10d\n", no_records);
+-        fprintf(stderr, "\n");
+-        if (no_reference) fprintf(stderr, "       no. of reference records                  : %10d\n", no_reference);
+-        if (no_classified_variants!=no_records) fprintf(stderr, "       no. of classified variants                : %10d\n", no_classified_variants);
+-        if (no_unclassified_variants) fprintf(stderr, "       no. of unclassified variants              : %10d\n", no_unclassified_variants);
+-        fprintf(stderr, "\n");
++        fprintf(stdout, "\n");
++        fprintf(stdout, "       ========= General summary ==========\n");
++        fprintf(stdout, "\n");
++        fprintf(stdout, "       no. of VCF records                        : %10d\n", no_records);
++        fprintf(stdout, "\n");
++        if (no_reference) fprintf(stdout, "       no. of reference records                  : %10d\n", no_reference);
++        if (no_classified_variants!=no_records) fprintf(stdout, "       no. of classified variants                : %10d\n", no_classified_variants);
++        if (no_unclassified_variants) fprintf(stdout, "       no. of unclassified variants              : %10d\n", no_unclassified_variants);
++        fprintf(stdout, "\n");
+     };
+ 
+     void print_pdf()
+diff --git a/validate.cpp b/validate.cpp
+index 11ddab5..8833033 100644
+--- a/validate.cpp
++++ b/validate.cpp
+@@ -141,13 +141,13 @@ class Igor : Program
+             {
+                 if (last_pos1>pos1)
+                 {
+-                    if (print) fprintf(stderr, "[%s:%d %s] UNORDERED: %s: %d after %d\n", __FILE__, __LINE__, __FUNCTION__, chrom, pos1, last_pos1);
++                    if (print) fprintf(stdout, "[%s:%d %s] UNORDERED: %s: %d after %d\n", __FILE__, __LINE__, __FUNCTION__, chrom, pos1, last_pos1);
+                     ++no_unordered;
+                 }
+             }
+             else if (last_rid>rid)
+             {
+-                if (print) fprintf(stderr, "[%s:%d %s] UNORDERED CHROM: %s after %s\n", __FILE__, __LINE__, __FUNCTION__, chrom, last_chrom);
++                if (print) fprintf(stdout, "[%s:%d %s] UNORDERED CHROM: %s after %s\n", __FILE__, __LINE__, __FUNCTION__, chrom, last_chrom);
+                 ++no_unordered_chrom;
+             }
+ 
+@@ -169,7 +169,7 @@ class Igor : Program
+                 {
+                     kstring_t var = {0,0,0};
+                     bcf_variant2string(odr->hdr, v, &var);
+-                    if (print) fprintf(stderr, "[%s:%d %s] INCONSISTENT REF: %s:%d %s!=%s(truth) for variant %s\n", __FILE__, __LINE__, __FUNCTION__, chrom, pos1, alleles[0], ref, var.s);
++                    if (print) fprintf(stdout, "[%s:%d %s] INCONSISTENT REF: %s:%d %s!=%s(truth) for variant %s\n", __FILE__, __LINE__, __FUNCTION__, chrom, pos1, alleles[0], ref, var.s);
+                     if (var.m) free(var.s);
+                     ++no_inconsistent_ref;
+                 }
+@@ -198,21 +198,21 @@ class Igor : Program
+ 
+     void print_stats()
+     {
+-        std::clog << "\n";
+-        std::clog << "stats:    no. unordered                     : " << no_unordered << "\n";
+-        std::clog << "          no. unordered chrom               : " << no_unordered_chrom << "\n";
+-        std::clog << "\n";
++        std::cout << "\n";
++        std::cout << "stats:    no. unordered                     : " << no_unordered << "\n";
++        std::cout << "          no. unordered chrom               : " << no_unordered_chrom << "\n";
++        std::cout << "\n";
+         if (fai)
+         {
+-            std::clog << "          no. inconsistent REF              : " << no_inconsistent_ref << "\n";
+-            std::clog << "\n";
++            std::cout << "          no. inconsistent REF              : " << no_inconsistent_ref << "\n";
++            std::cout << "\n";
+         }
+         else
+         {
+-            std::clog << "reference consistency not checked.\n\n"; 
++            std::cout << "reference consistency not checked.\n\n"; 
+         }
+-        std::clog << "          no. variants                      : " << no_variants << "\n";
+-        std::clog << "\n";
++        std::cout << "          no. variants                      : " << no_variants << "\n";
++        std::cout << "\n";
+     };
+ 
+     ~Igor() {};
