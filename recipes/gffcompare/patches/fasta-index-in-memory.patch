@@ -1,0 +1,42 @@
+gffcompare loaded a FASTA index left next to the genome, or one of the same
+name in the working directory, which may be another file's, and wrote one
+there. The index is now built in memory from the genome.
+
+diff --git a/gtf_tracking.h b/gtf_tracking.h
+index 2068e29..aa8ae0d 100644
+--- a/gtf_tracking.h
++++ b/gtf_tracking.h
+@@ -86,7 +86,7 @@ class GFastaHandler {
+                }
+               else fainame.append(".fai");
+             //fainame.append(".fai");
+-            faIdx=new GFastaIndex(fastaPath,fainame.chars());
++            faIdx=new GFastaIndex(fastaPath,NULL);
+             GStr fainamecwd(fainame);
+             int ip=-1;
+             if ((ip=fainamecwd.rindex('/'))>=0)
+@@ -95,7 +95,7 @@ class GFastaHandler {
+                //try current directory
+                   if (fainame!=fainamecwd) {
+                     if (fileExists(fainamecwd.chars())>1) {
+-                       faIdx->loadIndex(fainamecwd.chars());
++                       ;
+                        }
+                     }
+                   } //tried to load index
+@@ -104,15 +104,6 @@ class GFastaHandler {
+                  faIdx->buildIndex();
+                  if (faIdx->getCount()==0) GError("Error: no fasta records found!\n");
+                  GMessage("Fasta index rebuilt.\n");
+-                 FILE* fcreate=fopen(fainame.chars(), "w");
+-                 if (fcreate==NULL) {
+-                   GMessage("Warning: cannot create fasta index %s! (permissions?)\n", fainame.chars());
+-                   if (fainame!=fainamecwd) fcreate=fopen(fainamecwd.chars(), "w");
+-                   if (fcreate==NULL)
+-                      GError("Error: cannot create fasta index %s!\n", fainamecwd.chars());
+-                   }
+-                 if (faIdx->storeIndex(fcreate)<faIdx->getCount())
+-                     GMessage("Warning: error writing the index file!\n");
+                  } //index created and attempted to store it
+             } //multi-fasta
+          } //genomic sequence given
