@@ -1,0 +1,55 @@
+Where long has 32 bits, as in wasm32, the spaced seed and toggle masks,
+64-bit numbers, are read with strtol, which stops at 2^31 - 1: read them
+with strtoll, which is what strtol is natively.
+
+The leading zeros of a 64-bit hash, for the distinct minimizers of a report
+(-K), are counted with __builtin_clzl, which takes a long: count them with
+__builtin_clzll.
+
+diff --git a/src/build_db.cc b/src/build_db.cc
+index 3947c53..e848085 100644
+--- a/src/build_db.cc
++++ b/src/build_db.cc
+@@ -514,10 +514,10 @@ void ParseCommandLine(int argc, char **argv, Options &opts) {
+         opts.taxonomy_filename = optarg;
+         break;
+       case 'S' :
+-        opts.spaced_seed_mask = strtol(optarg, nullptr, 2);
++        opts.spaced_seed_mask = strtoll(optarg, nullptr, 2);
+         break;
+       case 'T' :
+-        opts.toggle_mask = strtol(optarg, nullptr, 2);
++        opts.toggle_mask = strtoll(optarg, nullptr, 2);
+         break;
+       case 'k' :
+         sig = atoll(optarg);
+diff --git a/src/estimate_capacity.cc b/src/estimate_capacity.cc
+index 19ed9ca..f2f0006 100644
+--- a/src/estimate_capacity.cc
++++ b/src/estimate_capacity.cc
+@@ -146,10 +146,10 @@ void ParseCommandLine(int argc, char **argv, Options &opts) {
+         opts.input_is_protein = true;
+         break;
+       case 'S' :
+-        opts.spaced_seed_mask = strtol(optarg, nullptr, 2);
++        opts.spaced_seed_mask = strtoll(optarg, nullptr, 2);
+         break;
+       case 'T' :
+-        opts.toggle_mask = strtol(optarg, nullptr, 2);
++        opts.toggle_mask = strtoll(optarg, nullptr, 2);
+         break;
+     }
+   }
+diff --git a/src/hyperloglogplus.cc b/src/hyperloglogplus.cc
+index 24cdc97..79c2a5e 100644
+--- a/src/hyperloglogplus.cc
++++ b/src/hyperloglogplus.cc
+@@ -56,7 +56,7 @@ inline uint8_t clz(const uint32_t x, const uint8_t max = 32) {
+ 
+ inline uint8_t clz(const uint64_t x, const uint8_t max = 64) {
+   if (x == 0) { return max; }
+-  return __builtin_clzl(x);
++  return __builtin_clzll(x);
+ }
+ 
+ template<typename T>

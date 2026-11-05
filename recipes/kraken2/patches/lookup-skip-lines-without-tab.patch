@@ -1,0 +1,15 @@
+A lookup line without a tab makes lookup_accession_numbers read past the end
+of its fields and crash; skip such lines instead.
+
+diff --git a/src/lookup_accession_numbers.cc b/src/lookup_accession_numbers.cc
+index 200fe72..a00afad 100644
+--- a/src/lookup_accession_numbers.cc
++++ b/src/lookup_accession_numbers.cc
+@@ -22,6 +22,7 @@ int main(int argc, char **argv) {
+   string line;
+   while (getline(lookup_list_file, line)) {
+     auto fields = SplitString(line, "\t", 2);
++    if (fields.size() < 2) continue;
+     string seqid = fields[0];
+     string accnum = fields[1];
+     target_lists[accnum].push_back(seqid);
