@@ -25,27 +25,30 @@ build:
     strategy: biowasm
     biowasm:
       package: kentutils
+  native:
+    outputDir: dist
+    buildScript: build-native.sh
+    buildTools: [make, gcc]
 
 runtime:
-  modes: [wasm, remote]
+  modes: [wasm, native]
 
 operations:
   - id: kentutils.bigbed.to.bed
     name: BigBed → BED (kentutils)
     category: Format Conversion
     bin: bigBedToBed
-    description: Convert a BigBed binary file into a plain BED file. Supports optional region restriction.
+    description: Convert BigBed to BED. Without chrom, start and end apply to every chromosome; max_items is per chromosome.
     io:
       inputs:
         - { name: in, types: [BIGBED], mode: file }
       outputs:
-        - { name: out, types: [BED], mode: file, flag: "", filename: out.bed }
+        - { name: out, types: [BED], mode: file, flag: "" }
     parameters:
-      - { name: chrom, type: string, flag: -chrom }
-      - { name: start, type: integer, flag: -start }
-      - { name: end, type: integer, flag: -end }
-      - { name: max_items, type: integer, flag: -maxItems }
-      - { name: header, type: flag, flag: -header }
+      - { name: chrom, type: string, flag: "-chrom=" }
+      - { name: start, type: integer, flag: "-start=" }
+      - { name: end, type: integer, flag: "-end=" }
+      - { name: max_items, type: integer, flag: "-maxItems=" }
 
   - id: kentutils.bigbed.info
     name: BigBed Info (kentutils)
@@ -66,16 +69,16 @@ operations:
     name: BigWig → Wig (kentutils)
     category: Format Conversion
     bin: bigWigToWig
-    description: Convert a BigWig binary file into a plain Wig file. Supports optional region restriction.
+    description: Convert BigWig to Wig. Without chrom, start and end apply to every chromosome.
     io:
       inputs:
         - { name: in, types: [BIGWIG], mode: file }
       outputs:
-        - { name: out, types: [WIG], mode: file, flag: "", filename: out.wig }
+        - { name: out, types: [WIG], mode: file, flag: "" }
     parameters:
-      - { name: chrom, type: string, flag: -chrom }
-      - { name: start, type: integer, flag: -start }
-      - { name: end, type: integer, flag: -end }
+      - { name: chrom, type: string, flag: "-chrom=" }
+      - { name: start, type: integer, flag: "-start=" }
+      - { name: end, type: integer, flag: "-end=" }
 
   - id: kentutils.bigwig.info
     name: BigWig Info (kentutils)
