@@ -1,0 +1,81 @@
+apiVersion: v1
+
+id: app.biochef.uniquekmer
+name: UniqueKMER
+description: >-
+  UniqueKMER finds the k-mers unique to each genome or contig of a multi-FASTA, giving each one a
+  k-mer fingerprint for k-mer based detection or classification. It can also drop the k-mers that
+  map to a background reference genome within an edit distance, so the k-mers left distinguish the
+  target. From the OpenGene group.
+
+version: 0.1.0-bc.1
+homepage: https://github.com/OpenGene/UniqueKMER
+license:
+  spdx: MIT
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/OpenGene/UniqueKMER
+  commit: "8b902e9a82c9ace13d038e684adc06460afeff89"
+  version: "0.1.0"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    patches: [patches/kmer-walk-fixes.patch, patches/biochef-entry-point.patch, patches/wasm32-portability.patch]
+    emscripten:
+      outputDir: out
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+  native:
+    patches: [patches/kmer-walk-fixes.patch, patches/biochef-entry-point.patch]
+    outputDir: out
+    buildScript: build-native.sh
+    buildTools: [make, gcc]
+
+runtime:
+  modes: [wasm, native]
+
+operations:
+  - id: uniquekmer.generate
+    name: Generate Unique K-mer Sets
+    category: Sequence Analysis
+    bin: uniquekmer
+    description: >-
+      Find the k-mers of each genome of a multi-FASTA that occur in no other genome, on either
+      strand. Writes them as FASTA, one record per k-mer, named by the genome's ID and the
+      1-based position of the k-mer's first occurrence in it ("genome1:1501"). K-mers with a base
+      other than A, C, G or T are left out. kmer_length takes 3 to 32, and spacing (0 to 100)
+      skips the k-mers that start within that many bases of the last one written.
+    io:
+      inputs:
+        - { name: fasta, types: [Multi-FASTA, FASTA], mode: file, flag: -f }
+      outputs:
+        - { name: kmers, types: [Multi-FASTA], mode: file, flag: --bc-kmers }
+    parameters:
+      - { name: kmer_length, type: integer, flag: -k, default: 25 }
+      - { name: spacing, type: integer, flag: -s, default: 0 }
+
+  - id: uniquekmer.generateref
+    name: Generate Unique K-mer Sets against a Reference
+    category: Sequence Analysis
+    bin: uniquekmer
+    description: >-
+      Find the k-mers of each genome of a multi-FASTA that occur in no other genome, as in Generate
+      Unique K-mer Sets, and drop the ones that map to a background reference genome within
+      edit_distance (0 to 16), on either strand. A k-mer is checked where a stretch of 14 bases of
+      it, or all of it if k is shorter, matches the reference exactly.
+    io:
+      inputs:
+        - { name: fasta, types: [Multi-FASTA, FASTA], mode: file, flag: -f }
+        - { name: ref, types: [FASTA, Multi-FASTA], mode: file, flag: -r }
+      outputs:
+        - { name: kmers, types: [Multi-FASTA], mode: file, flag: --bc-kmers }
+    parameters:
+      - { name: kmer_length, type: integer, flag: -k, default: 25 }
+      - { name: spacing, type: integer, flag: -s, default: 0 }
+      - { name: edit_distance, type: integer, flag: -e, default: 3 }
