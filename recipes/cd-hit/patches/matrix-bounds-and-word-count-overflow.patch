@@ -1,0 +1,60 @@
+set_matrix reads a whole MAX_AA triangle from the nucleotide matrices,
+which hold only the first rows, so it read past them; the rest is never
+used, and is now zero. InitNAA's larger word counts overflow an int for the
+protein alphabet, where they are not used either; they now wrap as defined.
+
+diff --git a/cdhit-454.c++ b/cdhit-454.c++
+index 59cec0d..798b6e2 100644
+--- a/cdhit-454.c++
++++ b/cdhit-454.c++
+@@ -37,7 +37,7 @@ SequenceDB seq_db;
+ //  ^
+ //  mismatch will cost -2 with BLOSUM62_na, therefore the first 2 bases won't be in alignment
+ //  but with BLOSUM62_na2, the first 2 bases are in alignment
+-int myBLOSUM62_na2[] = {
++int myBLOSUM62_na2[MAX_AA * (MAX_AA + 1) / 2] = {
+   2,               // A
+  -1, 2,            // C
+  -1,-1, 2,         // G
+diff --git a/cdhit-common.c++ b/cdhit-common.c++
+index 9582f22..8e6a058 100644
+--- a/cdhit-common.c++
++++ b/cdhit-common.c++
+@@ -91,7 +91,7 @@ int na2idx[] = {0, 4, 1, 4, 4, 4, 2, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+     //          Q  R  S  T  U  V  W  X  Y  Z
+     // so aa2idx[ X - 'A'] => idx_of_X, eg aa2idx['A' - 'A'] => 0,
+     // and aa2idx['M'-'A'] => 4
+-int BLOSUM62_na[] = {
++int BLOSUM62_na[MAX_AA * (MAX_AA + 1) / 2] = {
+   2,                  // A
+  -2, 2,               // C
+  -2,-2, 2,            // G
+@@ -185,17 +185,17 @@ int NAAN_array[13] = { 1 };
+ void InitNAA( int max )
+ {
+ 	NAA1  = NAAN_array[1]  = max;
+-	NAA2  = NAAN_array[2]  = NAA1 * NAA1;
+-	NAA3  = NAAN_array[3]  = NAA1 * NAA2;
+-	NAA4  = NAAN_array[4]  = NAA2 * NAA2;
+-	NAA5  = NAAN_array[5]  = NAA2 * NAA3;
+-	NAA6  = NAAN_array[6]  = NAA3 * NAA3;
+-	NAA7  = NAAN_array[7]  = NAA3 * NAA4;
+-	NAA8  = NAAN_array[8]  = NAA4 * NAA4;
+-	NAA9  = NAAN_array[9]  = NAA4 * NAA5;
+-	NAA10 = NAAN_array[10] = NAA5 * NAA5;
+-	NAA11 = NAAN_array[11] = NAA5 * NAA6;
+-	NAA12 = NAAN_array[12] = NAA6 * NAA6;
++	NAA2  = NAAN_array[2]  = (int)((unsigned)NAA1 * (unsigned)NAA1);
++	NAA3  = NAAN_array[3]  = (int)((unsigned)NAA1 * (unsigned)NAA2);
++	NAA4  = NAAN_array[4]  = (int)((unsigned)NAA2 * (unsigned)NAA2);
++	NAA5  = NAAN_array[5]  = (int)((unsigned)NAA2 * (unsigned)NAA3);
++	NAA6  = NAAN_array[6]  = (int)((unsigned)NAA3 * (unsigned)NAA3);
++	NAA7  = NAAN_array[7]  = (int)((unsigned)NAA3 * (unsigned)NAA4);
++	NAA8  = NAAN_array[8]  = (int)((unsigned)NAA4 * (unsigned)NAA4);
++	NAA9  = NAAN_array[9]  = (int)((unsigned)NAA4 * (unsigned)NAA5);
++	NAA10 = NAAN_array[10] = (int)((unsigned)NAA5 * (unsigned)NAA5);
++	NAA11 = NAAN_array[11] = (int)((unsigned)NAA5 * (unsigned)NAA6);
++	NAA12 = NAAN_array[12] = (int)((unsigned)NAA6 * (unsigned)NAA6);
+ }
+ 
+ extern Options options;
