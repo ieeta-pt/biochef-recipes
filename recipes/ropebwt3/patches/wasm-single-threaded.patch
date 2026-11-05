@@ -1,0 +1,50 @@
+Under __EMSCRIPTEN__, kt_for runs with one thread, kt_pipeline runs its
+steps in turn in the calling thread, and mr_insert_multi runs without
+threads (is_thr = 0).
+
+diff --git a/kthread.c b/kthread.c
+index ffdf940..b8a0315 100644
+--- a/kthread.c
++++ b/kthread.c
+@@ -53,6 +53,9 @@ static void *ktf_worker(void *data)
+ 
+ void kt_for(int n_threads, void (*func)(void*,long,int), void *data, long n)
+ {
++#ifdef __EMSCRIPTEN__
++	n_threads = 1;
++#endif
+ 	if (n_threads > 1) {
+ 		int i;
+ 		kt_for_t t;
+@@ -129,6 +132,17 @@ static void *ktp_worker(void *data)
+ 
+ void kt_pipeline(int n_threads, void *(*func)(void*, int, void*), void *shared_data, int n_steps)
+ {
++#ifdef __EMSCRIPTEN__
++	for (;;) {
++		int s;
++		void *d = func(shared_data, 0, 0);
++		if (d == 0) return;
++		for (s = 1; s < n_steps; ++s) {
++			d = func(shared_data, s, d);
++			if (d == 0 && s < n_steps - 1) return;
++		}
++	}
++#endif
+ 	ktp_t aux;
+ 	pthread_t *tid;
+ 	int i;
+diff --git a/mrope.c b/mrope.c
+index c0812a0..a0cfdf6 100644
+--- a/mrope.c
++++ b/mrope.c
+@@ -305,6 +305,9 @@ void mr_insert_multi(mrope_t *mr, int64_t len, const uint8_t *s, int is_thr)
+ 	triple64_t *a[2], *curr, *prev, *swap;
+ 	pthread_t tid[4];
+ 	worker_t w[4];
++#ifdef __EMSCRIPTEN__
++	is_thr = 0;
++#endif
+ 
+ 	if (mr->thr_min < 0) mr->thr_min = 0;
+ 	assert(len > 0 && s[len-1] == 0);
