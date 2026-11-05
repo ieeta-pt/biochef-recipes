@@ -1,0 +1,17 @@
+rlink.cpp uses printCovMutex unconditionally but stringtie.cpp only defines
+it under #ifndef NOTHREADS: replace the extern declaration with an
+anonymous-struct no-op stub so the lock/unlock calls compile out.
+
+diff --git a/rlink.cpp b/rlink.cpp
+index 662dcfc..d7cb67a 100644
+--- a/rlink.cpp
++++ b/rlink.cpp
+@@ -14,7 +14,7 @@
+ 
+ //extern GffNames* gseqNames;
+ extern FILE *c_out;         // file handle for the input transcripts that are fully covered by reads
+-extern GFastMutex printCovMutex;
++struct{void lock(){}void unlock(){}}printCovMutex;
+ 
+ extern bool trim;
+ extern bool eonly;

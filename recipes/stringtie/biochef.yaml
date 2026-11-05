@@ -1,0 +1,234 @@
+apiVersion: v1
+
+id: app.biochef.stringtie
+name: StringTie
+description: >-
+  StringTie assembles spliced RNA-seq alignments into transcripts and estimates their abundance. It
+  reads the coordinate-sorted BAM, CRAM or SAM files that HISAT2 or STAR write, optionally guided by
+  a reference annotation, and merges the assemblies of several samples into one set of transcripts.
+
+version: 3.0.3-bc.1
+homepage: https://github.com/gpertea/stringtie
+license:
+  spdx: MIT
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/gpertea/stringtie
+  tag: "v3.0.3"
+  version: "3.0.3"
+  commit: "3436ad6dfd0ffc806a94086cf747ac6ff2b0dc19"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      emscriptenVersion: 4.0.18
+      outputDir: out
+      buildScript: build-wasm.sh
+    patches: [patches/sam-input-errors.patch, patches/remove-temp-dir-at-exit.patch, patches/htslib-minimal-config.patch, patches/nothreads-print-cov-mutex.patch]
+  native:
+    outputDir: out
+    buildScript: build-native.sh
+    buildTools: [make, gcc]
+    patches: [patches/sam-input-errors.patch, patches/remove-temp-dir-at-exit.patch, patches/htslib-minimal-config.patch, patches/nothreads-print-cov-mutex.patch]
+
+runtime:
+  modes: [wasm, native]
+
+operations:
+  - id: stringtie.assemble
+    name: Assemble Transcripts (StringTie)
+    category: Genomic Operations
+    bin: stringtie
+    description: >-
+      Assemble the transcripts of coordinate-sorted spliced RNA-seq alignments (BAM, CRAM or SAM),
+      without an annotation, and estimate their coverage, FPKM and TPM. Writes the transcripts as
+      GTF and the abundance of each gene as a table. Unset options keep StringTie's defaults: label
+      STRG, min_isoform_fraction 0.01, min_transcript_len 200 (at least 30), min_anchor_len 10,
+      min_junction_cov 1, min_multiexon_cov 1, min_singleexon_cov 4.75, max_gap 50 (0 with long
+      reads), max_multihit_fraction 1. conservative sets min_multiexon_cov 1.5, min_isoform_fraction
+      0.05 and no_trimming, unless they are set too. fr_stranded and rf_stranded cannot be used
+      together. skip_sequences takes a comma-separated list of reference sequence names to leave
+      out.
+    io:
+      inputs:
+        - { name: in, types: [BAM, CRAM, SAM], mode: file }
+      outputs:
+        - { name: out, types: [GTF], mode: file, flag: -o }
+        - { name: gene_abundance, types: [TEXT], mode: file, flag: -A }
+    parameters:
+      - { name: label_prefix, type: string, flag: -l }
+      - { name: min_isoform_fraction, type: float, flag: -f }
+      - { name: min_transcript_len, type: integer, flag: -m }
+      - { name: min_anchor_len, type: integer, flag: -a }
+      - { name: min_junction_cov, type: integer, flag: -j }
+      - { name: min_multiexon_cov, type: float, flag: -c }
+      - { name: min_singleexon_cov, type: float, flag: -s }
+      - { name: max_gap, type: integer, flag: -g }
+      - { name: max_multihit_fraction, type: float, flag: -M }
+      - { name: no_trimming, type: flag, flag: -t }
+      - { name: no_multimapping_correction, type: flag, flag: -u }
+      - { name: conservative, type: flag, flag: --conservative }
+      - { name: fr_stranded, type: flag, flag: --fr }
+      - { name: rf_stranded, type: flag, flag: --rf }
+      - { name: long_reads, type: flag, flag: -L }
+      - { name: splice_site_window, type: integer, flag: -E }
+      - { name: viral, type: flag, flag: --viral }
+      - { name: nascent_transcripts, type: flag, flag: --nasc }
+      - { name: skip_sequences, type: string, flag: -x }
+
+  - id: stringtie.assembleguided
+    name: Assemble Transcripts with Annotation (StringTie)
+    category: Genomic Operations
+    bin: stringtie
+    description: >-
+      Assemble the transcripts of coordinate-sorted spliced RNA-seq alignments (BAM, CRAM or SAM),
+      guided by a reference annotation in GTF or GFF3 whose sequence names match the alignments'.
+      Reference transcripts keep their IDs in the output. With reference_only, StringTie only
+      estimates the abundance of the reference transcripts and assembles no new ones. The other
+      options are as in Assemble Transcripts.
+    io:
+      inputs:
+        - { name: in, types: [BAM, CRAM, SAM], mode: file }
+        - { name: guide, types: [GTF, GFF], mode: file, flag: -G }
+      outputs:
+        - { name: out, types: [GTF], mode: file, flag: -o }
+        - { name: gene_abundance, types: [TEXT], mode: file, flag: -A }
+    parameters:
+      - { name: reference_only, type: flag, flag: -e }
+      - { name: label_prefix, type: string, flag: -l }
+      - { name: min_isoform_fraction, type: float, flag: -f }
+      - { name: min_transcript_len, type: integer, flag: -m }
+      - { name: min_anchor_len, type: integer, flag: -a }
+      - { name: min_junction_cov, type: integer, flag: -j }
+      - { name: min_multiexon_cov, type: float, flag: -c }
+      - { name: min_singleexon_cov, type: float, flag: -s }
+      - { name: max_gap, type: integer, flag: -g }
+      - { name: max_multihit_fraction, type: float, flag: -M }
+      - { name: no_trimming, type: flag, flag: -t }
+      - { name: no_multimapping_correction, type: flag, flag: -u }
+      - { name: conservative, type: flag, flag: --conservative }
+      - { name: fr_stranded, type: flag, flag: --fr }
+      - { name: rf_stranded, type: flag, flag: --rf }
+      - { name: long_reads, type: flag, flag: -L }
+      - { name: splice_site_window, type: integer, flag: -E }
+      - { name: viral, type: flag, flag: --viral }
+      - { name: nascent_transcripts, type: flag, flag: --nasc }
+      - { name: skip_sequences, type: string, flag: -x }
+
+  - id: stringtie.assemblemixed
+    name: Assemble Short and Long Reads (StringTie)
+    category: Genomic Operations
+    bin: stringtie
+    description: >-
+      Assemble transcripts from short and long RNA-seq reads of the same sample together: the first
+      file holds the short-read alignments and the second the long-read ones, both sorted by
+      coordinate. The options are as in Assemble Transcripts.
+    io:
+      inputs:
+        - { name: short_reads, types: [BAM, CRAM, SAM], mode: file }
+        - { name: long_reads, types: [BAM, CRAM, SAM], mode: file }
+      outputs:
+        - { name: out, types: [GTF], mode: file, flag: -o }
+        - { name: gene_abundance, types: [TEXT], mode: file, flag: -A }
+    parameters:
+      - { name: mix, type: flag, flag: --mix, required: true, hidden: true }
+      - { name: label_prefix, type: string, flag: -l }
+      - { name: min_isoform_fraction, type: float, flag: -f }
+      - { name: min_transcript_len, type: integer, flag: -m }
+      - { name: min_anchor_len, type: integer, flag: -a }
+      - { name: min_junction_cov, type: integer, flag: -j }
+      - { name: min_multiexon_cov, type: float, flag: -c }
+      - { name: min_singleexon_cov, type: float, flag: -s }
+      - { name: max_gap, type: integer, flag: -g }
+      - { name: max_multihit_fraction, type: float, flag: -M }
+      - { name: no_trimming, type: flag, flag: -t }
+      - { name: no_multimapping_correction, type: flag, flag: -u }
+      - { name: conservative, type: flag, flag: --conservative }
+      - { name: fr_stranded, type: flag, flag: --fr }
+      - { name: rf_stranded, type: flag, flag: --rf }
+      - { name: splice_site_window, type: integer, flag: -E }
+      - { name: nascent_transcripts, type: flag, flag: --nasc }
+      - { name: skip_sequences, type: string, flag: -x }
+
+  - id: stringtie.ballgown
+    name: Ballgown Tables (StringTie)
+    category: Genomic Operations
+    bin: stringtie
+    description: >-
+      Estimate the abundance of the transcripts of a reference annotation (GTF or GFF3) in
+      coordinate-sorted alignments (BAM, CRAM or SAM), and write the five tables the Ballgown R
+      package reads (e2t, e_data, i2t, i_data and t_data), with the quantified transcripts as GTF.
+    io:
+      inputs:
+        - { name: in, types: [BAM, CRAM, SAM], mode: file }
+        - { name: guide, types: [GTF, GFF], mode: file, flag: -G }
+      outputs:
+        - { name: out, types: [GTF], mode: file, flag: -o }
+        - { name: e2t, types: [TEXT], mode: file, filename: e2t.ctab }
+        - { name: e_data, types: [TEXT], mode: file, filename: e_data.ctab }
+        - { name: i2t, types: [TEXT], mode: file, filename: i2t.ctab }
+        - { name: i_data, types: [TEXT], mode: file, filename: i_data.ctab }
+        - { name: t_data, types: [TEXT], mode: file, filename: t_data.ctab }
+    parameters:
+      - { name: reference_only, type: flag, flag: -e, required: true, hidden: true }
+      - { name: ballgown, type: flag, flag: -B, required: true, hidden: true }
+      - { name: no_multimapping_correction, type: flag, flag: -u }
+      - { name: fr_stranded, type: flag, flag: --fr }
+      - { name: rf_stranded, type: flag, flag: --rf }
+      - { name: long_reads, type: flag, flag: -L }
+
+  - id: stringtie.merge
+    name: Merge Transcripts (StringTie)
+    category: Genomic Operations
+    bin: stringtie
+    description: >-
+      Merge the transcripts StringTie assembled for two samples into one non-redundant set, as GTF.
+      Unset options keep StringTie's merge defaults: label MSTRG, min_transcript_len 50, min_cov 0,
+      min_fpkm 1, min_tpm 1, min_isoform_fraction 0.01, max_gap 250.
+    io:
+      inputs:
+        - { name: in1, types: [GTF, GFF], mode: file }
+        - { name: in2, types: [GTF, GFF], mode: file }
+      outputs:
+        - { name: out, types: [GTF], mode: file, flag: -o }
+    parameters:
+      - { name: merge, type: flag, flag: --merge, required: true, hidden: true }
+      - { name: label_prefix, type: string, flag: -l }
+      - { name: min_transcript_len, type: integer, flag: -m }
+      - { name: min_cov, type: float, flag: -c }
+      - { name: min_fpkm, type: float, flag: -F }
+      - { name: min_tpm, type: float, flag: -T }
+      - { name: min_isoform_fraction, type: float, flag: -f }
+      - { name: max_gap, type: integer, flag: -g }
+      - { name: keep_retained_introns, type: flag, flag: -i }
+
+  - id: stringtie.mergeguided
+    name: Merge Transcripts with Annotation (StringTie)
+    category: Genomic Operations
+    bin: stringtie
+    description: >-
+      Merge the transcripts StringTie assembled for two samples with a reference annotation (GTF or
+      GFF3) into one non-redundant set, as GTF. The options are as in Merge Transcripts.
+    io:
+      inputs:
+        - { name: in1, types: [GTF, GFF], mode: file }
+        - { name: in2, types: [GTF, GFF], mode: file }
+        - { name: guide, types: [GTF, GFF], mode: file, flag: -G }
+      outputs:
+        - { name: out, types: [GTF], mode: file, flag: -o }
+    parameters:
+      - { name: merge, type: flag, flag: --merge, required: true, hidden: true }
+      - { name: label_prefix, type: string, flag: -l }
+      - { name: min_transcript_len, type: integer, flag: -m }
+      - { name: min_cov, type: float, flag: -c }
+      - { name: min_fpkm, type: float, flag: -F }
+      - { name: min_tpm, type: float, flag: -T }
+      - { name: min_isoform_fraction, type: float, flag: -f }
+      - { name: max_gap, type: integer, flag: -g }
+      - { name: keep_retained_introns, type: flag, flag: -i }
