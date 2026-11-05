@@ -1,0 +1,16 @@
+dwgsim reads the base before a region that starts at 0 (BED is half-open
+and 0-based): it counts the region's bases from start + 1 to end instead.
+
+diff --git a/src/dwgsim.c b/src/dwgsim.c
+index f32c197..b007631 100644
+--- a/src/dwgsim.c
++++ b/src/dwgsim.c
+@@ -555,7 +555,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
+                   for(i=0;i<regions_bed->n;i++) {           
+                       if(contig_i == regions_bed->contig[i]) {                    
+                           int m;                                                                            
+-                          for(m=regions_bed->start[i];m<=regions_bed->end[i];m++) {                                               
++                          for(m=regions_bed->start[i]+1;m<=regions_bed->end[i];m++) {                                               
+                               switch (seq.s[m-1]) {                                                                                                             
+                                 case 'a':
+                                 case 'A':

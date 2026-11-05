@@ -1,0 +1,23 @@
+The reads are written plain, not gzipped, for BioChef to read as FASTQ.
+
+diff --git a/src/dwgsim.c b/src/dwgsim.c
+index 2a7b7d5..e433af3 100644
+--- a/src/dwgsim.c
++++ b/src/dwgsim.c
+@@ -1149,13 +1149,13 @@ int biochef_upstream_main(int argc, char *argv[])
+   if(opt->output_type != OUTPUT_TYPE_MUTS) {
+       if (opt->reads_output_type != READS_OUTPUT_TYPE_BWA) {
+           snprintf(fn_tmp, sizeof(fn_tmp), "%s.bfast.fastq.gz", argv[optind+1]);
+-          opt->fp_bfast = gzopen(fn_tmp, "w");
++          opt->fp_bfast = gzopen(fn_tmp, "wT");
+       }
+       if (opt->reads_output_type != READS_OUTPUT_TYPE_BFAST) {
+           snprintf(fn_tmp, sizeof(fn_tmp), "%s.bwa.read1.fastq.gz", argv[optind+1]);
+-          opt->fp_bwa1 = gzopen(fn_tmp, "w");
++          opt->fp_bwa1 = gzopen(fn_tmp, "wT");
+           snprintf(fn_tmp, sizeof(fn_tmp), "%s.bwa.read2.fastq.gz", argv[optind+1]);
+-          opt->fp_bwa2 = gzopen(fn_tmp, "w");
++          opt->fp_bwa2 = gzopen(fn_tmp, "wT");
+       }
+   }
+ 
