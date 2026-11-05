@@ -4,32 +4,37 @@ id: app.biochef.fasttree
 name: FastTree
 description: Approximately-maximum-likelihood phylogenetic trees from large alignments.
 
-version: 2.1.11-bc.1
+version: 2.2.0-bc.1
 homepage: http://www.microbesonline.org/fasttree/
 license:
   spdx: GPL-2.0-or-later
-  evidence_files: [FastTree-2.1.11.c]
+  files: [LICENSE]
+  evidence_files: [FastTree.c]
 maintainers:
   - name: Biochef
 
 source:
-  url: https://raw.githubusercontent.com/biowasm/biowasm/bcad3232544f9d16744bf3b66c27a75cad9b9971/tools/fasttree/src/FastTree-2.1.11.c
-  version: "2.1.11"
-  sha256: "7752465d47fd3bb8d38a240f521118295b84b78979742ac07d37f7200e9445c4"
+  repo: https://github.com/morgannprice/fasttree
+  tag: "v2.2.0"
+  version: "2.2.0"
+  commit: "29c5e62fbcd93230ee325f9c6a17b81f00e3c72a"
 
 status: experimental
 
 build:
   wasm:
-    strategy: biowasm
-    biowasm:
-      package: fasttree
+    strategy: emscripten
+    emscripten:
+      outputDir: out
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
   native:
     buildScript: build-native.sh
     buildTools: [gcc]
+    outputDir: bin
 
 runtime:
-  modes: [wasm, native]
+  modes: [wasm, native, remote]
 
 operations:
   - id: fasttree.build
@@ -41,7 +46,7 @@ operations:
       inputs:
         - { name: in, types: [Multi-FASTA, FASTA], mode: file }
       outputs:
-        - { name: out, types: [TEXT], mode: stdout }
+        - { name: out, types: [NEWICK], mode: stdout }
     parameters:
       - { name: nucleotide, type: flag, flag: -nt }
       - { name: gtr, type: flag, flag: -gtr }
@@ -62,18 +67,154 @@ operations:
       - { name: fastest, type: flag, flag: -fastest }
       - { name: pseudo, type: flag, flag: -pseudo }
       - { name: rawdist, type: flag, flag: -rawdist }
-      - { name: matrix, type: string, flag: -matrix }
       - { name: nomatrix, type: flag, flag: -nomatrix }
-      - { name: trans, type: string, flag: -trans }
       - { name: nj, type: flag, flag: -nj }
       - { name: bionj, type: flag, flag: -bionj }
       - { name: boot, type: integer, flag: -boot }
       - { name: nosupport, type: flag, flag: -nosupport }
       - { name: nome, type: flag, flag: -nome }
-      - { name: intree, type: string, flag: -intree }
-      - { name: intree1, type: string, flag: -intree1 }
-      - { name: constraints, type: string, flag: -constraints }
+      - { name: seed, type: integer, flag: -seed }
+      - { name: top, type: flag, flag: -top }
+      - { name: notop, type: flag, flag: -notop }
+      - { name: topm, type: float, flag: -topm }
+      - { name: close, type: float, flag: -close }
+      - { name: refresh, type: float, flag: -refresh }
+      - { name: quiet, type: flag, flag: -quiet }
+      - { name: nopr, type: flag, flag: -nopr }
+      - { name: quote, type: flag, flag: -quote }
+
+  - id: fasttree.build.from.tree
+    name: Build Tree From Starting Tree (FastTree)
+    category: Genomic Operations
+    bin: fasttree
+    description: Build a tree from a multiple sequence alignment, starting the search from a given Newick tree (-intree)
+    io:
+      inputs:
+        - { name: starting_tree, types: [NEWICK], mode: file, flag: -intree }
+        - { name: in, types: [Multi-FASTA, FASTA], mode: file }
+      outputs:
+        - { name: out, types: [NEWICK], mode: stdout }
+    parameters:
+      - { name: nucleotide, type: flag, flag: -nt }
+      - { name: gtr, type: flag, flag: -gtr }
+      - { name: lg, type: flag, flag: -lg }
+      - { name: wag, type: flag, flag: -wag }
+      - { name: cat, type: integer, flag: -cat }
+      - { name: nocat, type: flag, flag: -nocat }
+      - { name: gamma, type: flag, flag: -gamma }
+      - { name: noml, type: flag, flag: -noml }
+      - { name: mllen, type: flag, flag: -mllen }
+      - { name: mlnni, type: integer, flag: -mlnni }
+      - { name: mlacc, type: integer, flag: -mlacc }
+      - { name: nni, type: integer, flag: -nni }
+      - { name: spr, type: integer, flag: -spr }
+      - { name: sprlength, type: integer, flag: -sprlength }
+      - { name: slownni, type: flag, flag: -slownni }
+      - { name: slow, type: flag, flag: -slow }
+      - { name: fastest, type: flag, flag: -fastest }
+      - { name: pseudo, type: flag, flag: -pseudo }
+      - { name: rawdist, type: flag, flag: -rawdist }
+      - { name: nomatrix, type: flag, flag: -nomatrix }
+      - { name: nj, type: flag, flag: -nj }
+      - { name: bionj, type: flag, flag: -bionj }
+      - { name: boot, type: integer, flag: -boot }
+      - { name: nosupport, type: flag, flag: -nosupport }
+      - { name: nome, type: flag, flag: -nome }
+      - { name: seed, type: integer, flag: -seed }
+      - { name: top, type: flag, flag: -top }
+      - { name: notop, type: flag, flag: -notop }
+      - { name: topm, type: float, flag: -topm }
+      - { name: close, type: float, flag: -close }
+      - { name: refresh, type: float, flag: -refresh }
+      - { name: quiet, type: flag, flag: -quiet }
+      - { name: nopr, type: flag, flag: -nopr }
+      - { name: quote, type: flag, flag: -quote }
+
+  - id: fasttree.build.constrained
+    name: Build Constrained Tree (FastTree)
+    category: Genomic Operations
+    bin: fasttree
+    description: Build a tree from a multiple sequence alignment whose topology follows the splits of a constraint alignment of 0, 1 and - (-constraints)
+    io:
+      inputs:
+        - { name: constraints, types: [TEXT], mode: file, flag: -constraints }
+        - { name: in, types: [Multi-FASTA, FASTA], mode: file }
+      outputs:
+        - { name: out, types: [NEWICK], mode: stdout }
+    parameters:
+      - { name: nucleotide, type: flag, flag: -nt }
+      - { name: gtr, type: flag, flag: -gtr }
+      - { name: lg, type: flag, flag: -lg }
+      - { name: wag, type: flag, flag: -wag }
+      - { name: cat, type: integer, flag: -cat }
+      - { name: nocat, type: flag, flag: -nocat }
+      - { name: gamma, type: flag, flag: -gamma }
+      - { name: noml, type: flag, flag: -noml }
+      - { name: mllen, type: flag, flag: -mllen }
+      - { name: mlnni, type: integer, flag: -mlnni }
+      - { name: mlacc, type: integer, flag: -mlacc }
+      - { name: nni, type: integer, flag: -nni }
+      - { name: spr, type: integer, flag: -spr }
+      - { name: sprlength, type: integer, flag: -sprlength }
+      - { name: slownni, type: flag, flag: -slownni }
+      - { name: slow, type: flag, flag: -slow }
+      - { name: fastest, type: flag, flag: -fastest }
+      - { name: pseudo, type: flag, flag: -pseudo }
+      - { name: rawdist, type: flag, flag: -rawdist }
+      - { name: nomatrix, type: flag, flag: -nomatrix }
+      - { name: nj, type: flag, flag: -nj }
+      - { name: bionj, type: flag, flag: -bionj }
+      - { name: boot, type: integer, flag: -boot }
+      - { name: nosupport, type: flag, flag: -nosupport }
+      - { name: nome, type: flag, flag: -nome }
+      - { name: seed, type: integer, flag: -seed }
+      - { name: top, type: flag, flag: -top }
+      - { name: notop, type: flag, flag: -notop }
+      - { name: topm, type: float, flag: -topm }
+      - { name: close, type: float, flag: -close }
+      - { name: refresh, type: float, flag: -refresh }
+      - { name: quiet, type: flag, flag: -quiet }
+      - { name: nopr, type: flag, flag: -nopr }
+      - { name: quote, type: flag, flag: -quote }
       - { name: constraintWeight, type: float, flag: -constraintWeight }
+
+  - id: fasttree.build.with.transition.matrix
+    name: Build Tree With Transition Matrix (FastTree)
+    category: Genomic Operations
+    bin: fasttree
+    description: Build a tree from an amino acid alignment under the transition matrix and stationary frequencies of a tab-delimited file (-trans)
+    io:
+      inputs:
+        - { name: transition_matrix, types: [TEXT], mode: file, flag: -trans }
+        - { name: in, types: [Multi-FASTA, FASTA], mode: file }
+      outputs:
+        - { name: out, types: [NEWICK], mode: stdout }
+    parameters:
+      - { name: nucleotide, type: flag, flag: -nt }
+      - { name: gtr, type: flag, flag: -gtr }
+      - { name: lg, type: flag, flag: -lg }
+      - { name: wag, type: flag, flag: -wag }
+      - { name: cat, type: integer, flag: -cat }
+      - { name: nocat, type: flag, flag: -nocat }
+      - { name: gamma, type: flag, flag: -gamma }
+      - { name: noml, type: flag, flag: -noml }
+      - { name: mllen, type: flag, flag: -mllen }
+      - { name: mlnni, type: integer, flag: -mlnni }
+      - { name: mlacc, type: integer, flag: -mlacc }
+      - { name: nni, type: integer, flag: -nni }
+      - { name: spr, type: integer, flag: -spr }
+      - { name: sprlength, type: integer, flag: -sprlength }
+      - { name: slownni, type: flag, flag: -slownni }
+      - { name: slow, type: flag, flag: -slow }
+      - { name: fastest, type: flag, flag: -fastest }
+      - { name: pseudo, type: flag, flag: -pseudo }
+      - { name: rawdist, type: flag, flag: -rawdist }
+      - { name: nomatrix, type: flag, flag: -nomatrix }
+      - { name: nj, type: flag, flag: -nj }
+      - { name: bionj, type: flag, flag: -bionj }
+      - { name: boot, type: integer, flag: -boot }
+      - { name: nosupport, type: flag, flag: -nosupport }
+      - { name: nome, type: flag, flag: -nome }
       - { name: seed, type: integer, flag: -seed }
       - { name: top, type: flag, flag: -top }
       - { name: notop, type: flag, flag: -notop }
