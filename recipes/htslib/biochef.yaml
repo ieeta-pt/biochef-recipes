@@ -1,0 +1,150 @@
+apiVersion: v1
+
+id: app.biochef.htslib
+name: htslib
+description: HTSlib utilities, namely bgzip (BGZF compression), tabix (indexing tab-delimited files) and htsfile (identifying file formats).
+
+version: 1.21-bc.2
+homepage: https://github.com/samtools/htslib
+license:
+  spdx: MIT
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/samtools/htslib
+  tag: "1.21"
+  version: "1.21"
+  commit: "0f8bedc11e3ee039060a058b5cd5ec99e0b593a2"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      outputDir: out
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+  native:
+    buildScript: build-native.sh
+    buildTools: [make, gcc]
+    outputDir: .
+
+runtime:
+  modes: [wasm, native, remote]
+
+operations:
+  - id: htslib.bgzip
+    name: BGZip (compress)
+    category: Format Conversion
+    bin: bgzip
+    description: BGZF-compress a text file, such as BED, GFF or SAM. VCF has its own operation, whose output is typed.
+    io:
+      inputs:
+        - { name: in, types: [TEXT, BED, GFF, SAM], mode: file }
+      outputs:
+        - { name: out, types: [BGZF], mode: file, flag: -o, filename: out.gz }
+    parameters:
+      - { name: keep_input, type: flag, flag: -k }
+      - { name: force, type: flag, flag: -f }
+      - { name: index, type: flag, flag: -i }
+      - { name: index_name, type: string, flag: -I }
+      - { name: compress_level, type: integer, flag: -l }
+      - { name: binary, type: flag, flag: --binary }
+      - { name: threads, type: integer, flag: --threads, default: 1 }
+
+  - id: htslib.bgzip.vcf
+    name: BGZip VCF (compress)
+    category: Format Conversion
+    bin: bgzip
+    description: BGZF-compress a VCF or gVCF, which makes it indexable with tabix or bcftools index.
+    io:
+      inputs:
+        - { name: in, types: [VCF, GVCF], mode: file }
+      outputs:
+        - { name: out, types: [VCF_GZ, GVCF_GZ], mode: file, flag: -o, filename: out.vcf.gz }
+    parameters:
+      - { name: compress_level, type: integer, flag: -l }
+      - { name: threads, type: integer, flag: --threads, default: 1 }
+
+  - id: htslib.bgzip.decompress
+    name: BGZip (decompress)
+    category: Format Conversion
+    bin: bgzip
+    description: Decompress a BGZF file to stdout
+    io:
+      inputs:
+        - { name: in, types: [VCF_GZ, GVCF_GZ, BGZF], mode: file }
+      outputs:
+        - { name: out, types: [VCF, GVCF, TEXT], mode: stdout }
+    parameters:
+      - { name: decompress, type: flag, flag: -d, required: true, hidden: true }
+      - { name: stdout, type: flag, flag: -c, required: true, hidden: true }
+      - { name: keep_input, type: flag, flag: -k }
+      - { name: force, type: flag, flag: -f }
+      - { name: offset, type: integer, flag: -b }
+      - { name: size, type: integer, flag: -s }
+      - { name: test_integrity, type: flag, flag: -t }
+      - { name: threads, type: integer, flag: --threads, default: 1 }
+
+  - id: htslib.tabix.index
+    name: Tabix Index
+    category: Genomic Operations
+    bin: tabix
+    description: Index a bgzipped tab-delimited file, such as a VCF.gz, as TBI, so tools can read a region of it without reading it all. The preset says which columns hold the sequence and positions (vcf, bed, gff, sam or gaf); without one, tabix detects VCF and takes others as GFF.
+    io:
+      inputs:
+        - { name: in, types: [VCF_GZ, GVCF_GZ, BGZF], mode: file }
+      outputs:
+        - { name: out, types: [TBI], mode: file, flag: --output-index, filename: out.tbi }
+    parameters:
+      - { name: preset, type: string, flag: -p }
+      - { name: zero_based, type: flag, flag: "-0" }
+      - { name: sequence_col, type: integer, flag: -s }
+      - { name: begin_col, type: integer, flag: -b }
+      - { name: end_col, type: integer, flag: -e }
+      - { name: comment_char, type: string, flag: -c }
+      - { name: skip_lines, type: integer, flag: -S }
+      - { name: force, type: flag, flag: -f }
+      - { name: threads, type: integer, flag: --threads, default: 1 }
+
+  - id: htslib.tabix.index.csi
+    name: Tabix Index CSI
+    category: Genomic Operations
+    bin: tabix
+    description: Index a bgzipped tab-delimited file, such as a VCF.gz, as CSI, which unlike TBI takes sequences longer than 512 Mb. The preset says which columns hold the sequence and positions (vcf, bed, gff, sam or gaf); without one, tabix detects VCF and takes others as GFF.
+    io:
+      inputs:
+        - { name: in, types: [VCF_GZ, GVCF_GZ, BGZF], mode: file }
+      outputs:
+        - { name: out, types: [CSI], mode: file, flag: --output-index, filename: out.csi }
+    parameters:
+      - { name: csi, type: flag, flag: -C, required: true, hidden: true }
+      - { name: min_shift, type: integer, flag: -m }
+      - { name: preset, type: string, flag: -p }
+      - { name: zero_based, type: flag, flag: "-0" }
+      - { name: sequence_col, type: integer, flag: -s }
+      - { name: begin_col, type: integer, flag: -b }
+      - { name: end_col, type: integer, flag: -e }
+      - { name: comment_char, type: string, flag: -c }
+      - { name: skip_lines, type: integer, flag: -S }
+      - { name: force, type: flag, flag: -f }
+      - { name: threads, type: integer, flag: --threads, default: 1 }
+
+  - id: htslib.htsfile
+    name: HTS File (identify)
+    category: Information and Analysis
+    bin: htsfile
+    description: Identify the format of an HTS-related file (FASTA, SAM, BAM, CRAM, VCF, BCF and their indexes)
+    io:
+      inputs:
+        - { name: in, types: [TEXT, BIN, FASTA, FASTQ, VCF, GVCF, VCF_GZ, GVCF_GZ, BGZF, BCF, TBI, CSI, SAM, BAM, BAI, CRAM, BED, GFF], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: view, type: flag, flag: -c }
+      - { name: header_only, type: flag, flag: -h }
+      - { name: no_header, type: flag, flag: -H }
+      - { name: verbose, type: flag, flag: -v }
