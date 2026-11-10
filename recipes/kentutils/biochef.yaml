@@ -22,13 +22,17 @@ status: experimental
 
 build:
   wasm:
-    strategy: biowasm
-    biowasm:
-      package: kentutils
+    strategy: emscripten
+    emscripten:
+      emscriptenVersion: 4.0.18
+      outputDir: out
+      buildScript: build-wasm.sh
+    patches: [patches/value-size-of-the-struct.patch]
   native:
     outputDir: dist
     buildScript: build-native.sh
     buildTools: [make, gcc]
+    patches: [patches/value-size-of-the-struct.patch]
 
 runtime:
   modes: [wasm, native]
