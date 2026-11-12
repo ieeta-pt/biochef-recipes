@@ -1,0 +1,16 @@
+nw_prune is built by the generic loop, which compiles only prune.c, but
+prune.c calls read_line from readline.c. readline.c is attached explicitly
+to nw_display and nw_condense and to nothing else.
+
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 0bcc629..fef2ef2 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -58,6 +58,7 @@ foreach(app ${NUTILS_APPS})
+ 	add_executable(nw_${app} ${app}.c)
+ 	target_link_libraries(nw_${app} nutils)
+ endforeach(app)
++target_sources(nw_prune PRIVATE readline.c)
+ 
+ # Unfortunately, the simple cases are a minority... the others either have
+ # additional object files, or libs, or are optional in some way, or have
