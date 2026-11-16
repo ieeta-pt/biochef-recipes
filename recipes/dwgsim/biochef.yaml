@@ -7,7 +7,7 @@ description: "dwgsim simulates sequencing reads, Illumina, SOLiD or Ion Torrent,
 version: 0.1.17-bc.1
 homepage: https://github.com/nh13/DWGSIM
 license:
-  spdx: GPL-2.0-or-later
+  spdx: GPL-2.0-only
   files: [LICENSE]
 maintainers:
   - name: Biochef
