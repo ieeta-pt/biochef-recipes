@@ -1,0 +1,125 @@
+t-SNE calls the entry point's rand, srand, exp and log, the same in every
+runtime, so that a seed gives the same embedding natively and in wasm.
+
+diff --git a/biochef_tsne.h b/biochef_tsne.h
+new file mode 100644
+index 0000000..bde07ca
+--- /dev/null
++++ b/biochef_tsne.h
+@@ -0,0 +1,10 @@
++#ifdef __cplusplus
++extern "C" {
++#endif
++int biochef_rand(void);
++void biochef_srand(unsigned int seed);
++double biochef_exp(double x);
++double biochef_log(double x);
++#ifdef __cplusplus
++}
++#endif
+diff --git a/tsne.cpp b/tsne.cpp
+index a602754..ff11f7f 100644
+--- a/tsne.cpp
++++ b/tsne.cpp
+@@ -53,10 +53,10 @@ void TSNE::run(double* X, int N, int D, double* Y, int no_dims, double perplexit
+     if (skip_random_init != true) {
+       if(rand_seed >= 0) {
+           fprintf(stderr, "Using random seed: %d\n", rand_seed);
+-          srand((unsigned int) rand_seed);
++          biochef_srand((unsigned int) rand_seed);
+       } else {
+           fprintf(stderr, "Using current time as random seed...\n");
+-          srand(time(NULL));
++          biochef_srand(time(NULL));
+       }
+     }
+ 
+@@ -300,7 +300,7 @@ double TSNE::evaluateError(double* P, double* Y, int N, int D) {
+     // Sum t-SNE error
+     double C = .0;
+ 	for(int n = 0; n < N * N; n++) {
+-        C += P[n] * log((P[n] + FLT_MIN) / (Q[n] + FLT_MIN));
++        C += P[n] * biochef_log((P[n] + FLT_MIN) / (Q[n] + FLT_MIN));
+ 	}
+ 
+     // Clean up memory
+@@ -331,7 +331,7 @@ double TSNE::evaluateError(unsigned int* row_P, unsigned int* col_P, double* val
+             for(int d = 0; d < D; d++) buff[d] -= Y[ind2 + d];
+             for(int d = 0; d < D; d++) Q += buff[d] * buff[d];
+             Q = (1.0 / (1.0 + Q)) / sum_Q;
+-            C += val_P[i] * log((val_P[i] + FLT_MIN) / (Q + FLT_MIN));
++            C += val_P[i] * biochef_log((val_P[i] + FLT_MIN) / (Q + FLT_MIN));
+         }
+     }
+ 
+@@ -367,7 +367,7 @@ void TSNE::computeGaussianPerplexity(double* X, int N, int D, double* P, double
+ 		while(!found && iter < 200) {
+ 
+ 			// Compute Gaussian kernel row
+-			for(int m = 0; m < N; m++) P[nN + m] = exp(-beta * DD[nN + m]);
++			for(int m = 0; m < N; m++) P[nN + m] = biochef_exp(-beta * DD[nN + m]);
+ 			P[nN + n] = DBL_MIN;
+ 
+ 			// Compute entropy of current row
+@@ -375,10 +375,10 @@ void TSNE::computeGaussianPerplexity(double* X, int N, int D, double* P, double
+ 			for(int m = 0; m < N; m++) sum_P += P[nN + m];
+ 			double H = 0.0;
+ 			for(int m = 0; m < N; m++) H += beta * (DD[nN + m] * P[nN + m]);
+-			H = (H / sum_P) + log(sum_P);
++			H = (H / sum_P) + biochef_log(sum_P);
+ 
+ 			// Evaluate whether the entropy is within the tolerance level
+-			double Hdiff = H - log(perplexity);
++			double Hdiff = H - biochef_log(perplexity);
+ 			if(Hdiff < tol && -Hdiff < tol) {
+ 				found = true;
+ 			}
+@@ -462,17 +462,17 @@ void TSNE::computeGaussianPerplexity(double* X, int N, int D, unsigned int** _ro
+         while(!found && iter < 200) {
+ 
+             // Compute Gaussian kernel row
+-            for(int m = 0; m < K; m++) cur_P[m] = exp(-beta * distances[m + 1] * distances[m + 1]);
++            for(int m = 0; m < K; m++) cur_P[m] = biochef_exp(-beta * distances[m + 1] * distances[m + 1]);
+ 
+             // Compute entropy of current row
+             sum_P = DBL_MIN;
+             for(int m = 0; m < K; m++) sum_P += cur_P[m];
+             double H = .0;
+             for(int m = 0; m < K; m++) H += beta * (distances[m + 1] * distances[m + 1] * cur_P[m]);
+-            H = (H / sum_P) + log(sum_P);
++            H = (H / sum_P) + biochef_log(sum_P);
+ 
+             // Evaluate whether the entropy is within the tolerance level
+-            double Hdiff = H - log(perplexity);
++            double Hdiff = H - biochef_log(perplexity);
+             if(Hdiff < tol && -Hdiff < tol) {
+                 found = true;
+             }
+@@ -652,11 +652,11 @@ void TSNE::zeroMean(double* X, int N, int D) {
+ double TSNE::randn() {
+ 	double x, y, radius;
+ 	do {
+-		x = 2 * (rand() / ((double) RAND_MAX + 1)) - 1;
+-		y = 2 * (rand() / ((double) RAND_MAX + 1)) - 1;
++		x = 2 * (biochef_rand() / ((double) RAND_MAX + 1)) - 1;
++		y = 2 * (biochef_rand() / ((double) RAND_MAX + 1)) - 1;
+ 		radius = (x * x) + (y * y);
+ 	} while((radius >= 1.0) || (radius == 0.0));
+-	radius = sqrt(-2 * log(radius) / radius);
++	radius = sqrt(-2 * biochef_log(radius) / radius);
+ 	x *= radius;
+ 	y *= radius;
+ 	return x;
+diff --git a/vptree.h b/vptree.h
+index 9e301d6..aa4c012 100644
+--- a/vptree.h
++++ b/vptree.h
+@@ -203,7 +203,7 @@ private:
+         if (upper - lower > 1) {      // if we did not arrive at leaf yet
+             
+             // Choose an arbitrary point and move it to the start
+-            int i = (int) ((double)rand() / RAND_MAX * (upper - lower - 1)) + lower;
++            int i = (int) ((double)biochef_rand() / RAND_MAX * (upper - lower - 1)) + lower;
+             std::swap(_items[lower], _items[i]);
+             
+             // Partition around the median distance

@@ -1,0 +1,42 @@
+The nearest neighbours of a sample come from a vantage-point tree, which
+orders samples at the same distance as the C++ library happens to: by
+libstdc++ natively and by libc++ in wasm. Samples at the same distance are
+ordered by their row instead, and the tree sorts where it partitioned, so
+that rows that repeat, or values that tie, give the same neighbours in both.
+
+diff --git a/vptree.h b/vptree.h
+index aa4c012..01df2f7 100644
+--- a/vptree.h
++++ b/vptree.h
+@@ -175,17 +175,18 @@ private:
+         int index;
+         double dist;
+         bool operator<(const HeapItem& o) const {
+-            return dist < o.dist;
++            return dist < o.dist || (dist == o.dist && index < o.index);
+         }
+     };
+     
+-    // Distance comparator for use in std::nth_element
++    // Distance comparator for use in std::sort
+     struct DistanceComparator
+     {
+         const T& item;
+         DistanceComparator(const T& item) : item(item) {}
+         bool operator()(const T& a, const T& b) {
+-            return distance(item, a) < distance(item, b);
++            double da = distance(item, a), db = distance(item, b);
++            return da < db || (da == db && a.index() < b.index());
+         }
+     };
+     
+@@ -208,8 +209,7 @@ private:
+             
+             // Partition around the median distance
+             int median = (upper + lower) / 2;
+-            std::nth_element(_items.begin() + lower + 1,
+-                             _items.begin() + median,
++            std::sort(_items.begin() + lower + 1,
+                              _items.begin() + upper,
+                              DistanceComparator(_items[lower]));
+             

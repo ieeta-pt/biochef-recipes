@@ -1,0 +1,46 @@
+diff --git a/Makefile b/Makefile
+index 057ac79..61f423e 100644
+--- a/Makefile
++++ b/Makefile
+@@ -6,7 +6,7 @@ OS          := $(shell uname)
+ ARCH        := $(shell uname -m)
+ # add -fno-tree-vectorize to avoid certain vectorization errors in O3 optimization
+ # right now, we are using -O3 for the best performance, and no vectorization errors were found
+-EXTRA_FLAGS = -Wall -Wno-unused-function -Wno-misleading-indentation# -fno-tree-vectorize
++EXTRA_FLAGS = -sUSE_ZLIB=1 -Wall -Wno-unused-function -Wno-misleading-indentation# -fno-tree-vectorize
+ 
+ # SIMDE
+ EXTRA_FLAGS += -DUSE_SIMDE -DSIMDE_ENABLE_NATIVE_ALIASES
+Submodule include/simde contains modified content
+diff --git a/include/simde/simde/hedley.h b/include/simde/simde/hedley.h
+index f064f3f4..f7e2e98f 100644
+--- a/include/simde/simde/hedley.h
++++ b/include/simde/simde/hedley.h
+@@ -1941,7 +1941,7 @@ HEDLEY_DIAGNOSTIC_POP
+ #if defined(HEDLEY_REQUIRE_MSG)
+ #  undef HEDLEY_REQUIRE_MSG
+ #endif
+-#if HEDLEY_HAS_ATTRIBUTE(diagnose_if)
++#if 0 && HEDLEY_HAS_ATTRIBUTE(diagnose_if)
+ #  if HEDLEY_HAS_WARNING("-Wgcc-compat")
+ #    define HEDLEY_REQUIRE(expr) \
+        HEDLEY_DIAGNOSTIC_PUSH \
+diff --git a/src/kdq.h b/src/kdq.h
+index edd55b5..90b9ebd 100644
+--- a/src/kdq.h
++++ b/src/kdq.h
+@@ -2,11 +2,13 @@
+ #define __AC_KDQ_H
+ 
+ #include <stdlib.h>
++#include <stdint.h>
+ #include <string.h>
+ 
+ #define __KDQ_TYPE(type) \
+ 	typedef struct { \
+-		size_t front:58, bits:6, count, mask; \
++		uint64_t front:58, bits:6; \
++		size_t count, mask; \
+ 		type *a; \
+ 	} kdq_##type##_t;
+ 
