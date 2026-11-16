@@ -22,14 +22,14 @@ status: experimental
 build:
   wasm:
     strategy: emscripten
-    patches: [patches/entry-point.patch, patches/plain-fastq-output.patch, patches/same-log-and-pair-counts-in-both-runtimes.patch, patches/vcf-buffer-off-stack.patch, patches/bed-region-start.patch, patches/unaligned-insertion-lengths.patch]
+    patches: [patches/entry-point.patch, patches/plain-fastq-output.patch, patches/same-log-and-pair-counts-in-both-runtimes.patch, patches/vcf-buffer-off-stack.patch, patches/bed-region-start.patch, patches/unaligned-insertion-lengths.patch, patches/sequence-block-size.patch]
     emscripten:
       emscriptenVersion: 4.0.18
       outputDir: out
       buildScript: build-wasm.sh
   native:
     buildScript: build-native.sh
-    patches: [patches/entry-point.patch, patches/plain-fastq-output.patch, patches/same-log-and-pair-counts-in-both-runtimes.patch, patches/vcf-buffer-off-stack.patch, patches/bed-region-start.patch, patches/unaligned-insertion-lengths.patch]
+    patches: [patches/entry-point.patch, patches/plain-fastq-output.patch, patches/same-log-and-pair-counts-in-both-runtimes.patch, patches/vcf-buffer-off-stack.patch, patches/bed-region-start.patch, patches/unaligned-insertion-lengths.patch, patches/sequence-block-size.patch]
     buildTools: [make, gcc]
 
 runtime:
@@ -40,7 +40,7 @@ operations:
     name: Simulate Paired Reads (dwgsim)
     category: Genomic Operations
     bin: dwgsim
-    description: "Simulate read pairs from a reference: fragments of about the outer distance (-d, give or take -s), read from both ends. A sequence shorter than the fragment gives no reads. Writes the first and second reads of each pair, and the mutations."
+    description: "Simulate read pairs from a reference: fragments of about the outer distance (-d, give or take -s), read from both ends. A sequence shorter than the fragment gives no reads. Writes the first and second reads of each pair, and the mutations. It simulates num_pairs pairs, or the coverage instead when it is on. platform: 0 Illumina, 1 SOLiD, 2 Ion Torrent, which needs flow_order. strandedness: 0 as the platform reads them (opposite strands for Illumina, the same for SOLiD and Ion Torrent), 1 the same strand (mate pairs), 2 opposite strands (paired ends). read1_strand: 0 either, at random, 1 forward, 2 reverse."
     io:
       inputs:
         - &reference { name: reference, types: [FASTA, Multi-FASTA], mode: file }
@@ -49,7 +49,7 @@ operations:
         - &read2 { name: read2, types: [FASTQ], mode: file, flag: --bc-read2 }
         - &mutations { name: mutations, types: [VCF], mode: file, flag: --bc-vcf }
     parameters: &paired_parameters
-      - &num_pairs { name: num_pairs, type: integer, flag: -N }
+      - &num_pairs { name: num_pairs, type: integer, flag: -N, default: 1000, required: true }
       - &coverage { name: coverage, type: float, flag: -C, default: 100 }
       - &read1_length { name: read1_length, type: integer, flag: "-1", default: 70 }
       - { name: read2_length, type: integer, flag: "-2", default: 70 }
@@ -80,7 +80,7 @@ operations:
     name: Simulate Single Reads (dwgsim)
     category: Genomic Operations
     bin: dwgsim
-    description: "Simulate single-end reads from a reference. A sequence shorter than the reads gives none. Writes the reads and the mutations."
+    description: "Simulate single-end reads from a reference. A sequence shorter than the reads gives none. Writes the reads and the mutations. It simulates num_pairs reads, or the coverage instead when it is on. platform: 0 Illumina, 1 SOLiD, 2 Ion Torrent, which needs flow_order. read1_strand: 0 either, at random, 1 forward, 2 reverse."
     io:
       inputs:
         - *reference
@@ -114,7 +114,7 @@ operations:
     name: Simulate Amplicon Reads (dwgsim)
     category: Genomic Operations
     bin: dwgsim
-    description: "Simulate read pairs from amplicons: each sequence of the reference is one amplicon, read whole from both ends. An amplicon shorter than the reads gives none. Writes the first and second reads of each pair, and the mutations."
+    description: "Simulate read pairs from amplicons: each sequence of the reference is one amplicon, read whole from both ends. An amplicon shorter than the reads gives none. Writes the first and second reads of each pair, and the mutations. It simulates num_pairs pairs, or the coverage instead when it is on. platform: 0 Illumina, 1 SOLiD, 2 Ion Torrent, which needs flow_order. strandedness: 0 as the platform reads them (opposite strands for Illumina, the same for SOLiD and Ion Torrent), 1 the same strand (mate pairs), 2 opposite strands (paired ends). read1_strand: 0 either, at random, 1 forward, 2 reverse."
     io:
       inputs:
         - *reference
@@ -152,7 +152,7 @@ operations:
     name: Simulate Paired Reads with Given Mutations (dwgsim)
     category: Genomic Operations
     bin: dwgsim
-    description: "Simulate read pairs as Simulate Paired Reads does, with the mutations of a VCF instead of random ones: for example the mutations another simulation wrote, to simulate the same genome again. Each record has one ALT of A, C, G and T, a REF that is the reference's bases there, and the strands in its pl tag (1, 2 or 3 for both); records are sorted as the reference and do not overlap."
+    description: "Simulate read pairs as Simulate Paired Reads does, with the mutations of a VCF instead of random ones: for example the mutations another simulation wrote, to simulate the same genome again. Each record has one ALT of A, C, G and T, a REF that is the reference's bases there, and the strands in its pl tag (1 or 2 for one, 3 for both; both without a pl tag); records are sorted as the reference and do not overlap. The parameters are those of Simulate Paired Reads."
     io:
       inputs:
         - *reference
@@ -167,7 +167,7 @@ operations:
     name: Simulate Paired Reads in Regions (dwgsim)
     category: Genomic Operations
     bin: dwgsim
-    description: "Simulate read pairs as Simulate Paired Reads does, only from the regions of a BED, sorted as the reference, such as the targets of a capture panel: each fragment lies within one region."
+    description: "Simulate read pairs as Simulate Paired Reads does, only from the regions of a BED, sorted as the reference, such as the targets of a capture panel: each fragment lies within one region. The parameters are those of Simulate Paired Reads."
     io:
       inputs:
         - *reference
