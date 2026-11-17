@@ -1,0 +1,34 @@
+wasm has no threads here. racon's thread pool runs each task as it is
+submitted, on the one thread, which is the pool's only thread.
+
+Submodule vendor/thread_pool contains modified content
+diff --git a/vendor/thread_pool/include/thread_pool/thread_pool.hpp b/vendor/thread_pool/include/thread_pool/thread_pool.hpp
+index f787410..cf8c4a9 100644
+--- a/vendor/thread_pool/include/thread_pool/thread_pool.hpp
++++ b/vendor/thread_pool/include/thread_pool/thread_pool.hpp
+@@ -71,6 +71,10 @@ public:
+             std::bind(std::forward<T>(routine), std::forward<Ts>(params)...)
+         );
+         auto task_result = task->get_future();
++#ifdef __EMSCRIPTEN__
++        (*task)();
++        return task_result;
++#endif
+         auto task_wrapper = [task]() {
+             (*task)();
+         };
+diff --git a/vendor/thread_pool/src/thread_pool.cpp b/vendor/thread_pool/src/thread_pool.cpp
+index 032706e..401ebc5 100644
+--- a/vendor/thread_pool/src/thread_pool.cpp
++++ b/vendor/thread_pool/src/thread_pool.cpp
+@@ -45,6 +45,10 @@ ThreadPool::ThreadPool(std::uint32_t num_threads) {
+     active_sem_ = createSemaphore(0);
+ 
+     terminate_ = false;
++#ifdef __EMSCRIPTEN__
++    thread_identifiers_.emplace_back(std::this_thread::get_id());
++    return;
++#endif
+     for (std::uint32_t i = 0; i < num_threads; ++i) {
+         threads_.emplace_back(ThreadPool::worker_thread, this);
+         thread_identifiers_.emplace_back(threads_.back().get_id());
