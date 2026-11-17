@@ -1,0 +1,306 @@
+long is 32 bits in wasm32: the int64 and uint64 typedefs, the longs and the
+1L, 50L and 1024L constants become 64-bit (int64_t, LL), and the time used
+is printed through a (long) cast.
+
+diff --git a/src/common.h b/src/common.h
+index 0197ebb..2012315 100644
+--- a/src/common.h
++++ b/src/common.h
+@@ -3,8 +3,8 @@
+ 
+ #define MUTSCAN_VER "1.14.1"
+ 
+-typedef long int64;
+-typedef unsigned long uint64;
++typedef int64_t int64;
++typedef uint64_t uint64;
+ 
+ typedef int int32;
+ typedef unsigned int uint32;
+diff --git a/src/editdistance.cpp b/src/editdistance.cpp
+index 6d18098..a1cd5a6 100644
+--- a/src/editdistance.cpp
++++ b/src/editdistance.cpp
+@@ -31,27 +31,27 @@ template<typename T, typename TVALUE>
+ unsigned int edit_distance_bpv(T &cmap, char const *vec, size_t const &vecsize, unsigned int const &tmax, unsigned int const &tlen) {
+     int D = tmax * 64 + tlen;
+     TVALUE D0, HP, HN, VP, VN;
+-    uint64_t top = (1L << (tlen - 1));  // 末尾のvectorに適用
+-    uint64_t lmb = (1L << 63);
++    uint64_t top = (1LL << (tlen - 1));  // 末尾のvectorに適用
++    uint64_t lmb = (1LL << 63);
+ 
+     for(size_t i = 0; i <= tmax; ++i) {
+         VP[i] = 0;
+         VN[i] = 0;
+     }
+     for(size_t i = 0; i < tmax; ++i) VP[i] = ~0;
+-    for(size_t i = 0; i < tlen; ++i) VP[tmax] |= (1L << i);
++    for(size_t i = 0; i < tlen; ++i) VP[tmax] |= (1LL << i);
+     for(size_t i = 0; i < vecsize; ++i) {
+         TVALUE &PM = cmap[vec[i]];
+         for(unsigned int r = 0; r <= tmax; ++r) {
+             uint64_t X = PM[r];
+-            if(r > 0 && (HN[r - 1] & lmb)) X |= 1L;
++            if(r > 0 && (HN[r - 1] & lmb)) X |= 1LL;
+             D0[r] = (((X & VP[r]) + VP[r]) ^ VP[r]) | X | VN[r];
+             HP[r] = VN[r] | ~(D0[r] | VP[r]);
+             HN[r] = D0[r] & VP[r];
+-            X = (HP[r] << 1L);
+-            if(r == 0 || HP[r - 1] & lmb) X |= 1L;
+-            VP[r] = (HN[r] << 1L) | ~(D0[r] | X);
+-            if(r > 0 && (HN[r - 1] & lmb)) VP[r] |= 1L;
++            X = (HP[r] << 1LL);
++            if(r == 0 || HP[r - 1] & lmb) X |= 1LL;
++            VP[r] = (HN[r] << 1LL) | ~(D0[r] | X);
++            if(r > 0 && (HN[r - 1] & lmb)) VP[r] |= 1LL;
+             VN[r] = D0[r] & X;
+         }
+         if(HP[tmax] & top) ++D;
+@@ -91,9 +91,9 @@ unsigned int edit_distance_map_(char const *a, size_t const asize, char const *b
+     unsigned int tmax = (asize - 1) >> 6;
+     unsigned int tlen = asize - tmax * 64;
+     for(size_t i = 0; i < tmax; ++i) {
+-        for(size_t j = 0; j < 64; ++j) cmap[a[i * 64 + j]][i] |= (1L << j);
++        for(size_t j = 0; j < 64; ++j) cmap[a[i * 64 + j]][i] |= (1LL << j);
+     }
+-    for(size_t i = 0; i < tlen; ++i) cmap[a[tmax * 64 + i]][tmax] |= (1L << i);
++    for(size_t i = 0; i < tlen; ++i) cmap[a[tmax * 64 + i]][tmax] |= (1LL << i);
+     return edit_distance_bpv<cmap_v, typename cmap_v::mapped_type>(cmap, b, bsize, tmax, tlen);
+ }
+ 
+diff --git a/src/htmlreporter.cpp b/src/htmlreporter.cpp
+index fc8ed6f..f09274f 100644
+--- a/src/htmlreporter.cpp
++++ b/src/htmlreporter.cpp
+@@ -141,7 +141,7 @@ void HtmlReporter::printMutation(int id, Mutation& mutation, vector<Match*>& mat
+     mFile << "<td>" << "" << "</td>";
+     mFile << "</tr>";
+     for(size_t m=0; m<matches.size(); m++){
+-        long rowid = id*100000 + m;
++        int64_t rowid = id*100000 + m;
+         if(!GlobalSettings::simplifiedMode)
+             mFile << "<tr onclick='toggle(" << rowid << ");'>";
+         else
+diff --git a/src/main.cpp b/src/main.cpp
+index a2edb94..e3de5ab 100644
+--- a/src/main.cpp
++++ b/src/main.cpp
+@@ -103,5 +103,5 @@ int main(int argc, char* argv[]){
+     scanner.scan();
+     time_t t2 = time(NULL);
+     printf("\n%s\n", command.c_str());
+-    printf("Mutscan v%s, time used: %ld seconds\n", MUTSCAN_VER, (t2-t1));
++    printf("Mutscan v%s, time used: %ld seconds\n", MUTSCAN_VER, (long)(t2-t1));
+ }
+\ No newline at end of file
+diff --git a/src/mutscan.cpp b/src/mutscan.cpp
+index 117f321..4974703 100644
+--- a/src/mutscan.cpp
++++ b/src/mutscan.cpp
+@@ -38,7 +38,7 @@ void MutScan::evaluateSimplifiedMode(string r1file, string r2file, int mutationN
+     // use another ifstream to not affect current reader
+     ifstream is(r1file);
+     is.seekg (0, is.end);
+-    long bytes = is.tellg();
++    int64_t bytes = is.tellg();
+ 
+     if(r2file != "")
+         bytes *= 2;
+@@ -48,7 +48,7 @@ void MutScan::evaluateSimplifiedMode(string r1file, string r2file, int mutationN
+         bytes *= 3;
+ 
+     // enable simplified mode for over 50G FASTQ + 10,000 mutations
+-    if(bytes > 50L * 1024L * 1024L * 1024L) {
++    if(bytes > 50LL * 1024LL * 1024LL * 1024LL) {
+         if(GlobalSettings::verbose)
+             cerr << "Simplified mode is enabled automatically..."<<endl;
+         GlobalSettings::setSimplifiedMode(true);
+diff --git a/src/rollinghash.cpp b/src/rollinghash.cpp
+index 514da10..043ded8 100644
+--- a/src/rollinghash.cpp
++++ b/src/rollinghash.cpp
+@@ -41,7 +41,7 @@ void RollingHash::initMutations(vector<Mutation>& mutationList) {
+     }
+ }
+ 
+-map<long, vector<int> > RollingHash::getKeyTargets() {
++map<int64_t, vector<int> > RollingHash::getKeyTargets() {
+     return mKeyTargets;
+ }
+ 
+@@ -58,14 +58,14 @@ bool RollingHash::add(string s, int target, bool allowIndel) {
+ 
+     const char* data = s.c_str();
+ 
+-    long* hashes = new long[mWindow];
+-    memset(hashes, 0, sizeof(long)*mWindow);
++    int64_t* hashes = new int64_t[mWindow];
++    memset(hashes, 0, sizeof(int64_t)*mWindow);
+ 
+-    long* accum = new long[mWindow];
+-    memset(accum, 0, sizeof(long)*mWindow);
++    int64_t* accum = new int64_t[mWindow];
++    memset(accum, 0, sizeof(int64_t)*mWindow);
+ 
+     // initialize
+-    long origin = 0;
++    int64_t origin = 0;
+     for(int i=0; i<mWindow; i++) {
+         hashes[i] = hash(data[start + i], i);
+         origin += hashes[i];
+@@ -88,7 +88,7 @@ bool RollingHash::add(string s, int target, bool allowIndel) {
+             if(base1 == data[start + i])
+                 continue;
+ 
+-            long mut1 = origin - hash(data[start + i], i) + hash(base1, i);
++            int64_t mut1 = origin - hash(data[start + i], i) + hash(base1, i);
+             addHash(mut1, target);
+             /*cout<<mut1<<":"<<i<<base1<<":";
+             for(int p=0; p<mWindow; p++) {
+@@ -107,7 +107,7 @@ bool RollingHash::add(string s, int target, bool allowIndel) {
+                         char base2 = bases[b2];
+                         if(base2 == data[start + j])
+                             continue;
+-                        long mut2 = mut1 - hash(data[start + j], j) + hash(base2, j);
++                        int64_t mut2 = mut1 - hash(data[start + j], j) + hash(base2, j);
+                         addHash(mut2, target);
+                         /*cout<<mut2<<":"<<i<<base1<<j<<base2<<":";
+                         for(int p=0; p<mWindow; p++) {
+@@ -126,7 +126,7 @@ bool RollingHash::add(string s, int target, bool allowIndel) {
+     }
+ 
+     int altForDel = start - 1;
+-    long altVal = hash(data[altForDel], 0);
++    int64_t altVal = hash(data[altForDel], 0);
+ 
+     if(allowIndel && mAllowEditDistanceIs2) {
+         // make indel hashes, we only allow 1 indel
+@@ -134,7 +134,7 @@ bool RollingHash::add(string s, int target, bool allowIndel) {
+             if(i+start >= skipStart && i+start <= skipEnd )
+                 continue;
+             // make del of i first
+-            long mutOfDel;
++            int64_t mutOfDel;
+             if (i==0)
+                 mutOfDel = origin - accum[i] + altVal;
+             else
+@@ -146,7 +146,7 @@ bool RollingHash::add(string s, int target, bool allowIndel) {
+             for(int b=0; b<4; b++){
+                 char base = bases[b];
+                 // shift the first base
+-                long mutOfIns = origin - accum[i] + hash(base, i) + ((accum[i] - hashes[0]) >> 1);
++                int64_t mutOfIns = origin - accum[i] + hash(base, i) + ((accum[i] - hashes[0]) >> 1);
+                 if(mutOfIns != origin && mutOfIns != mutOfDel){
+                     addHash(mutOfIns, target);
+                     /*cout << mutOfIns<<", insert at " << i << " with " << base << ": ";
+@@ -175,9 +175,9 @@ map<int, int> RollingHash::hitTargets(const string s) {
+     const char* data = s.c_str();
+ 
+     // initialize
+-    long curHash = 0;
++    int64_t curHash = 0;
+     for(int i=0; i<mWindow; i++) {
+-        long h = hash(data[i], i);
++        int64_t h = hash(data[i], i);
+         curHash += h;
+     }
+     addHit(ret, curHash);
+@@ -190,9 +190,9 @@ map<int, int> RollingHash::hitTargets(const string s) {
+     return ret;
+ }
+ 
+-inline void RollingHash::addHit(map<int, int>& ret, long hash) {
++inline void RollingHash::addHit(map<int, int>& ret, int64_t hash) {
+     //update bloom filter array
+-    const long bloomFilterFactors[3] = {1713137323, 371371377, 7341234131};
++    const int64_t bloomFilterFactors[3] = {1713137323, 371371377, 7341234131};
+     for(int b=0; b<3; b++) {
+         if(mBloomFilterArray[(bloomFilterFactors[b] * hash) & (BLOOM_FILTER_LENGTH-1)] == 0 )
+             return;
+@@ -213,7 +213,7 @@ inline void RollingHash::addHit(map<int, int>& ret, long hash) {
+     }
+ }
+ 
+-void RollingHash::addHash(long hash, int target) {
++void RollingHash::addHash(int64_t hash, int target) {
+     if(mKeyTargets.count(hash) == 0)
+         mKeyTargets[hash] = vector<int>();
+     else {
+@@ -226,13 +226,13 @@ void RollingHash::addHash(long hash, int target) {
+     mKeyTargets[hash].push_back(target);
+ 
+     //update bloom filter array
+-    const long bloomFilterFactors[3] = {1713137323, 371371377, 7341234131};
++    const int64_t bloomFilterFactors[3] = {1713137323, 371371377, 7341234131};
+     for(int b=0; b<3; b++) {
+         mBloomFilterArray[(bloomFilterFactors[b] * hash) & (BLOOM_FILTER_LENGTH-1) ] = 1;
+     }
+ }
+ 
+-inline long RollingHash::char2val(char c) {
++inline int64_t RollingHash::char2val(char c) {
+     switch (c) {
+         case 'A':
+             return 517;
+@@ -249,14 +249,14 @@ inline long RollingHash::char2val(char c) {
+     }
+ }
+ 
+-inline long RollingHash::hash(char c, int pos) {
+-    long val = char2val(c);
+-    const long num = 2;
++inline int64_t RollingHash::hash(char c, int pos) {
++    int64_t val = char2val(c);
++    const int64_t num = 2;
+     return val * (num << pos );
+ }
+ 
+ void RollingHash::dump() {
+-    map<long, vector<int> >::iterator iter;
++    map<int64_t, vector<int> >::iterator iter;
+     for(iter= mKeyTargets.begin(); iter!=mKeyTargets.end(); iter++) {
+         if(iter->second.size() < 2)
+             continue;
+diff --git a/src/rollinghash.h b/src/rollinghash.h
+index 39b9426..be49520 100644
+--- a/src/rollinghash.h
++++ b/src/rollinghash.h
+@@ -19,18 +19,18 @@ public:
+ 
+ public:
+     bool add(string s, int target, bool allowIndel = true);
+-    void addHash(long hash, int target);
++    void addHash(int64_t hash, int target);
+     map<int, int> hitTargets(const string s);
+-    inline void addHit(map<int, int>& ret, long hash);
+-    map<long, vector<int> > getKeyTargets();
++    inline void addHit(map<int, int>& ret, int64_t hash);
++    map<int64_t, vector<int> > getKeyTargets();
+ 
+-    inline static long char2val(char c);
+-    inline static long hash(char c, int pos);
++    inline static int64_t char2val(char c);
++    inline static int64_t hash(char c, int pos);
+     void dump();
+     static bool test();
+ 
+ private:
+-    map<long, vector<int> > mKeyTargets;
++    map<int64_t, vector<int> > mKeyTargets;
+     int mWindow;
+     bool mAllowEditDistanceIs2;
+     char* mBloomFilterArray;
+diff --git a/src/scanner-impl.h b/src/scanner-impl.h
+index 372caad..0cc2538 100644
+--- a/src/scanner-impl.h
++++ b/src/scanner-impl.h
+@@ -241,7 +241,7 @@ template <class ReadData, class Self>
+ void Scanner<ReadData, Self>::producerTask()
+ {
+     int slept = 0;
+-    long total = 0;
++    int64_t total = 0;
+     ReadData** data = new ReadData*[PACK_SIZE];
+     memset(data, 0, sizeof(ReadData*)*PACK_SIZE);
+     typename reader_trait<ReadData>::FastqReaderType *reader = static_cast<Self*>(this)->fastqReader();

@@ -1,0 +1,41 @@
+Under __EMSCRIPTEN__ the scanner runs producerTask in the calling thread
+instead of starting a producer thread, and producePack hands each pack
+straight to scanNextEnd.
+
+diff --git a/src/scanner-impl.h b/src/scanner-impl.h
+index d64a7e8..372caad 100644
+--- a/src/scanner-impl.h
++++ b/src/scanner-impl.h
+@@ -74,14 +74,21 @@ bool Scanner<ReadData, Self>::scan(){
+     }
+ 
+     initPackRepository();
++#ifdef __EMSCRIPTEN__
++    producerTask();
++    mThreadNum = 0;
++#else
+     std::thread producer(std::bind(&Self::producerTask, this));
++#endif
+ 
+     std::thread** threads = new thread*[mThreadNum];
+     for(int t=0; t<mThreadNum; t++){
+         threads[t] = new std::thread(std::bind(&Self::consumerTask, this));
+     }
+ 
++#ifndef __EMSCRIPTEN__
+     producer.join();
++#endif
+     for(int t=0; t<mThreadNum; t++){
+         threads[t]->join();
+     }
+@@ -185,6 +192,10 @@ void Scanner<ReadData, Self>::destroyPackRepository() {
+ 
+ template <class ReadData, class Self>
+ void Scanner<ReadData, Self>::producePack(ReadPack<ReadData>* pack){
++#ifdef __EMSCRIPTEN__
++    static_cast<Self*>(this)->scanNextEnd(pack);
++    return;
++#endif
+     std::unique_lock<std::mutex> lock(mRepo.mtx);
+     while(((mRepo.writePos + 1) % PACK_NUM_LIMIT)
+         == mRepo.readPos) {
