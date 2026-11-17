@@ -1,0 +1,26 @@
+diff --git a/src/mains/unix.cpp b/src/mains/unix.cpp
+index c2545f24..f80032a2 100644
+--- a/src/mains/unix.cpp
++++ b/src/mains/unix.cpp
+@@ -594,7 +594,7 @@ void    SetStatusLine               (_String s) {
+ 
+ EM_JS(void, _jsSendStatusUpdate, (const char *status_update), {
+     // Send a message back to main thread from WebWorker
+-    postMessage({
++    if (typeof postMessage === "function") postMessage({
+         type: "biowasm",
+         value: {
+         text: Module.AsciiToString(status_update),
+diff --git a/src/utils/hyphyunixutils.cpp b/src/utils/hyphyunixutils.cpp
+index c114611b..4f11edb3 100644
+--- a/src/utils/hyphyunixutils.cpp
++++ b/src/utils/hyphyunixutils.cpp
+@@ -184,7 +184,7 @@ _String *    StringFromConsole   () {
+ 
+ EM_JS(void, _jsSendStatusUpdateStdout, (const char *status_update), {
+     // Send a message back to main thread from WebWorker
+-    postMessage({
++    if (typeof postMessage === "function") postMessage({
+         type: "biowasm",
+         value: {
+         text: Module.AsciiToString(status_update),
