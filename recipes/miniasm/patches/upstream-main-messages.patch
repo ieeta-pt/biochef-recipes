@@ -1,0 +1,129 @@
+Renamed, the mains would give their messages as biochef_upstream_main's.
+
+diff --git a/dotter.c b/dotter.c
+index ab3ab39..561d84b 100644
+--- a/dotter.c
++++ b/dotter.c
+@@ -95,7 +95,7 @@ int biochef_upstream_main(int argc, char *argv[])
+ 
+ 	f = paf_open(argv[optind]);
+ 	if (!f) {
+-		fprintf(stderr, "[E::%s] could not open PAF file %s\n", __func__, argv[optind]);
++		fprintf(stderr, "[E::%s] could not open PAF file %s\n", "main", argv[optind]);
+ 		return 1;
+ 	}
+ 	while (paf_read(f, &r) >= 0) {
+@@ -110,7 +110,7 @@ int biochef_upstream_main(int argc, char *argv[])
+ 	}
+ 	paf_close(f);
+ 	if (h.n == 0) {
+-		fprintf(stderr, "[E::%s] no alignment in %s is %d bases long on both sequences (-s) with %d matching bases (-m) and an identity of %g (-i)\n", __func__, argv[optind], min_span, min_match, min_iden);
++		fprintf(stderr, "[E::%s] no alignment in %s is %d bases long on both sequences (-s) with %d matching bases (-m) and an identity of %g (-i)\n", "main", argv[optind], min_span, min_match, min_iden);
+ 		return 1;
+ 	}
+ 
+@@ -144,7 +144,7 @@ int biochef_upstream_main(int argc, char *argv[])
+ 		totlen[i] = l;
+ 	}
+ 	if ((double)width / totlen[0] * totlen[1] + .499 > 1e7) {
+-		fprintf(stderr, "[E::%s] the queries are %g times as long as the targets: a plot %d wide would be too tall\n", __func__, (double)totlen[1] / totlen[0], width);
++		fprintf(stderr, "[E::%s] the queries are %g times as long as the targets: a plot %d wide would be too tall\n", "main", (double)totlen[1] / totlen[0], width);
+ 		return 1;
+ 	}
+ 	height = (int)((double)width / totlen[0] * totlen[1] + .499);
+diff --git a/main.c b/main.c
+index 477e232..c41079c 100644
+--- a/main.c
++++ b/main.c
+@@ -109,15 +109,15 @@ int biochef_upstream_main(int argc, char *argv[])
+ 	d = sd_init();
+ 
+ 	if (no_cont) {
+-		fprintf(stderr, "[M::%s] ===> Step 0: removing contained reads <===\n", __func__);
++		fprintf(stderr, "[M::%s] ===> Step 0: removing contained reads <===\n", "main");
+ 		excl = ma_hit_no_cont(argv[optind], opt.min_span, opt.min_match, opt.max_hang, opt.int_frac);
+ 	}
+ 
+-	fprintf(stderr, "[M::%s] ===> Step 1: reading read mappings <===\n", __func__);
++	fprintf(stderr, "[M::%s] ===> Step 1: reading read mappings <===\n", "main");
+ 	hit = ma_hit_read(argv[optind], opt.min_span, opt.min_match, d, &n_hits, bi_dir, excl);
+ 
+ 	if (!no_first) {
+-		fprintf(stderr, "[M::%s] ===> Step 2: 1-pass (crude) read selection <===\n", __func__);
++		fprintf(stderr, "[M::%s] ===> Step 2: 1-pass (crude) read selection <===\n", "main");
+ 		if (stage >= 2) {
+ 			sub = ma_hit_sub(opt.min_dp, opt.min_iden, 0, n_hits, hit, d->n_seq);
+ 			n_hits = ma_hit_cut(sub, opt.min_span, n_hits, hit);
+@@ -126,7 +126,7 @@ int biochef_upstream_main(int argc, char *argv[])
+ 	}
+ 
+ 	if (!no_second) {
+-		fprintf(stderr, "[M::%s] ===> Step 3: 2-pass (fine) read selection <===\n", __func__);
++		fprintf(stderr, "[M::%s] ===> Step 3: 2-pass (fine) read selection <===\n", "main");
+ 		if (stage >= 4) {
+ 			ma_sub_t *sub2;
+ 			sub2 = ma_hit_sub(opt.min_dp, opt.min_iden, opt.min_span/2, n_hits, hit, d->n_seq);
+@@ -151,19 +151,19 @@ int biochef_upstream_main(int argc, char *argv[])
+ 		asg_t *sg = 0;
+ 		ma_ug_t *ug = 0;
+ 
+-		fprintf(stderr, "[M::%s] ===> Step 4: graph cleaning <===\n", __func__);
++		fprintf(stderr, "[M::%s] ===> Step 4: graph cleaning <===\n", "main");
+ 		sg = ma_sg_gen(&opt, d, sub, n_hits, hit);
+ 		if (stage >= 6) {
+-			fprintf(stderr, "[M::%s] ===> Step 4.1: transitive reduction <===\n", __func__);
++			fprintf(stderr, "[M::%s] ===> Step 4.1: transitive reduction <===\n", "main");
+ 			asg_arc_del_trans(sg, opt.gap_fuzz);
+ 		}
+ 		if (stage >= 7) {
+-			fprintf(stderr, "[M::%s] ===> Step 4.2: initial tip cutting and bubble popping <===\n", __func__);
++			fprintf(stderr, "[M::%s] ===> Step 4.2: initial tip cutting and bubble popping <===\n", "main");
+ 			asg_cut_tip(sg, opt.max_ext);
+ 			asg_pop_bubble(sg, opt.bub_dist);
+ 		}
+ 		if (stage >= 9) {
+-			fprintf(stderr, "[M::%s] ===> Step 4.3: cutting short overlaps (%d rounds in total) <===\n", __func__, opt.n_rounds + 1);
++			fprintf(stderr, "[M::%s] ===> Step 4.3: cutting short overlaps (%d rounds in total) <===\n", "main", opt.n_rounds + 1);
+ 			for (i = 0; i <= opt.n_rounds; ++i) {
+ 				float r = opt.n_rounds > 0? opt.min_ovlp_drop_ratio + (opt.max_ovlp_drop_ratio - opt.min_ovlp_drop_ratio) / opt.n_rounds * i : opt.min_ovlp_drop_ratio;
+ 				if (asg_arc_del_short(sg, r) != 0) {
+@@ -173,14 +173,14 @@ int biochef_upstream_main(int argc, char *argv[])
+ 			}
+ 		}
+ 		if (stage >= 10) {
+-			fprintf(stderr, "[M::%s] ===> Step 4.4: removing short internal sequences and bi-loops <===\n", __func__);
++			fprintf(stderr, "[M::%s] ===> Step 4.4: removing short internal sequences and bi-loops <===\n", "main");
+ 			asg_cut_internal(sg, 1);
+ 			asg_cut_biloop(sg, opt.max_ext);
+ 			asg_cut_tip(sg, opt.max_ext);
+ 			asg_pop_bubble(sg, opt.bub_dist);
+ 		}
+ 		if (stage >= 11) {
+-			fprintf(stderr, "[M::%s] ===> Step 4.5: aggressively cutting short overlaps <===\n", __func__);
++			fprintf(stderr, "[M::%s] ===> Step 4.5: aggressively cutting short overlaps <===\n", "main");
+ 			if (asg_arc_del_short(sg, opt.final_ovlp_drop_ratio) != 0) {
+ 				asg_cut_tip(sg, opt.max_ext);
+ 				asg_pop_bubble(sg, opt.bub_dist);
+@@ -188,7 +188,7 @@ int biochef_upstream_main(int argc, char *argv[])
+ 		}
+ 
+ 		if (strcmp(outfmt, "ug") == 0) {
+-			fprintf(stderr, "[M::%s] ===> Step 5: generating unitigs <===\n", __func__);
++			fprintf(stderr, "[M::%s] ===> Step 5: generating unitigs <===\n", "main");
+ 			ug = ma_ug_gen(sg);
+ 			if (fn_reads) ma_ug_seq(ug, d, sub, fn_reads);
+ 			ma_ug_print(ug, d, sub, stdout);
+@@ -202,10 +202,10 @@ int biochef_upstream_main(int argc, char *argv[])
+ 	sd_destroy(d);
+ 	if (excl) sd_destroy(excl);
+ 
+-	fprintf(stderr, "[M::%s] Version: %s\n", __func__, MA_VERSION);
+-	fprintf(stderr, "[M::%s] CMD:", __func__);
++	fprintf(stderr, "[M::%s] Version: %s\n", "main", MA_VERSION);
++	fprintf(stderr, "[M::%s] CMD:", "main");
+ 	for (i = 0; i < argc; ++i)
+ 		fprintf(stderr, " %s", argv[i]);
+-	fprintf(stderr, "\n[M::%s] Real time: %.3f sec; CPU: %.3f sec\n", __func__, sys_realtime(), sys_cputime());
++	fprintf(stderr, "\n[M::%s] Real time: %.3f sec; CPU: %.3f sec\n", "main", sys_realtime(), sys_cputime());
+ 	return 0;
+ }
