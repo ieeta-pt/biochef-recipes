@@ -1,0 +1,27 @@
+stringtie removes its tmp_XXXXXX directory only when it finishes, so an
+error left the directory, with the partial output or the merge's
+intermediate files, next to the output. Empty and remove it at exit too;
+stringtie made it with mkdtemp, so all it holds is stringtie's.
+
+diff --git a/stringtie.cpp b/stringtie.cpp
+index 328f1ad..ec81f61 100644
+--- a/stringtie.cpp
++++ b/stringtie.cpp
+@@ -183,6 +183,8 @@ bool havePtFeatures=false;
+ 
+ bool mergeMode = false; //--merge option
+ bool keepTempFiles = false; //--keeptmp
++#include <dirent.h>
++static void removeTempDir() { if (keepTempFiles or tmp_path.is_empty()) return; GStr d(tmp_path); d.chomp('/'); DIR* dp=opendir(d.chars()); if (dp) { struct dirent* e; while ((e=readdir(dp))) { if (strcmp(e->d_name, ".") and strcmp(e->d_name, "..")) { GStr f(tmp_path); f+=e->d_name; remove(f.chars()); } } closedir(dp); } rmdir(d.chars()); }
+ bool genNascent = false; // -N/--nasc : internally generate synthetic nascent transcripts
+ bool isnascent = false; // used in rlink.cpp, same with genNascent
+ bool printNascent = false; // output nascents
+@@ -1339,7 +1341,7 @@ void processOptions(GArgs& args) {
+ 		 stempl+="/tmp_XXXXXX";
+ 		 char* ctempl=Gstrdup(stempl.chars());
+ 	     Gmktempdir(ctempl);
+-	     tmp_path=ctempl;
++	     tmp_path=ctempl; atexit(removeTempDir);
+ 	     tmp_path+='/';
+ 	     GFREE(ctempl);
+ 	 }
