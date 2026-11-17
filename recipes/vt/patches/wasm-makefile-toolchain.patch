@@ -1,0 +1,50 @@
+diff --git a/Makefile b/Makefile
+index 1e19e7f..9a81e5c 100644
+--- a/Makefile
++++ b/Makefile
+@@ -1,7 +1,8 @@
+ OPTFLAG = -O3
+ INCLUDES = -I./lib -I. -I./lib/htslib -I./lib/Rmath -I./lib/pcre2
+ CXXFLAGS = -pipe -std=c++0x $(OPTFLAG) $(INCLUDES) -D__STDC_LIMIT_MACROS
+-CXX = g++
++CXX ?= g++
++EXTRA_LIBS ?= -lbz2 -llzma -lcurl -lcrypto
+ 
+ SOURCESONLY =
+ 
+@@ -166,7 +167,7 @@ version :
+ 	git rev-parse HEAD | cut -c 1-8 | awk '{print "#define VERSION \"0.5772-"$$0"\""}' > version.h;
+ 
+ $(TARGET) : ${LIBHTS} ${LIBRMATH} ${LIBPCRE2}  ${LIBSVM} $(TOOLOBJ) 
+-	$(CXX) $(CXXFLAGS) -o $@ $(TOOLOBJ) $(LIBHTS) $(LIBRMATH) ${LIBPCRE2} ${LIBDEFLATE} -lz -lpthread -lbz2 -llzma -lcurl -lcrypto
++	$(CXX) $(CXXFLAGS) -o $@ $(TOOLOBJ) $(LIBHTS) $(LIBRMATH) ${LIBPCRE2} ${LIBDEFLATE} -lz -lpthread $(EXTRA_LIBS)
+ 
+ $(TOOLOBJ): $(HEADERSONLY)
+ 
+diff --git a/lib/pcre2/Makefile b/lib/pcre2/Makefile
+index 9ff6762..e07ae6b 100644
+--- a/lib/pcre2/Makefile
++++ b/lib/pcre2/Makefile
+@@ -1,4 +1,5 @@
+-AR     = ar
++CC     ?= gcc
++AR     ?= ar
+ RANLIB = ranlib
+ 
+ SOURCES = pcre2_auto_possess\
+@@ -28,12 +29,12 @@ TOOLSRC = $(SOURCES:=.c)
+ TOOLOBJ = $(TOOLSRC:.c=.o)
+ 
+ .c.o :
+-	gcc -g -O3 -DHAVE_CONFIG_H -DPCRE2_CODE_UNIT_WIDTH=8 -I. -o $@ -c $*.c
++	$(CC) -g -O3 -DHAVE_CONFIG_H -DPCRE2_CODE_UNIT_WIDTH=8 -I. -o $@ -c $*.c
+ 
+ libpcre2.a: $(TOOLOBJ) 
+ 	@-rm -f $@
+-	ar -rc $@ $(TOOLOBJ)
+-	-ranlib $@
++	$(AR) -rc $@ $(TOOLOBJ)
++	-$(RANLIB) $@
+ 	
+ clean :
+ 	-rm *.o *.a
