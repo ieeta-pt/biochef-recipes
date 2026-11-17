@@ -1,0 +1,57 @@
+The .k2d files are written as raw structs. Their size_t fields are 8 bytes
+natively and 4 in wasm32, so fix them at 64 bits to read native databases.
+
+diff --git a/src/compact_hash.h b/src/compact_hash.h
+index 9e7eeb1..6049aad 100644
+--- a/src/compact_hash.h
++++ b/src/compact_hash.h
+@@ -94,11 +94,11 @@ class CompactHashTable : public KeyValueStore {
+ 
+   private:
+   static const size_t LOCK_ZONES = 256;
+-  size_t capacity_;
+-  size_t size_;
++  uint64_t capacity_;
++  uint64_t size_;
+   //size_t index_mask_;
+-  size_t key_bits_;
+-  size_t value_bits_;
++  uint64_t key_bits_;
++  uint64_t value_bits_;
+   CompactHashCell *table_;
+   bool file_backed_;
+   bool locks_initialized_;
+diff --git a/src/kraken2_data.h b/src/kraken2_data.h
+index 824ecaa..94bcd88 100644
+--- a/src/kraken2_data.h
++++ b/src/kraken2_data.h
+@@ -13,8 +13,8 @@
+ namespace kraken2 {
+ 
+ struct IndexOptions {
+-  size_t k;
+-  size_t l;
++  uint64_t k;
++  uint64_t l;
+   uint64_t spaced_seed_mask;
+   uint64_t toggle_mask;
+   bool dna_db;
+diff --git a/src/taxonomy.h b/src/taxonomy.h
+index 5d3c4d2..ea65b33 100644
+--- a/src/taxonomy.h
++++ b/src/taxonomy.h
+@@ -92,11 +92,11 @@ class Taxonomy {
+   bool file_backed_;
+ 
+   TaxonomyNode *nodes_;
+-  size_t node_count_;
++  uint64_t node_count_;
+   char *name_data_;
+-  size_t name_data_len_;
++  uint64_t name_data_len_;
+   char *rank_data_;
+-  size_t rank_data_len_;
++  uint64_t rank_data_len_;
+   std::unordered_map<uint64_t, uint64_t> external_to_internal_id_map_;
+ 
+   friend void NCBITaxonomy::ConvertToKrakenTaxonomy(const char *filename);

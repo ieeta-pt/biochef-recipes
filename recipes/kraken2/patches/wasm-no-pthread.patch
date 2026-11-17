@@ -1,0 +1,16 @@
+The wasm build links without -pthread: the link flags in src/Makefile drop
+it.
+
+diff --git a/src/Makefile b/src/Makefile
+index c340d06..ae7aaeb 100644
+--- a/src/Makefile
++++ b/src/Makefile
+@@ -54,7 +54,7 @@ lookup_accession_numbers: lookup_accession_numbers.o mmap_file.o omp_hack.o util
+ 	$(CXX) $(CXXFLAGS) -o $@ lookup_accession_numbers.o mmap_file.o omp_hack.o utilities.o $(LDFLAGS)
+ 
+ k2mask: k2mask.o seqreader.o
+-	$(CXX) $(CXXFLAGS) -o $@ k2mask.o seqreader.o $(LDFLAGS) -lz -pthread
++	$(CXX) $(CXXFLAGS) -o $@ k2mask.o seqreader.o $(LDFLAGS) -lz
+ 
+ blast_to_fasta: blast_to_fasta.o blast_defline.o blast_utils.o
+ 	$(CC) $(CFLAGS) -o  $@  blast_to_fasta.o blast_utils.o blast_defline.o $(LDFLAGS) -lm -lc
