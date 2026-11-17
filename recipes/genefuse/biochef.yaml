@@ -1,0 +1,57 @@
+apiVersion: v1
+
+id: app.biochef.genefuse
+name: GeneFuse
+description: GeneFuse detects gene fusions directly from FASTQ reads, without an alignment step, by matching reads against the exons of the genes listed in a fusion file. It suits targeted panels where the fusion partners are known, such as clinical cancer panels, and reports each fusion with its supporting reads as text, JSON and HTML.
+
+version: 0.8.0-bc.1
+homepage: https://github.com/OpenGene/GeneFuse
+license:
+  spdx: MIT
+  files: [LICENSE]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/OpenGene/GeneFuse
+  commit: "aa281c03a04a9eb199bb80f219a6ca69a9963d71"
+  version: "0.8.0"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+    patches: [patches/strict-entry-point.patch, patches/scan-each-pack-when-read.patch, patches/stable-sort-fusions.patch, patches/wasm32-64-bit-integers.patch, patches/kmer-loop-bounds.patch, patches/delete-arrays.patch, patches/chromosome-name-without-chr.patch, patches/reads-by-content.patch, patches/fasta-reader-cr-and-bases.patch, patches/json-strings.patch]
+  native:
+    buildScript: build-native.sh
+    buildTools: [make, gcc]
+    patches: [patches/strict-entry-point.patch, patches/scan-each-pack-when-read.patch, patches/stable-sort-fusions.patch, patches/wasm32-64-bit-integers.patch, patches/kmer-loop-bounds.patch, patches/delete-arrays.patch, patches/chromosome-name-without-chr.patch, patches/reads-by-content.patch, patches/fasta-reader-cr-and-bases.patch, patches/json-strings.patch]
+
+runtime:
+  modes: [wasm, native, remote]
+
+operations:
+  - id: genefuse.scan
+    name: Detect Gene Fusions (GeneFuse)
+    category: Sequence Analysis
+    bin: genefuse
+    description: Scan single-end or paired-end FASTQ reads for fusions between the genes of a fusion file, using a reference FASTA with the same coordinates. The fusion file lists each gene and its exons, as in the files GeneFuse ships for hg19 and hg38; genes on sequences the reference does not hold are not looked for, so a reference of only some chromosomes will do. The results are written as text, JSON and an HTML report.
+    io:
+      inputs:
+        - { name: read1, types: [FASTQ], mode: file, flag: "-1" }
+        - { name: read2, types: [FASTQ], mode: file, flag: "-2" }
+        - { name: fusion, types: [GENEFUSE_CSV], mode: file, flag: -f }
+        - { name: ref, types: [FASTA, Multi-FASTA], mode: file, flag: -r }
+      outputs:
+        - { name: result, types: [TEXT], mode: stdout }
+        - { name: html, types: [TEXT], mode: file, flag: -h, filename: "genefuse.html" }
+        - { name: json, types: [JSON], mode: file, flag: -j, filename: "genefuse.json" }
+    parameters:
+      - { name: min_support, type: integer, flag: -u, default: 2 }
+      - { name: min_deletion_length, type: integer, flag: -d, default: 50 }
+      - { name: output_deletions, type: flag, flag: -D }
+      - { name: output_untranslated, type: flag, flag: -U }

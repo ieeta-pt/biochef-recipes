@@ -1,0 +1,65 @@
+The scanners read the reads in one thread and match them in others, so the
+matches come in an order that changes from run to run, and with it which
+reads support which fusion. Each pack of reads is now matched as soon as it
+is read, natively as in wasm, which cannot start threads.
+
+diff --git a/src/pescanner.cpp b/src/pescanner.cpp
+index 1f8544f..ee29b3f 100644
+--- a/src/pescanner.cpp
++++ b/src/pescanner.cpp
+@@ -33,14 +33,14 @@ bool PairEndScanner::scan(){
+     mFusionMapper = new FusionMapper(mRefFile, mFusionFile);
+ 
+     initPackRepository();
+-    std::thread producer(std::bind(&PairEndScanner::producerTask, this));
++    producerTask();
++    mThreadNum = 0;
+ 
+     std::thread** threads = new thread*[mThreadNum];
+     for(int t=0; t<mThreadNum; t++){
+         threads[t] = new std::thread(std::bind(&PairEndScanner::consumerTask, this));
+     }
+ 
+-    producer.join();
+     for(int t=0; t<mThreadNum; t++){
+         threads[t]->join();
+     }
+@@ -152,6 +152,8 @@ void PairEndScanner::destroyPackRepository() {
+ }
+ 
+ void PairEndScanner::producePack(ReadPairPack* pack){
++    scanPairEnd(pack);
++    return;
+     std::unique_lock<std::mutex> lock(mRepo.mtx);
+     while(((mRepo.writePos + 1) % PACK_NUM_LIMIT)
+         == mRepo.readPos) {
+diff --git a/src/sescanner.cpp b/src/sescanner.cpp
+index 33681de..d8c1633 100644
+--- a/src/sescanner.cpp
++++ b/src/sescanner.cpp
+@@ -32,14 +32,14 @@ bool SingleEndScanner::scan(){
+     mFusionMapper = new FusionMapper(mRefFile, mFusionFile);
+ 
+     initPackRepository();
+-    std::thread producer(std::bind(&SingleEndScanner::producerTask, this));
++    producerTask();
++    mThreadNum = 0;
+ 
+     std::thread** threads = new thread*[mThreadNum];
+     for(int t=0; t<mThreadNum; t++){
+         threads[t] = new std::thread(std::bind(&SingleEndScanner::consumerTask, this));
+     }
+ 
+-    producer.join();
+     for(int t=0; t<mThreadNum; t++){
+         threads[t]->join();
+     }
+@@ -109,6 +109,8 @@ void SingleEndScanner::destroyPackRepository() {
+ }
+ 
+ void SingleEndScanner::producePack(ReadPack* pack){
++    scanSingleEnd(pack);
++    return;
+     std::unique_lock<std::mutex> lock(mRepo.mtx);
+     while(((mRepo.writePos + 1) % PACK_NUM_LIMIT)
+         == mRepo.readPos) {

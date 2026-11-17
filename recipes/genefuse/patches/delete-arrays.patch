@@ -1,0 +1,127 @@
+Arrays from new[] are freed with delete[].
+
+diff --git a/src/indexer.cpp b/src/indexer.cpp
+index b805e91..6593b49 100644
+--- a/src/indexer.cpp
++++ b/src/indexer.cpp
+@@ -22,7 +22,7 @@ Indexer::Indexer(string refFile, vector<Fusion>& fusions) {
+ Indexer::~Indexer() {
+     delete mReference;
+     mReference = NULL;
+-    delete mBloomFilter;
++    delete[] mBloomFilter;
+     mBloomFilter = NULL;
+ }
+ 
+@@ -227,7 +227,7 @@ vector<SeqMatch> Indexer::mapRead(Read* r) {
+     }
+ 
+     vector<SeqMatch> result = segmentMask(mask, seqlen, long2gp(gp1), long2gp(gp2));
+-    delete mask;
++    delete[] mask;
+ 
+     return result;
+ }
+diff --git a/src/matcher.cpp b/src/matcher.cpp
+index 0cd990b..fbfa70c 100644
+--- a/src/matcher.cpp
++++ b/src/matcher.cpp
+@@ -16,7 +16,7 @@ Matcher::Matcher(FastaReader* ref, vector<Sequence>& seqs) {
+ }
+ 
+ Matcher::~Matcher() {
+-    delete mBloomFilterArray;
++    delete[] mBloomFilterArray;
+     mBloomFilterArray=NULL;
+ }
+ 
+@@ -237,19 +237,19 @@ MatchResult* Matcher::mapToIndex(Sequence& sequence) {
+             mr->sequence = Sequence(sequence);
+             mr->startGP = long2gp(topgp[t]);
+             mr->mismatches = mismatches;
+-            delete mask;
+-            delete skipped;
+-            delete allKmer;
+-            delete kmerValid;
++            delete[] mask;
++            delete[] skipped;
++            delete[] allKmer;
++            delete[] kmerValid;
+             return mr;
+         }
+-        delete mask;
++        delete[] mask;
+         mask = NULL;
+     }
+     
+-    delete skipped;
+-    delete allKmer;
+-    delete kmerValid;
++    delete[] skipped;
++    delete[] allKmer;
++    delete[] kmerValid;
+     return NULL;
+ }
+ 
+diff --git a/src/pescanner.cpp b/src/pescanner.cpp
+index ee29b3f..7e17b4e 100644
+--- a/src/pescanner.cpp
++++ b/src/pescanner.cpp
+@@ -131,7 +131,7 @@ bool PairEndScanner::scanPairEnd(ReadPairPack* pack){
+         delete pair;
+     }
+ 
+-    delete pack->data;
++    delete[] pack->data;
+     delete pack;
+ 
+     return true;
+@@ -147,7 +147,7 @@ void PairEndScanner::initPackRepository() {
+ }
+ 
+ void PairEndScanner::destroyPackRepository() {
+-    delete mRepo.packBuffer;
++    delete[] mRepo.packBuffer;
+     mRepo.packBuffer = NULL;
+ }
+ 
+@@ -240,7 +240,7 @@ void PairEndScanner::producerTask()
+ 
+     // if the last data initialized is not used, free it
+     if(data != NULL)
+-        delete data;
++        delete[] data;
+ }
+ 
+ void PairEndScanner::consumerTask()
+diff --git a/src/sescanner.cpp b/src/sescanner.cpp
+index d8c1633..1f00fa5 100644
+--- a/src/sescanner.cpp
++++ b/src/sescanner.cpp
+@@ -88,7 +88,7 @@ bool SingleEndScanner::scanSingleEnd(ReadPack* pack){
+         delete r1;
+     }
+ 
+-    delete pack->data;
++    delete[] pack->data;
+     delete pack;
+ 
+     return true;
+@@ -104,7 +104,7 @@ void SingleEndScanner::initPackRepository() {
+ }
+ 
+ void SingleEndScanner::destroyPackRepository() {
+-    delete mRepo.packBuffer;
++    delete[] mRepo.packBuffer;
+     mRepo.packBuffer = NULL;
+ }
+ 
+@@ -197,7 +197,7 @@ void SingleEndScanner::producerTask()
+ 
+     // if the last data initialized is not used, free it
+     if(data != NULL)
+-        delete data;
++        delete[] data;
+ }
+ 
+ void SingleEndScanner::consumerTask()

@@ -1,0 +1,38 @@
+The k-mer loops subtract 16 from an unsigned length: a contig or a read
+shorter than that sends them far past its end.
+
+diff --git a/src/indexer.cpp b/src/indexer.cpp
+index 7c5928c..b805e91 100644
+--- a/src/indexer.cpp
++++ b/src/indexer.cpp
+@@ -73,7 +73,7 @@ void Indexer::fillBloomFilter() {
+ 
+ void Indexer::indexContig(int ctg, string seq, int start) {
+     int64_t kmer = -1;
+-    for(int i=0; i<seq.length() - KMER; ++i) {
++    for(int i=0; i<(int)seq.length() - KMER; ++i) {
+         kmer = makeKmer(seq, i, kmer);
+         //cout << kmer << "\t" << seq.substr(i, KMER) << endl;
+         if(kmer < 0)
+diff --git a/src/matcher.cpp b/src/matcher.cpp
+index 0994db7..0cd990b 100644
+--- a/src/matcher.cpp
++++ b/src/matcher.cpp
+@@ -34,7 +34,7 @@ void Matcher::initBloomFilter(vector<Sequence>& seqs) {
+ void Matcher::initBloomFilterWithSeq(Sequence& seq) {
+     string str = seq.mStr;
+     bool valid = false;
+-    for(int i=0;i<str.length()-KMER+1;++i){
++    for(int i=0;i<(int)str.length()-KMER+1;++i){
+         unsigned int kmer = makeKmer(str, i, valid);
+         //cout << kmer << "\t" << seq.substr(i, KMER) << endl;
+         if(!valid)
+@@ -70,7 +70,7 @@ void Matcher::makeIndex() {
+ void Matcher::indexContig(int ctg, string seq, int start) {
+     unsigned int kmer = 0;
+     bool valid = false;
+-    for(int i=0; i<seq.length() - KMER; ++i) {
++    for(int i=0; i<(int)seq.length() - KMER; ++i) {
+         if(valid){
+             char base = seq[i+KMER-1];
+             int num = base2num(base);

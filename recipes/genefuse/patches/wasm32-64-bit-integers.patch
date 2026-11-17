@@ -1,0 +1,403 @@
+GeneFuse packs a contig and a position into a long, and its edit distance
+shifts 1L by up to 63: long is 32 bits in wasm32.
+
+diff --git a/src/common.h b/src/common.h
+index 911888b..7a9cfe1 100644
+--- a/src/common.h
++++ b/src/common.h
+@@ -5,8 +5,8 @@
+ 
+ #define _DEBUG true
+ 
+-typedef long int64;
+-typedef unsigned long uint64;
++typedef int64_t int64;
++typedef uint64_t uint64;
+ 
+ typedef int int32;
+ typedef unsigned int uint32;
+diff --git a/src/editdistance.cpp b/src/editdistance.cpp
+index 608f3fe..5225f03 100644
+--- a/src/editdistance.cpp
++++ b/src/editdistance.cpp
+@@ -31,27 +31,27 @@ template<typename T, typename TVALUE>
+ unsigned int edit_distance_bpv(T &cmap, char const *vec, size_t const &vecsize, unsigned int const &tmax, unsigned int const &tlen) {
+     int D = tmax * 64 + tlen;
+     TVALUE D0, HP, HN, VP, VN;
+-    uint64_t top = (1L << (tlen - 1));  // 末尾のvectorに適用
+-    uint64_t lmb = (1L << 63);
++    uint64_t top = (1LL << (tlen - 1));  // 末尾のvectorに適用
++    uint64_t lmb = (1LL << 63);
+ 
+     for(size_t i = 0; i <= tmax; ++i) {
+         VP[i] = 0;
+         VN[i] = 0;
+     }
+     for(size_t i = 0; i < tmax; ++i) VP[i] = ~0;
+-    for(size_t i = 0; i < tlen; ++i) VP[tmax] |= (1L << i);
++    for(size_t i = 0; i < tlen; ++i) VP[tmax] |= (1LL << i);
+     for(size_t i = 0; i < vecsize; ++i) {
+         TVALUE &PM = cmap[vec[i]];
+         for(int r = 0; r <= tmax; ++r) {
+             uint64_t X = PM[r];
+-            if(r > 0 && (HN[r - 1] & lmb)) X |= 1L;
++            if(r > 0 && (HN[r - 1] & lmb)) X |= 1LL;
+             D0[r] = (((X & VP[r]) + VP[r]) ^ VP[r]) | X | VN[r];
+             HP[r] = VN[r] | ~(D0[r] | VP[r]);
+             HN[r] = D0[r] & VP[r];
+-            X = (HP[r] << 1L);
+-            if(r == 0 || HP[r - 1] & lmb) X |= 1L;
+-            VP[r] = (HN[r] << 1L) | ~(D0[r] | X);
+-            if(r > 0 && (HN[r - 1] & lmb)) VP[r] |= 1L;
++            X = (HP[r] << 1LL);
++            if(r == 0 || HP[r - 1] & lmb) X |= 1LL;
++            VP[r] = (HN[r] << 1LL) | ~(D0[r] | X);
++            if(r > 0 && (HN[r - 1] & lmb)) VP[r] |= 1LL;
+             VN[r] = D0[r] & X;
+         }
+         if(HP[tmax] & top) ++D;
+@@ -91,9 +91,9 @@ unsigned int edit_distance_map_(char const *a, size_t const asize, char const *b
+     unsigned int tmax = (asize - 1) >> 6;
+     unsigned int tlen = asize - tmax * 64;
+     for(size_t i = 0; i < tmax; ++i) {
+-        for(size_t j = 0; j < 64; ++j) cmap[a[i * 64 + j]][i] |= (1L << j);
++        for(size_t j = 0; j < 64; ++j) cmap[a[i * 64 + j]][i] |= (1LL << j);
+     }
+-    for(size_t i = 0; i < tlen; ++i) cmap[a[tmax * 64 + i]][tmax] |= (1L << i);
++    for(size_t i = 0; i < tlen; ++i) cmap[a[tmax * 64 + i]][tmax] |= (1LL << i);
+     return edit_distance_bpv<cmap_v, typename cmap_v::mapped_type>(cmap, b, bsize, tmax, tlen);
+ }
+ 
+diff --git a/src/fusionresult.cpp b/src/fusionresult.cpp
+index 6223541..885798d 100644
+--- a/src/fusionresult.cpp
++++ b/src/fusionresult.cpp
+@@ -53,8 +53,8 @@ void FusionResult::calcFusionPoint() {
+ 
+     // if we can find an exact match with 0 gap, then use it
+     // else we use the mean one
+-    long leftTotal = 0;
+-    long rightTotal = 0;
++    int64_t leftTotal = 0;
++    int64_t rightTotal = 0;
+     for(int i=0; i<mMatches.size(); i++) {
+         Match* match = mMatches[i];
+         if(match->mGap == 0){
+@@ -68,9 +68,9 @@ void FusionResult::calcFusionPoint() {
+     }
+ 
+     mLeftGP.contig = mMatches[0]->mLeftGP.contig;
+-    mLeftGP.position = leftTotal/(long)mMatches.size();
++    mLeftGP.position = leftTotal/(int64_t)mMatches.size();
+     mRightGP.contig = mMatches[0]->mRightGP.contig;
+-    mRightGP.position = rightTotal/(long)mMatches.size();
++    mRightGP.position = rightTotal/(int64_t)mMatches.size();
+ 
+ }
+     
+diff --git a/src/htmlreporter.cpp b/src/htmlreporter.cpp
+index d52ed9b..0707505 100644
+--- a/src/htmlreporter.cpp
++++ b/src/htmlreporter.cpp
+@@ -98,7 +98,7 @@ void HtmlReporter::printFusion(int id, FusionResult& fusion){
+     mFile << "<td class='alignleft'><a title='"<< (fusion.mRightRefExt + "___" + fusion.mRightRef) << "'>" << fusion.mRightRef << "</a></td>";
+     mFile << "</tr>";
+     for(int m=0; m<matches.size(); m++){
+-        long rowid = id*100000 + m;
++        int64_t rowid = id*100000 + m;
+         mFile << "<tr onclick='toggle(" << rowid << ");'>";
+         mFile << "<td>";
+         mFile<<"<a title='"<<matches[m]->mRead->mName<<"'>";
+diff --git a/src/indexer.cpp b/src/indexer.cpp
+index 6642613..7c5928c 100644
+--- a/src/indexer.cpp
++++ b/src/indexer.cpp
+@@ -62,17 +62,17 @@ void Indexer::makeIndex() {
+ }
+ 
+ void Indexer::fillBloomFilter() {
+-    unordered_map<long, GenePos>::iterator iter;
++    unordered_map<int64_t, GenePos>::iterator iter;
+     for(iter = mKmerPos.begin(); iter!=mKmerPos.end(); iter++) {
+-        long kmer = iter->first;
+-        long pos = kmer>>3;
+-        long bit = kmer & 0x07;
++        int64_t kmer = iter->first;
++        int64_t pos = kmer>>3;
++        int64_t bit = kmer & 0x07;
+         mBloomFilter[pos] |= (0x1<<bit);
+     }
+ }
+ 
+ void Indexer::indexContig(int ctg, string seq, int start) {
+-    long kmer = -1;
++    int64_t kmer = -1;
+     for(int i=0; i<seq.length() - KMER; ++i) {
+         kmer = makeKmer(seq, i, kmer);
+         //cout << kmer << "\t" << seq.substr(i, KMER) << endl;
+@@ -115,19 +115,19 @@ void Indexer::indexContig(int ctg, string seq, int start) {
+ }
+ 
+ vector<SeqMatch> Indexer::mapRead(Read* r) {
+-    map<long, int> kmerStat;
++    map<int64_t, int> kmerStat;
+     kmerStat[0]=0;
+     string seq = r->mSeq.mStr;
+     const int step = 2;
+     int seqlen = seq.length();
+     // first pass, we only want to find if this seq can be partially aligned to the target
+-    long kmer = -1;
++    int64_t kmer = -1;
+     for(int i=0; i< seqlen - KMER + 1; i += step) {
+         kmer = makeKmer(seq, i, kmer, step);
+         if(kmer < 0)
+             continue;
+-        long pos = kmer>>3;
+-        long bit = kmer & 0x07;
++        int64_t pos = kmer>>3;
++        int64_t bit = kmer & 0x07;
+         if( (mBloomFilter[pos] & (0x1<<bit)) == 0) {
+             kmerStat[0]++;
+             continue;
+@@ -139,14 +139,14 @@ vector<SeqMatch> Indexer::mapRead(Read* r) {
+             continue;
+         } else if(gp.contig == DUPE_NORMAL_LEVEL) {
+             for(int g=0; g<mDupeList[gp.position].size();g++) {
+-                long gplong = gp2long(shift(mDupeList[gp.position][g], i));
++                int64_t gplong = gp2long(shift(mDupeList[gp.position][g], i));
+                 if(kmerStat.count(gplong)==0)
+                     kmerStat[gplong] = 1;
+                 else
+                     kmerStat[gplong] += 1;
+             }
+         } else { // not a dupe
+-            long gplong = gp2long(shift(gp, i));
++            int64_t gplong = gp2long(shift(gp, i));
+             if(kmerStat.count(gplong)==0)
+                 kmerStat[gplong] = 1;
+             else
+@@ -154,11 +154,11 @@ vector<SeqMatch> Indexer::mapRead(Read* r) {
+         }
+     }
+     // get 1st and 2nd hit
+-    long gp1 = 0;
++    int64_t gp1 = 0;
+     int count1 = 0;
+-    long gp2 = 0;
++    int64_t gp2 = 0;
+     int count2 = 0;
+-    map<long, int>::iterator iter;
++    map<int64_t, int>::iterator iter;
+     //TODO: handle small difference caused by INDEL
+     for(iter = kmerStat.begin(); iter!=kmerStat.end(); iter++){
+         if(iter->first != 0 && iter->second > count1){
+@@ -185,8 +185,8 @@ vector<SeqMatch> Indexer::mapRead(Read* r) {
+         kmer = makeKmer(seq, i, kmer);
+         if(kmer < 0)
+             continue;
+-        long pos = kmer>>3;
+-        long bit = kmer & 0x07;
++        int64_t pos = kmer>>3;
++        int64_t bit = kmer & 0x07;
+         if( (mBloomFilter[pos] & (0x1<<bit)) == 0)
+             continue;
+         GenePos gp = mKmerPos[kmer];
+@@ -196,7 +196,7 @@ vector<SeqMatch> Indexer::mapRead(Read* r) {
+             continue;
+         } else if(gp.contig == DUPE_NORMAL_LEVEL) {
+             for(int g=0; g<mDupeList[gp.position].size();g++) {
+-                long gplong = gp2long(shift(mDupeList[gp.position][g], i));
++                int64_t gplong = gp2long(shift(mDupeList[gp.position][g], i));
+                 if(abs(gplong - gp1) <= 1)
+                     makeMask(mask, MATCH_TOP, seqlen, i, KMER);
+                 else if(abs(gplong - gp2) <= 1)
+@@ -205,7 +205,7 @@ vector<SeqMatch> Indexer::mapRead(Read* r) {
+                     makeMask(mask, MATCH_NONE, seqlen, i, KMER);
+             }
+         } else {
+-            long gplong = gp2long(shift(gp, i));
++            int64_t gplong = gp2long(shift(gp, i));
+             if(abs(gplong - gp1) <= 1)
+                     makeMask(mask, MATCH_TOP, seqlen, i, KMER);
+             else if(abs(gplong - gp2) <= 1)
+@@ -352,9 +352,9 @@ bool Indexer::inRequiredDirection(vector<SeqMatch>& mapping) {
+     return false;
+ }
+ 
+-long Indexer::makeKmer(string & seq, int pos, long lastKmer, int step) {
++int64_t Indexer::makeKmer(string & seq, int pos, int64_t lastKmer, int step) {
+     // else calculate it completely
+-    long kmer = 0;
++    int64_t kmer = 0;
+     int start = 0;
+     // re-use several bits
+     if(lastKmer >= 0) {
+@@ -393,13 +393,13 @@ long Indexer::makeKmer(string & seq, int pos, long lastKmer, int step) {
+     return kmer;
+ }
+ 
+-long Indexer::gp2long(const GenePos& gp){
+-    long ret = gp.contig;
++int64_t Indexer::gp2long(const GenePos& gp){
++    int64_t ret = gp.contig;
+     int temp[2]={gp.position, 0};
+-    return (ret<<32) | *((long*)temp);
++    return (ret<<32) | *((int64_t*)temp);
+ }
+ 
+-GenePos Indexer::long2gp(const long val){
++GenePos Indexer::long2gp(const int64_t val){
+     GenePos gp;
+     gp.position = (val & 0x00000000FFFFFFFF);
+     gp.contig = val >> 32;
+@@ -425,9 +425,9 @@ bool Indexer::test() {
+         GenePos gp;
+         gp.contig = contigs[i];
+         gp.position = positions[i];
+-        long val = gp2long(gp);
++        int64_t val = gp2long(gp);
+         GenePos gp2 = long2gp(val);
+-        long val2 = gp2long(gp2);
++        int64_t val2 = gp2long(gp2);
+         cout << gp2.contig << ", " << gp2.position << endl;
+         if ((gp.contig == gp2.contig && gp.position == gp2.position && val==val2) == false)
+             return false;
+diff --git a/src/indexer.h b/src/indexer.h
+index 56cffe8..82e8c6b 100644
+--- a/src/indexer.h
++++ b/src/indexer.h
+@@ -43,13 +43,13 @@ public:
+     void printStat();
+     FastaReader* getRef();
+ 
+-    static inline long makeKmer(string & seq, int pos, long lastKmer, int step = 1);
+-    static inline long gp2long(const GenePos& gp);
++    static inline int64_t makeKmer(string & seq, int pos, int64_t lastKmer, int step = 1);
++    static inline int64_t gp2long(const GenePos& gp);
+     static inline GenePos shift(const GenePos& gp, int i);
+-    static inline GenePos long2gp(const long val);
++    static inline GenePos long2gp(const int64_t val);
+ 
+     // map the read onto the reference
+-    // return a map, with key is the first-base-mapped GenePos encoded in long, value is the count of this GenePos
++    // return a map, with key is the first-base-mapped GenePos encoded in int64_t, value is the count of this GenePos
+     // GenePos encoded with 0 means not mapped
+     vector<SeqMatch> mapRead(Read* r);
+     // check a fusion of two mapping mates is: forward at left
+@@ -64,7 +64,7 @@ private:
+     void fillBloomFilter();
+ 
+ public:
+-    unordered_map<long, GenePos> mKmerPos;
++    unordered_map<int64_t, GenePos> mKmerPos;
+     unsigned char* mBloomFilter;
+     vector<vector<GenePos>> mDupeList;
+     vector<string> mFusionSeq;
+diff --git a/src/main.cpp b/src/main.cpp
+index 6d08313..c86493d 100644
+--- a/src/main.cpp
++++ b/src/main.cpp
+@@ -74,7 +74,7 @@ int biochef_upstream_main(int argc, char* argv[]){
+ 
+     time_t t2 = time(NULL);
+     printf("\n# %s\n", command.c_str());
+-    printf("# genefuse v%s, time used: %ld seconds\n", FUSIONSCAN_VER, (t2-t1));
++    printf("# genefuse v%s, time used: %ld seconds\n", FUSIONSCAN_VER, (long)(t2-t1));
+ 
+     loginfo("done");
+     return 0;
+diff --git a/src/matcher.cpp b/src/matcher.cpp
+index d29ba49..0994db7 100644
+--- a/src/matcher.cpp
++++ b/src/matcher.cpp
+@@ -129,7 +129,7 @@ MatchResult* Matcher::match(Sequence& sequence) {
+ }
+ 
+ MatchResult* Matcher::mapToIndex(Sequence& sequence) {
+-    unordered_map<long, int> kmerStat;
++    unordered_map<int64_t, int> kmerStat;
+     kmerStat[0]=0;
+     string seq = sequence.mStr;
+     const int step = 1;
+@@ -164,7 +164,7 @@ MatchResult* Matcher::mapToIndex(Sequence& sequence) {
+         }
+ 
+         for(int g=0; g<mKmerPositions[kmer].size();g++) {
+-            long gplong = gp2long(shift(mKmerPositions[kmer][g], i));
++            int64_t gplong = gp2long(shift(mKmerPositions[kmer][g], i));
+             if(kmerStat.count(gplong)==0) {
+                 kmerStat[gplong] = 1;
+             }
+@@ -175,11 +175,11 @@ MatchResult* Matcher::mapToIndex(Sequence& sequence) {
+     }
+     // get top N
+     const int TOP = 5;
+-    long topgp[TOP] ={0};
++    int64_t topgp[TOP] ={0};
+     int topcount[TOP] = {0};
+-    unordered_map<long, int>::iterator iter;
++    unordered_map<int64_t, int>::iterator iter;
+     for(iter = kmerStat.begin(); iter!=kmerStat.end(); iter++){
+-        long gp = iter->first;
++        int64_t gp = iter->first;
+         int count = iter->second;
+         // no need to update the top N
+         if(gp == 0 || count <= topcount[TOP-1])
+@@ -213,7 +213,7 @@ MatchResult* Matcher::mapToIndex(Sequence& sequence) {
+                 continue;
+             if(!skipped[i] && mKmerPositions[kmer].size()<5) {
+                 for(int g=0; g<mKmerPositions[kmer].size();g++) {
+-                    long gplong = gp2long(shift(mKmerPositions[kmer][g], i));
++                    int64_t gplong = gp2long(shift(mKmerPositions[kmer][g], i));
+                     if(abs(gplong - topgp[t]) <= 2){
+                         for(int m=i;m<seqlen && m<i+KMER;m++)
+                             mask[m]=1;
+@@ -253,7 +253,7 @@ MatchResult* Matcher::mapToIndex(Sequence& sequence) {
+     return NULL;
+ }
+ 
+-bool Matcher::isConsistent(long thisgp, unsigned int kmer, int seqpos, int threshold) {
++bool Matcher::isConsistent(int64_t thisgp, unsigned int kmer, int seqpos, int threshold) {
+     vector<GenePos>& gps = mKmerPositions[kmer];
+     // align by seqpos
+     GenePos target = shift(long2gp(thisgp), -seqpos);
+@@ -340,12 +340,12 @@ unsigned int Matcher::makeKmer(string & seq, int pos, bool& valid) {
+     return kmer;
+ }
+ 
+-long Matcher::gp2long(const GenePos& gp){
+-    long ret = gp.contig;
++int64_t Matcher::gp2long(const GenePos& gp){
++    int64_t ret = gp.contig;
+     return (ret<<32) + gp.position;
+ }
+ 
+-GenePos Matcher::long2gp(const long val){
++GenePos Matcher::long2gp(const int64_t val){
+     GenePos gp;
+     gp.position = (val & 0xFFFFFFFF);
+     gp.contig = val >> 32;
+diff --git a/src/matcher.h b/src/matcher.h
+index 9f9c0a5..2c9b5f0 100644
+--- a/src/matcher.h
++++ b/src/matcher.h
+@@ -42,8 +42,8 @@ public:
+     MatchResult* mapToIndex(Sequence& seq);
+     MatchResult* match(Sequence& seq);
+ 
+-    static inline long gp2long(const GenePos& gp);
+-    static inline GenePos long2gp(const long val);
++    static inline int64_t gp2long(const GenePos& gp);
++    static inline GenePos long2gp(const int64_t val);
+     static inline unsigned int makeKmer(string & seq, int pos, bool& valid);
+     static inline int base2num(char c);
+     static inline GenePos shift(const GenePos& gp, int i);
+@@ -55,7 +55,7 @@ private:
+     void makeMask(unsigned char* mask, unsigned char flag, int seqlen, int start, int kmerSize);
+     void initBloomFilter(vector<Sequence>& seqs);
+     void initBloomFilterWithSeq(Sequence& seq);
+-    bool isConsistent(long thisgp, unsigned int kmer, int seqpos, int threshold);
++    bool isConsistent(int64_t thisgp, unsigned int kmer, int seqpos, int threshold);
+ 
+ public:
+     unordered_map<unsigned int, vector<GenePos>> mKmerPositions;
