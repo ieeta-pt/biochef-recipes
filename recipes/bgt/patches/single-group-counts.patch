@@ -1,0 +1,17 @@
+With a single sample group (-s once), bgt computes the group's AC1/AN1 only
+when there are several groups, and the table (-t) and frequency filters (-f)
+read them uninitialised. One group holds all the selected samples, so its
+counts are AC and AN.
+
+diff --git a/bgt.c b/bgt.c
+index 152e0e5..5478e18 100644
+--- a/bgt.c
++++ b/bgt.c
+@@ -754,6 +754,7 @@ void bgtm_cal_info(const bgtm_t *bm, bgt_info_t *ss)
+ 	}
+ 	ss->an = cnt[0] + cnt[1] + cnt[3];
+ 	ss->ac[0] = cnt[1], ss->ac[1] = cnt[3];
++	if (ss->n_groups == 1) ss->gan[0] = ss->an, ss->gac[0][0] = ss->ac[0], ss->gac[0][1] = ss->ac[1];
+ }
+ 
+ void bgtm_assign_by_bcf(kexpr_t *e, const bcf_hdr_t *h, const bcf1_t *b)
