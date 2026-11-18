@@ -38,14 +38,14 @@ jobs:
               FILES="$SELECTED_RECIPES"
             fi
           elif [[ "$BEFORE_SHA" =~ ^0+$ ]]; then
-            FILES=$(git diff-tree --root --no-commit-id --name-only -r "$GITHUB_SHA" -- 'recipes/**/biochef.yaml' | paste -sd " " -)
+            FILES=$(git diff-tree --root --no-commit-id --name-only --diff-filter=d -r "$GITHUB_SHA" -- 'recipes/**/biochef.yaml' | paste -sd " " -)
           else
-            FILES=$(git diff --name-only "$BEFORE_SHA" "$GITHUB_SHA" -- 'recipes/**/biochef.yaml' | paste -sd " " -)
+            FILES=$(git diff --name-only --diff-filter=d "$BEFORE_SHA" "$GITHUB_SHA" -- 'recipes/**/biochef.yaml' | paste -sd " " -)
           fi
 
           if [ -z "$FILES" ]; then
-            echo "No recipe changes detected"
-            exit 1
+            echo "No recipe to publish"
+            exit 0
           fi
 
           for file in $FILES; do
@@ -62,6 +62,7 @@ jobs:
 
   publish_recipes:
     needs: detect_changes
+    if: needs.detect_changes.outputs.biochef_files != ''
     permissions:
       actions: read
       contents: write
