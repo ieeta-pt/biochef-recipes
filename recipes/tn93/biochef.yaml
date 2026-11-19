@@ -27,9 +27,13 @@ build:
       outputDir: build
       emscriptenVersion: 4.0.18
       buildScript: build-wasm.sh
+  native:
+    outputDir: out
+    buildScript: build-native.sh
+    buildTools: [gcc]
 
 runtime:
-  modes: [wasm, remote]
+  modes: [wasm, native, remote]
 
 operations:
   - id: tn93.distance
