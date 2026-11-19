@@ -27,9 +27,13 @@ build:
       emscriptenVersion: 4.0.18
       outputDir: out
       buildScript: build-wasm.sh
+  native:
+    outputDir: out
+    buildScript: build-native.sh
+    buildTools: [gcc]
 
 runtime:
-  modes: [wasm]
+  modes: [wasm, native]
 
 operations:
   - id: aster.astral
