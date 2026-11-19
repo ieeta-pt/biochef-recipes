@@ -1,0 +1,13 @@
+diff --git a/CommandLines.cpp b/CommandLines.cpp
+index 256a35a..3b25dbe 100644
+--- a/CommandLines.cpp
++++ b/CommandLines.cpp
+@@ -266,7 +266,7 @@ void init_opt(hifiasm_opt_t* asm_opt)
+     asm_opt->mz_rewin = 1000;
+     asm_opt->ul_mz_rewin = 360;
+ 	asm_opt->mz_sample_dist = 500;
+-	asm_opt->bf_shift = 37;
++	asm_opt->bf_shift = 0;
+ 	asm_opt->max_kmer_cnt = 2000;
+ 	asm_opt->high_factor = 5.0;
+ 	asm_opt->max_ov_diff_ec = 0.04;
