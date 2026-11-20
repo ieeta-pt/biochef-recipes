@@ -4,7 +4,7 @@ id: app.biochef.grep
 name: Grep
 description: A tool for searching patterns in text files using regular expressions.
 
-version: 3.7-bc.1
+version: 3.12-bc.1
 homepage: https://www.gnu.org/software/grep/
 license:
   spdx: GPL-3.0-or-later
@@ -15,24 +15,26 @@ maintainers:
 
 source:
   repo: https://git.savannah.gnu.org/git/grep.git
-  tag: v3.7
-  version: "3.7"
-  commit: "df49b0c1dd95eccc1fba8174584bf6122e998e6d"
+  tag: v3.12
+  version: "3.12"
+  commit: "3f8c09ec197a2ced82855f9ecd2cbc83874379ab"
 
 status: verified
 
 build:
   wasm:
-    strategy: auto
-    biowasm:
-      package: grep
-  # native:
-  #   buildsystem: make
-  #   workDir: .
-  #   outputDir: .
+    strategy: emscripten
+    emscripten:
+      outputDir: out
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+  native:
+    buildScript: build-native.sh
+    buildTools: [make, gcc]
+    outputDir: bin
 
 runtime:
-  modes: [wasm]
+  modes: [wasm, native, remote]
 
 operations:
 
@@ -55,3 +57,43 @@ operations:
       - { name: fixed_strings, type: flag, flag: "-F" }
       - { name: word_regexp, type: flag, flag: "-w" }
       - { name: extended_regex, type: flag, flag: "-E" }
+      - { name: line_regexp, type: flag, flag: "-x" }
+      - { name: only_matching, type: flag, flag: "-o" }
+      - { name: max_count, type: integer, flag: "-m" }
+      - { name: after_context, type: integer, flag: "-A" }
+      - { name: before_context, type: integer, flag: "-B" }
+      - { name: context, type: integer, flag: "-C" }
+      - { name: byte_offset, type: flag, flag: "-b" }
+      - { name: initial_tab, type: flag, flag: "-T" }
+      - { name: binary_as_text, type: flag, flag: "-a" }
+      - { name: null_data, type: flag, flag: "-z" }
+
+  - id: grep.patterns.from.file
+    name: Grep Patterns From File
+    category: Text Processing
+    bin: grep
+    description: Search for lines matching any of the patterns in a second file, one per line
+    io:
+      inputs:
+        - { name: patterns, types: [TEXT, LIST], mode: file, flag: "-f" }
+        - { name: input, types: [TEXT, Multi-FASTA, FASTA, FASTQ, NUM, DNA, RNA, AminoAcids], mode: file }
+      outputs:
+        - { name: output, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: ignore_case, type: flag, flag: "-i" }
+      - { name: invert_match, type: flag, flag: "-v" }
+      - { name: line_number, type: flag, flag: "-n" }
+      - { name: count_only, type: flag, flag: "-c" }
+      - { name: fixed_strings, type: flag, flag: "-F" }
+      - { name: word_regexp, type: flag, flag: "-w" }
+      - { name: extended_regex, type: flag, flag: "-E" }
+      - { name: line_regexp, type: flag, flag: "-x" }
+      - { name: only_matching, type: flag, flag: "-o" }
+      - { name: max_count, type: integer, flag: "-m" }
+      - { name: after_context, type: integer, flag: "-A" }
+      - { name: before_context, type: integer, flag: "-B" }
+      - { name: context, type: integer, flag: "-C" }
+      - { name: byte_offset, type: flag, flag: "-b" }
+      - { name: initial_tab, type: flag, flag: "-T" }
+      - { name: binary_as_text, type: flag, flag: "-a" }
+      - { name: null_data, type: flag, flag: "-z" }
