@@ -4,7 +4,7 @@ id: app.biochef.sed
 name: sed
 description: GNU stream editor for filtering and transforming text.
 
-version: 4.8-bc.1
+version: 4.10-bc.1
 homepage: https://www.gnu.org/software/sed/
 license:
   spdx: GPL-3.0-or-later
@@ -15,20 +15,26 @@ maintainers:
 
 source:
   repo: https://git.savannah.gnu.org/git/sed.git
-  tag: "v4.8"
-  version: "4.8"
-  commit: "62059985637cfafd41d8a8a2a7a63566daf59405"
+  tag: "v4.10"
+  version: "4.10"
+  commit: "89b7a2224d4faa9d8baf76094b1232ad1477ef3e"
 
 status: experimental
 
 build:
   wasm:
-    strategy: biowasm
-    biowasm:
-      package: sed
+    strategy: emscripten
+    emscripten:
+      outputDir: out
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+  native:
+    buildScript: build-native.sh
+    buildTools: [make, gcc]
+    outputDir: bin
 
 runtime:
-  modes: [wasm, remote]
+  modes: [wasm, native, remote]
 
 operations:
   - id: sed.script
@@ -49,9 +55,32 @@ operations:
       - { name: unbuffered, type: flag, flag: -u }
       - { name: binary, type: flag, flag: -b }
       - { name: line_length, type: integer, flag: -l }
-      - { name: script_file, type: string, flag: -f }
       - { name: posix, type: flag, flag: --posix }
       - { name: sandbox, type: flag, flag: --sandbox }
       - { name: debug, type: flag, flag: --debug }
       - { name: follow_symlinks, type: flag, flag: --follow-symlinks }
       - { name: script, type: string, flag: -e, required: true }
+
+  - id: sed.from.file
+    name: From File (sed)
+    category: Text Processing
+    bin: sed
+    description: Apply a sed script loaded from a file (script connected as workflow input)
+    io:
+      inputs:
+        - { name: script, types: [TEXT], mode: file, flag: -f }
+        - { name: in, types: [TEXT, FASTA, FASTQ, Multi-FASTA, NUM, DNA, RNA, AminoAcids], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: regexp_extended, type: flag, flag: -E }
+      - { name: quiet, type: flag, flag: -n }
+      - { name: separate, type: flag, flag: -s }
+      - { name: null_data, type: flag, flag: -z }
+      - { name: unbuffered, type: flag, flag: -u }
+      - { name: binary, type: flag, flag: -b }
+      - { name: line_length, type: integer, flag: -l }
+      - { name: posix, type: flag, flag: --posix }
+      - { name: sandbox, type: flag, flag: --sandbox }
+      - { name: debug, type: flag, flag: --debug }
+      - { name: follow_symlinks, type: flag, flag: --follow-symlinks }
