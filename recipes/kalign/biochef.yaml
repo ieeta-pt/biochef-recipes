@@ -4,30 +4,36 @@ id: app.biochef.kalign
 name: kalign
 description: Fast multiple sequence alignment program for biological sequences (Kalign 3). Faster than ClustalO, MAFFT and MUSCLE on large inputs while staying competitive on accuracy.
 
-version: 3.3.1-bc.1
+version: 3.6.0-bc.1
 homepage: https://github.com/TimoLassmann/kalign
 license:
-  spdx: GPL-3.0-or-later
+  spdx: Apache-2.0
   files: [COPYING]
 maintainers:
   - name: Biochef
 
 source:
   repo: https://github.com/TimoLassmann/kalign
-  tag: "v3.3.1"
-  version: "3.3.1"
-  commit: "1d0bfe30d42c1d970f003c09cbf2b43ce9d3871e"
+  tag: "v3.6.0"
+  version: "3.6.0"
+  commit: "edd04a358dd8ea1e9379dd74053768d28c7b8613"
 
 status: experimental
 
 build:
   wasm:
-    strategy: biowasm
-    biowasm:
-      package: kalign
+    strategy: emscripten
+    emscripten:
+      outputDir: out
+      emscriptenVersion: 4.0.18
+      buildScript: build-wasm.sh
+  native:
+    buildScript: build-native.sh
+    buildTools: [gcc]
+    outputDir: bin
 
 runtime:
-  modes: [wasm, remote]
+  modes: [wasm, native, remote]
 
 operations:
   - id: kalign.align
@@ -41,14 +47,46 @@ operations:
       outputs:
         - { name: out, types: [Multi-FASTA, FASTA], mode: file, flag: -o }
     parameters:
-      - { name: format, type: string, flag: -f }
+      - { name: mode, type: string, flag: --mode }
       - { name: type, type: string, flag: --type }
-      - { name: chaos, type: integer, flag: -c }
-      - { name: rename, type: flag, flag: -r }
-      - { name: reformat, type: flag, flag: --reformat }
       - { name: gap_open, type: float, flag: --gpo }
       - { name: gap_ext, type: float, flag: --gpe }
       - { name: terminal_gap_ext, type: float, flag: --tgpe }
-      - { name: matrix, type: string, flag: --matrix }
-      - { name: bisect, type: flag, flag: --bisect }
+      - { name: confidence_threshold, type: float, flag: --confidence-threshold }
+      - { name: confidence_style, type: string, flag: --confidence-style }
+      - { name: nthreads, type: integer, flag: -n, default: 1 }
+
+  - id: kalign.align.confidence
+    name: Align with Column Confidence (Kalign)
+    category: Genomic Operations
+    bin: kalign
+    description: Ensemble alignment that also writes the confidence of each alignment column, one value per line. Mode accurate gives it for any sequences, recall for protein and default for DNA.
+    io:
+      inputs:
+        - { name: in, types: [Multi-FASTA], mode: file, flag: -i }
+      outputs:
+        - { name: out, types: [Multi-FASTA, FASTA], mode: file, flag: -o }
+        - { name: confidence, types: [TEXT], mode: file, flag: --confidence-output }
+    parameters:
+      - { name: mode, type: string, flag: --mode, default: accurate, required: true }
+      - { name: type, type: string, flag: --type }
+      - { name: gap_open, type: float, flag: --gpo }
+      - { name: gap_ext, type: float, flag: --gpe }
+      - { name: terminal_gap_ext, type: float, flag: --tgpe }
+      - { name: confidence_threshold, type: float, flag: --confidence-threshold }
+      - { name: confidence_style, type: string, flag: --confidence-style }
+      - { name: nthreads, type: integer, flag: -n, default: 1 }
+
+  - id: kalign.add
+    name: Add Sequences to Alignment (Kalign)
+    category: Genomic Operations
+    bin: kalign
+    description: Add new sequences to an existing alignment without realigning it.
+    io:
+      inputs:
+        - { name: existing, types: [Multi-FASTA], mode: file, flag: --existing }
+        - { name: add, types: [Multi-FASTA, FASTA], mode: file, flag: --add }
+      outputs:
+        - { name: out, types: [Multi-FASTA, FASTA], mode: file, flag: -o }
+    parameters:
       - { name: nthreads, type: integer, flag: -n, default: 1 }
