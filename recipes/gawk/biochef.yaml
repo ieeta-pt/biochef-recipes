@@ -54,7 +54,7 @@ operations:
       - { name: traditional, type: flag, flag: -c }
       - { name: posix, type: flag, flag: -P }
       - { name: bignum, type: flag, flag: -M }
-      - { name: sandbox, type: flag, flag: -S }
+      - { name: sandbox, type: flag, flag: -S, required: true, hidden: true }
       - { name: characters_as_bytes, type: flag, flag: -b }
       - { name: non_decimal_data, type: flag, flag: -n }
       - { name: re_interval, type: flag, flag: -r }
@@ -82,7 +82,7 @@ operations:
       - { name: traditional, type: flag, flag: -c }
       - { name: posix, type: flag, flag: -P }
       - { name: bignum, type: flag, flag: -M }
-      - { name: sandbox, type: flag, flag: -S }
+      - { name: sandbox, type: flag, flag: -S, required: true, hidden: true }
       - { name: characters_as_bytes, type: flag, flag: -b }
       - { name: non_decimal_data, type: flag, flag: -n }
       - { name: re_interval, type: flag, flag: -r }
@@ -109,7 +109,7 @@ operations:
       - { name: traditional, type: flag, flag: -c }
       - { name: posix, type: flag, flag: -P }
       - { name: bignum, type: flag, flag: -M }
-      - { name: sandbox, type: flag, flag: -S }
+      - { name: sandbox, type: flag, flag: -S, required: true, hidden: true }
       - { name: characters_as_bytes, type: flag, flag: -b }
       - { name: non_decimal_data, type: flag, flag: -n }
       - { name: re_interval, type: flag, flag: -r }
