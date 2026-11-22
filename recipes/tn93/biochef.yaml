@@ -53,7 +53,30 @@ operations:
       - { name: gap_fraction, type: float, flag: -g }
       - { name: min_overlap, type: integer, flag: -l }
       - { name: format, type: string, flag: -f }
-      - { name: second_fasta, type: string, flag: -s }
+      - { name: bootstrap, type: flag, flag: -b }
+      - { name: report_zero, type: flag, flag: "-0" }
+      - { name: hamming_skip, type: flag, flag: -H }
+      - { name: count_only, type: flag, flag: -c }
+      - { name: quiet, type: flag, flag: -q }
+
+  - id: tn93.distance.between
+    name: Distance Between Two Files (TN93)
+    category: Sequence Analysis
+    bin: tn93
+    description: TN93 distances between the sequences of two aligned FASTA files.
+    io:
+      inputs:
+        - { name: second, types: [FASTA, Multi-FASTA], mode: file, flag: -s }
+        - { name: in, types: [FASTA, Multi-FASTA], mode: file }
+      outputs:
+        - { name: out, types: [TEXT], mode: file, flag: -o }
+    parameters:
+      - { name: threshold, type: float, flag: -t, default: 0.015 }
+      - { name: min_threshold, type: float, flag: -w }
+      - { name: ambig_handling, type: string, flag: -a }
+      - { name: gap_fraction, type: float, flag: -g }
+      - { name: min_overlap, type: integer, flag: -l }
+      - { name: format, type: string, flag: -f }
       - { name: bootstrap, type: flag, flag: -b }
       - { name: report_zero, type: flag, flag: "-0" }
       - { name: hamming_skip, type: flag, flag: -H }
