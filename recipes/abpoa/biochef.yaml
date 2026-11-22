@@ -58,8 +58,3 @@ operations:
       - { name: zdrop, type: integer, flag: -z }
       - { name: end_bonus, type: integer, flag: -e }
       - { name: result, type: integer, flag: -r }
-      - { name: out_msa, type: flag, flag: --out-msa }
-      - { name: out_cons, type: flag, flag: --out-cons }
-      - { name: out_pog, type: string, flag: -g }
-      - { name: incremental, type: flag, flag: -i }
-      - { name: scoring_matrix, type: string, flag: -t }
