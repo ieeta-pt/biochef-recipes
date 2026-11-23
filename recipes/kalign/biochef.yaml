@@ -23,12 +23,14 @@ status: experimental
 build:
   wasm:
     strategy: emscripten
+    patches: [patches/add-unaligned-alignment-length.patch]
     emscripten:
       outputDir: out
       emscriptenVersion: 4.0.18
       buildScript: build-wasm.sh
   native:
     buildScript: build-native.sh
+    patches: [patches/add-unaligned-alignment-length.patch]
     buildTools: [gcc]
     outputDir: bin
 

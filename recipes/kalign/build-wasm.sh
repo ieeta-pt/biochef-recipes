@@ -1,31 +1,7 @@
 set -eo pipefail
 
-# An existing alignment with no gap characters and sequences of one length
-# is read as ALN_STATUS_UNKNOWN, which has the same value (3) as
-# ALN_STATUS_FINAL, so --add took it as finalised with alnlen 0 and read
-# before the start of a buffer. Its sequences are kept as they are, so its
-# length is that of its sequences, as msa_cmp.c already assumes; sequences
-# of different lengths are an error.
-python3 - <<'BIOCHEF_PY'
-import sys
-
-path = "lib/src/aln_add.c"
-src = open(path).read()
-old = "        alnlen = existing->alnlen;\n"
-if src.count(old) != 1:
-    sys.exit(f"patch: expected one alnlen assignment in {path}, found {src.count(old)}")
-new = old + """        if(alnlen == 0 && numseq_existing > 0){
-                alnlen = existing->sequences[0]->len;
-                for(i = 1; i < numseq_existing; i++){
-                        if(existing->sequences[i]->len != alnlen){
-                                ERROR_MSG("Existing MSA must be aligned");
-                        }
-                }
-                existing->alnlen = alnlen;
-        }
-"""
-open(path, "w").write(src.replace(old, new))
-BIOCHEF_PY
+# patches/add-unaligned-alignment-length.patch fixes --add for an existing
+# alignment with no gap characters.
 
 # kalign's sources and defines as its CMake build lists them, without CMake.
 # No pthreads: without USE_THREADPOOL kalign runs serially. NOHAVE_AVX2: wasm
