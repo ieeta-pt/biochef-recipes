@@ -6,28 +6,10 @@ set -eo pipefail
 # do nothing. gitver.txt as vcxproj_make.py writes it.
 cd src
 
-# muscle takes int64 and uint64 from long, which is 64 bits on 64-bit Linux
-# and macOS but 32 bits in wasm32, where its random number generator shifts
-# a uint64 by 32 and its 64-bit FNV hash constant is cut to 32 bits. They are
-# long long here, and MemBytesToStr, which took a size_t as a uint64, gets an
-# overload for the unsigned long that size_t is in wasm32. GetPhysMemBytes exists only for Windows, Linux and macOS;
-# muscle uses it for a memory warning and its banner, and returns 0.0 itself
-# when it cannot read it, as it does here.
-python3 - <<'BIOCHEF_PY'
-import sys
-
-path = "myutils.h"
-src = open(path).read()
-old = "typedef long int64;\ntypedef unsigned long uint64;\n"
-if src.count(old) != 1:
-    sys.exit(f"patch: int64 typedefs not found as expected in {path}")
-src = src.replace(old, "typedef long long int64;\ntypedef unsigned long long uint64;\n")
-over = "static inline const char *MemBytesToStr(uint64 Bytes) { return MemBytesToStr((double) Bytes); }\n"
-if src.count(over) != 1:
-    sys.exit(f"patch: MemBytesToStr(uint64) not found as expected in {path}")
-src = src.replace(over, over + over.replace("uint64 Bytes", "unsigned long Bytes"))
-open(path, "w").write(src)
-BIOCHEF_PY
+# GetPhysMemBytes exists only for Windows, Linux and macOS; muscle uses it
+# for a memory warning and its banner, and returns 0.0 itself when it cannot
+# read it, as it does here. The int64 typedefs are changed by
+# patches/wasm-int64-long-long.patch.
 cat > physmem_wasm.cpp <<'EOF_CPP'
 double GetPhysMemBytes()
 	{

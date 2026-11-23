@@ -23,6 +23,7 @@ status: experimental
 build:
   wasm:
     strategy: emscripten
+    patches: [patches/wasm-int64-long-long.patch]
     emscripten:
       outputDir: out
       emscriptenVersion: 4.0.18
