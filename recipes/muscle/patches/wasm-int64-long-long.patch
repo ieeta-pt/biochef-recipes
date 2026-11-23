@@ -1,0 +1,29 @@
+muscle takes int64 and uint64 from long, which is 64 bits on 64-bit Linux
+and macOS but 32 bits in wasm32, where its random number generator shifts a
+uint64 by 32 and its 64-bit FNV hash constant is cut to 32 bits. They are
+long long here, and MemBytesToStr, which took a size_t as a uint64, gets an
+overload for the unsigned long that size_t is in wasm32.
+
+diff --git a/src/myutils.h b/src/myutils.h
+index 1ddac06..85bd588 100644
+--- a/src/myutils.h
++++ b/src/myutils.h
+@@ -84,8 +84,8 @@ typedef unsigned uint;
+ typedef __int64 int64;
+ typedef unsigned __int64 uint64;
+ #elif defined(__GNUC__)
+-typedef long int64;
+-typedef unsigned long uint64;
++typedef long long int64;
++typedef unsigned long long uint64;
+ #else	
+ #error	"int64 typedefs"
+ #endif
+@@ -323,6 +323,7 @@ void PrintBanner(FILE *f);
+ 
+ const char *MemBytesToStr(double Bytes);
+ static inline const char *MemBytesToStr(uint64 Bytes) { return MemBytesToStr((double) Bytes); }
++static inline const char *MemBytesToStr(unsigned long Bytes) { return MemBytesToStr((double) Bytes); }
+ double StrToMemBytes(const string &s);
+ double StrToFloat(const char *s, bool StarIsDblMax = false);
+ double StrToFloat(const string &s, bool StarIsDblMax = false);
