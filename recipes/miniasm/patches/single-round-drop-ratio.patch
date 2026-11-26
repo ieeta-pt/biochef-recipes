@@ -1,0 +1,17 @@
+With -n 1, the drop ratio of the one round divided by 0 rounds, and the
+NaN it gave was converted to an integer. One round now takes the lower
+ratio, as the first of several does.
+
+diff --git a/main.c b/main.c
+index bcfc833..477e232 100644
+--- a/main.c
++++ b/main.c
+@@ -165,7 +165,7 @@ int biochef_upstream_main(int argc, char *argv[])
+ 		if (stage >= 9) {
+ 			fprintf(stderr, "[M::%s] ===> Step 4.3: cutting short overlaps (%d rounds in total) <===\n", __func__, opt.n_rounds + 1);
+ 			for (i = 0; i <= opt.n_rounds; ++i) {
+-				float r = opt.min_ovlp_drop_ratio + (opt.max_ovlp_drop_ratio - opt.min_ovlp_drop_ratio) / opt.n_rounds * i;
++				float r = opt.n_rounds > 0? opt.min_ovlp_drop_ratio + (opt.max_ovlp_drop_ratio - opt.min_ovlp_drop_ratio) / opt.n_rounds * i : opt.min_ovlp_drop_ratio;
+ 				if (asg_arc_del_short(sg, r) != 0) {
+ 					asg_cut_tip(sg, opt.max_ext);
+ 					asg_pop_bubble(sg, opt.bub_dist);
