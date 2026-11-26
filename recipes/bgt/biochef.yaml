@@ -1,0 +1,351 @@
+apiVersion: v1
+
+id: app.biochef.bgt
+name: BGT
+description: "BGT stores the genotypes of a cohort in a compact database that is queried by region, by sample and by allele frequency, with expressions over sample metadata and variant annotations. Import a VCF or BCF into a BGT database, optionally give its samples metadata, then query it with View. A database travels between operations as one BGT file, a tar of the four files bgt writes (bgt.bcf, bgt.bcf.csi, bgt.pbf and bgt.spl)."
+
+version: 1.0-bc.2
+homepage: https://github.com/lh3/bgt
+license:
+  spdx: MIT
+  files: [LICENSE.txt]
+maintainers:
+  - name: Biochef
+
+source:
+  repo: https://github.com/lh3/bgt
+  commit: "93ce0c92281d313d991fb8ef567062406676aa32"
+  version: "1.0"
+
+status: experimental
+
+build:
+  wasm:
+    strategy: emscripten
+    emscripten:
+      emscriptenVersion: 4.0.18
+      outputDir: out
+      buildScript: build-wasm.sh
+    patches: [patches/database-tar-entry-point.patch, patches/single-group-counts.patch]
+
+runtime:
+  modes: [wasm, remote]
+
+operations:
+  - id: bgt.import
+    name: Import VCF to BGT
+    category: Format Conversion
+    bin: bgt
+    description: "Convert a multi-sample VCF, plain or bgzipped, into a BGT database. Multi-allelic sites become one record per allele, and only the genotypes (GT) are kept. A VCF without ##contig header lines needs the contig names and lengths, given as a FASTA index (FAI) in contigs."
+    io:
+      inputs:
+        - { name: in, types: [VCF, VCF_GZ], mode: file }
+        - { name: contigs, types: [FAI], mode: file, flag: -t }
+      outputs:
+        - { name: database, types: [BGT], mode: file, flag: --bc-out }
+    parameters:
+      - { name: subcommand, type: string, default: import, required: true, hidden: true }
+      - { name: vcf_input, type: flag, flag: -S, required: true, hidden: true }
+      - { name: keep_filtered, type: flag, flag: -F }
+      - { name: compression_level, type: integer, flag: -l }
+
+  - id: bgt.import.bcf
+    name: Import BCF to BGT
+    category: Format Conversion
+    bin: bgt
+    description: "Convert a multi-sample BCF into a BGT database. Multi-allelic sites become one record per allele, and only the genotypes (GT) are kept."
+    io:
+      inputs:
+        - { name: in, types: [BCF], mode: file }
+      outputs:
+        - { name: database, types: [BGT], mode: file, flag: --bc-out }
+    parameters:
+      - { name: subcommand, type: string, default: import, required: true, hidden: true }
+      - { name: keep_filtered, type: flag, flag: -F }
+      - { name: compression_level, type: integer, flag: -l }
+
+  - id: bgt.samples
+    name: Set Sample Metadata (bgt)
+    category: Format Conversion
+    bin: bgt
+    description: "Give the samples of a BGT database metadata that View can select them by, for example -s 'population==\"CEU\"'. The metadata is an FMF file: one line per sample, its name, then tab-separated fields key:type:value, with type Z for text, f for a number and i for an integer. Every name must be a sample of the database; samples the file leaves out keep no metadata. This replaces any metadata the database had."
+    io:
+      inputs:
+        - { name: database, types: [BGT], mode: file, flag: --bc-bgt }
+        - { name: metadata, types: [FMF], mode: file, flag: --bc-meta }
+      outputs:
+        - { name: out, types: [BGT], mode: file, flag: --bc-out }
+    parameters:
+      - { name: subcommand, type: string, default: samples, required: true, hidden: true }
+
+  - id: bgt.samples.list
+    name: List Samples (bgt)
+    category: Genomic Operations
+    bin: bgt
+    description: "The samples of a BGT database with their metadata, as FMF. With a condition, only the samples it holds for, for example 'population==\"CEU\"&&height>1.7'."
+    io:
+      inputs:
+        - { name: database, types: [BGT], mode: file, flag: --bc-bgt }
+      outputs:
+        - { name: out, types: [FMF, SAMPLE_LIST], mode: stdout }
+    parameters:
+      - { name: subcommand, type: string, default: fmf, required: true, hidden: true }
+      - { name: condition, type: string }
+
+  - id: bgt.samples.names
+    name: List Sample Names (bgt)
+    category: Genomic Operations
+    bin: bgt
+    description: "The names of the samples of a BGT database, one per line. With a condition on their metadata, only the samples it holds for."
+    io:
+      inputs:
+        - { name: database, types: [BGT], mode: file, flag: --bc-bgt }
+      outputs:
+        - { name: out, types: [SAMPLE_LIST], mode: stdout }
+    parameters:
+      - { name: subcommand, type: string, default: fmf, required: true, hidden: true }
+      - { name: names_only, type: flag, flag: -n, required: true, hidden: true }
+      - { name: condition, type: string }
+
+  - id: bgt.alleles
+    name: List Alleles (bgt)
+    category: Genomic Operations
+    bin: bgt
+    description: "The alleles of a BGT database, one per line as chr:position:reference length:allele, the form View takes in alleles."
+    io:
+      inputs:
+        - { name: database, types: [BGT], mode: file, flag: --bc-bgt }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: subcommand, type: string, default: getalt, required: true, hidden: true }
+
+  - id: bgt.view
+    name: View / Query BGT
+    category: Genomic Operations
+    bin: bgt
+    description: "Query a BGT database and write the selected sites and genotypes as VCF. Select samples with sample_group (,S1,S2 for a list, or an expression over sample metadata such as 'population==\"CEU\"'); each further group adds its AC#/AN# to INFO. Select sites by region, by the regions of a BED (or outside them with exclude_regions), by alleles (,chr:pos:len:allele,... or an expression over the variant annotations of an FMF in annotations) and by frequency, such as 'AC/AN>0.05' or 'AC1>10&&AC2==0'. A second database in merge_with is read alongside the first, with the samples of both."
+    io:
+      inputs:
+        - { name: database, types: [BGT], mode: file, flag: --bc-bgt }
+        - { name: merge_with, types: [BGT], mode: file, flag: --bc-bgt }
+        - { name: regions, types: [BED], mode: file, flag: -B }
+        - { name: annotations, types: [FMF], mode: file, flag: -d }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: subcommand, type: string, default: view, required: true, hidden: true }
+      - { name: sample_group, type: string, flag: -s }
+      - { name: sample_group_2, type: string, flag: -s }
+      - { name: sample_group_3, type: string, flag: -s }
+      - { name: region, type: string, flag: -r }
+      - { name: exclude_regions, type: flag, flag: -e }
+      - { name: alleles, type: string, flag: -a }
+      - { name: annotations_in_memory, type: flag, flag: -M }
+      - { name: frequency_filter, type: string, flag: -f }
+      - { name: first_record, type: integer, flag: -i }
+      - { name: max_records, type: integer, flag: -n }
+      - { name: no_genotypes, type: flag, flag: -G }
+      - { name: write_counts, type: flag, flag: -C }
+
+  - id: bgt.view.bcf
+    name: View / Query BGT as BCF
+    category: Genomic Operations
+    bin: bgt
+    description: "View / Query BGT, writing BCF instead of VCF."
+    io:
+      inputs:
+        - { name: database, types: [BGT], mode: file, flag: --bc-bgt }
+        - { name: merge_with, types: [BGT], mode: file, flag: --bc-bgt }
+        - { name: regions, types: [BED], mode: file, flag: -B }
+        - { name: annotations, types: [FMF], mode: file, flag: -d }
+      outputs:
+        - { name: out, types: [BCF], mode: file, flag: --bc-to }
+    parameters:
+      - { name: subcommand, type: string, default: view, required: true, hidden: true }
+      - { name: bcf_output, type: flag, flag: -b, required: true, hidden: true }
+      - { name: compression_level, type: integer, flag: -l }
+      - { name: sample_group, type: string, flag: -s }
+      - { name: sample_group_2, type: string, flag: -s }
+      - { name: sample_group_3, type: string, flag: -s }
+      - { name: region, type: string, flag: -r }
+      - { name: exclude_regions, type: flag, flag: -e }
+      - { name: alleles, type: string, flag: -a }
+      - { name: annotations_in_memory, type: flag, flag: -M }
+      - { name: frequency_filter, type: string, flag: -f }
+      - { name: first_record, type: integer, flag: -i }
+      - { name: max_records, type: integer, flag: -n }
+      - { name: no_genotypes, type: flag, flag: -G }
+      - { name: write_counts, type: flag, flag: -C }
+
+  - id: bgt.view.table
+    name: Query BGT as a Table
+    category: Genomic Operations
+    bin: bgt
+    description: "The sites View / Query BGT selects, as a tab-separated table of the fields given: AC, AN, AC#, AN# (# for a sample group), CHROM, POS, END, REF and ALT."
+    io:
+      inputs:
+        - { name: database, types: [BGT], mode: file, flag: --bc-bgt }
+        - { name: merge_with, types: [BGT], mode: file, flag: --bc-bgt }
+        - { name: regions, types: [BED], mode: file, flag: -B }
+        - { name: annotations, types: [FMF], mode: file, flag: -d }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: subcommand, type: string, default: view, required: true, hidden: true }
+      - { name: fields, type: string, flag: -t, default: "CHROM,POS,REF,ALT,AC,AN", required: true }
+      - { name: sample_group, type: string, flag: -s }
+      - { name: sample_group_2, type: string, flag: -s }
+      - { name: sample_group_3, type: string, flag: -s }
+      - { name: region, type: string, flag: -r }
+      - { name: exclude_regions, type: flag, flag: -e }
+      - { name: alleles, type: string, flag: -a }
+      - { name: annotations_in_memory, type: flag, flag: -M }
+      - { name: frequency_filter, type: string, flag: -f }
+      - { name: first_record, type: integer, flag: -i }
+      - { name: max_records, type: integer, flag: -n }
+
+  - id: bgt.view.carriers
+    name: Find Allele Carriers (bgt)
+    category: Genomic Operations
+    bin: bgt
+    description: "The samples carrying a set of alleles, given as ,chr:pos:len:allele,... or as an expression over the variant annotations of an FMF in annotations."
+    io:
+      inputs:
+        - { name: database, types: [BGT], mode: file, flag: --bc-bgt }
+        - { name: merge_with, types: [BGT], mode: file, flag: --bc-bgt }
+        - { name: regions, types: [BED], mode: file, flag: -B }
+        - { name: annotations, types: [FMF], mode: file, flag: -d }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: subcommand, type: string, default: view, required: true, hidden: true }
+      - { name: carriers, type: flag, flag: -S, required: true, hidden: true }
+      - { name: alleles, type: string, flag: -a, required: true }
+      - { name: sample_group, type: string, flag: -s }
+      - { name: sample_group_2, type: string, flag: -s }
+      - { name: sample_group_3, type: string, flag: -s }
+      - { name: region, type: string, flag: -r }
+      - { name: exclude_regions, type: flag, flag: -e }
+      - { name: annotations_in_memory, type: flag, flag: -M }
+      - { name: frequency_filter, type: string, flag: -f }
+
+  - id: bgt.view.haplotypes
+    name: Count Haplotypes (bgt)
+    category: Genomic Operations
+    bin: bgt
+    description: "The haplotypes over a set of alleles and how many times each occurs, in each sample group. Give the alleles as ,chr:pos:len:allele,... or as an expression over the variant annotations of an FMF in annotations, such as 'gene==\"SIRT3\"'."
+    io:
+      inputs:
+        - { name: database, types: [BGT], mode: file, flag: --bc-bgt }
+        - { name: merge_with, types: [BGT], mode: file, flag: --bc-bgt }
+        - { name: regions, types: [BED], mode: file, flag: -B }
+        - { name: annotations, types: [FMF], mode: file, flag: -d }
+      outputs:
+        - { name: out, types: [TEXT], mode: stdout }
+    parameters:
+      - { name: subcommand, type: string, default: view, required: true, hidden: true }
+      - { name: haplotypes, type: flag, flag: -H, required: true, hidden: true }
+      - { name: alleles, type: string, flag: -a, required: true }
+      - { name: sample_group, type: string, flag: -s }
+      - { name: sample_group_2, type: string, flag: -s }
+      - { name: sample_group_3, type: string, flag: -s }
+      - { name: region, type: string, flag: -r }
+      - { name: exclude_regions, type: flag, flag: -e }
+      - { name: annotations_in_memory, type: flag, flag: -M }
+      - { name: frequency_filter, type: string, flag: -f }
+
+  - id: bgt.atomize
+    name: Atomize VCF
+    category: Format Conversion
+    bin: bgt
+    description: "Split the multi-allelic records of a VCF, plain or bgzipped, into one record per allele, each with a single ALT. A VCF without ##contig header lines needs the contig names and lengths, given as a FASTA index (FAI) in contigs."
+    io:
+      inputs:
+        - { name: in, types: [VCF, VCF_GZ], mode: file }
+        - { name: contigs, types: [FAI], mode: file, flag: -t }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: subcommand, type: string, default: atomize, required: true, hidden: true }
+      - { name: vcf_input, type: flag, flag: -S, required: true, hidden: true }
+      - { name: symbolic_other_alleles, type: flag, flag: -M }
+      - { name: other_alleles_as_reference, type: flag, flag: "-0" }
+
+  - id: bgt.atomize.bcf
+    name: Atomize BCF
+    category: Format Conversion
+    bin: bgt
+    description: "Split multi-allelic BCF records into one record per allele, each with a single ALT, written as VCF."
+    io:
+      inputs:
+        - { name: in, types: [BCF], mode: file }
+      outputs:
+        - { name: out, types: [VCF], mode: stdout }
+    parameters:
+      - { name: subcommand, type: string, default: atomize, required: true, hidden: true }
+      - { name: symbolic_other_alleles, type: flag, flag: -M }
+      - { name: other_alleles_as_reference, type: flag, flag: "-0" }
+
+  - id: bgt.atomize.tobcf
+    name: Atomize VCF to BCF
+    category: Format Conversion
+    bin: bgt
+    description: "Atomize VCF, writing BCF."
+    io:
+      inputs:
+        - { name: in, types: [VCF, VCF_GZ], mode: file }
+        - { name: contigs, types: [FAI], mode: file, flag: -t }
+      outputs:
+        - { name: out, types: [BCF], mode: file, flag: --bc-to }
+    parameters:
+      - { name: subcommand, type: string, default: atomize, required: true, hidden: true }
+      - { name: vcf_input, type: flag, flag: -S, required: true, hidden: true }
+      - { name: bcf_output, type: flag, flag: -b, required: true, hidden: true }
+      - { name: symbolic_other_alleles, type: flag, flag: -M }
+      - { name: other_alleles_as_reference, type: flag, flag: "-0" }
+
+  - id: bgt.atomize.bcf.tobcf
+    name: Atomize BCF to BCF
+    category: Format Conversion
+    bin: bgt
+    description: "Atomize BCF, writing BCF."
+    io:
+      inputs:
+        - { name: in, types: [BCF], mode: file }
+      outputs:
+        - { name: out, types: [BCF], mode: file, flag: --bc-to }
+    parameters:
+      - { name: subcommand, type: string, default: atomize, required: true, hidden: true }
+      - { name: bcf_output, type: flag, flag: -b, required: true, hidden: true }
+      - { name: symbolic_other_alleles, type: flag, flag: -M }
+      - { name: other_alleles_as_reference, type: flag, flag: "-0" }
+
+  - id: bgt.fmf
+    name: Filter FMF (bgt)
+    category: Format Conversion
+    bin: bgt
+    description: "The lines of an FMF file (Flat Metadata Format: a name, then tab-separated fields key:type:value) for which a condition holds, such as 'height>1.7&&region==\"WestEurasia\"'. Without a condition, every line."
+    io:
+      inputs:
+        - { name: in, types: [FMF], mode: file, flag: --bc-fmf }
+      outputs:
+        - { name: out, types: [FMF, LIST], mode: stdout }
+    parameters:
+      - { name: subcommand, type: string, default: fmf, required: true, hidden: true }
+      - { name: condition, type: string }
+
+  - id: bgt.fmf.names
+    name: List FMF Names (bgt)
+    category: Format Conversion
+    bin: bgt
+    description: "The names (first column) of the lines of an FMF file for which a condition holds; without a condition, of every line."
+    io:
+      inputs:
+        - { name: in, types: [FMF], mode: file, flag: --bc-fmf }
+      outputs:
+        - { name: out, types: [LIST], mode: stdout }
+    parameters:
+      - { name: subcommand, type: string, default: fmf, required: true, hidden: true }
+      - { name: names_only, type: flag, flag: -n, required: true, hidden: true }
+      - { name: condition, type: string }
