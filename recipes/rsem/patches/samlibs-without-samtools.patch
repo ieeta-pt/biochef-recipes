@@ -1,0 +1,16 @@
+Break the SAMLIBS -> samtools dependency.
+RSEM only needs libhts.a, not the samtools wrapper, which does not link in WASM.
+
+diff --git a/Makefile b/Makefile
+index 20f707a..4e725c4 100644
+--- a/Makefile
++++ b/Makefile
+@@ -56,7 +56,7 @@ all : $(PROGRAMS) $(SAMTOOLS)/samtools
+ $(SAMTOOLS)/samtools :
+ 	cd $(SAMTOOLS) && $(CONFIGURE) --without-curses && $(MAKE) -f $(SAMTOOLS_MAKEFILE) samtools
+ 
+-$(SAMLIBS) : $(SAMTOOLS)/samtools
++$(SAMLIBS) :
+ 
+ 
+ # Compile objects
