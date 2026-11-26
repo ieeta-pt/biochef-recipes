@@ -1,0 +1,16 @@
+The vendored htslib is built without its configure step, which is not
+committed in the bundled htslib. This minimal config.h disables every
+optional compression library: only zlib is available in WASM via the
+emscripten port, so bz2/lzma/libdeflate are stripped. The native build uses
+the same config.h, so both builds read the same files.
+
+diff --git a/htslib/config.h b/htslib/config.h
+new file mode 100644
+index 0000000..f3cd5eb
+--- /dev/null
++++ b/htslib/config.h
+@@ -0,0 +1,4 @@
++#ifndef _XOPEN_SOURCE
++#define _XOPEN_SOURCE 600
++#endif
++#define HAVE_DRAND48 1
