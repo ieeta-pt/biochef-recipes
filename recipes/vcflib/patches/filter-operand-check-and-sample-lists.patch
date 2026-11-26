@@ -1,0 +1,106 @@
+vcffilter evaluates its expression on a stack and pops operands without
+checking they are there, so an operator missing one, as in "QUAL >",
+read past the stack and crashed. Stop with an error instead.
+
+vcfkeepsamples and vcfremovesamples take one sample per argument, and the
+recipe passes the list as one, so "s1,s2" was one name. A name the VCF
+does not have gave an empty column (keep) or was ignored (remove). Split
+each argument on commas and blanks, and refuse names the VCF does not have.
+
+diff --git a/src/Variant.cpp b/src/Variant.cpp
+index c329267..3a6a153 100644
+--- a/src/Variant.cpp
++++ b/src/Variant.cpp
+@@ -1422,6 +1422,10 @@ VariantFieldType Variant::infoType(const string& key) {
+         }
+         // apply operators to the first n elements on the stack and push the result back onto the stack
+         else if (isOperator(token)) {
++            if (results.size() < (token.type == RuleToken::NOT_OPERATOR ? 1u : 2u)) {
++                cerr << "error: the operator " << token.value << " is missing an operand" << endl;
++                exit(1);
++            }
+             //cerr << "is operator: " << token.value << endl;
+             RuleToken a, b, r;
+             // is it a not-operator?
+diff --git a/src/vcfkeepsamples.cpp b/src/vcfkeepsamples.cpp
+index 61c27e4..b7afa2a 100644
+--- a/src/vcfkeepsamples.cpp
++++ b/src/vcfkeepsamples.cpp
+@@ -8,6 +8,8 @@
+ */
+ 
+ #include "Variant.h"
++#include <algorithm>
++#include <sstream>
+ 
+ #include <string>
+ #include <iostream>
+@@ -28,7 +30,11 @@ int main(int argc, char** argv) {
+ 
+     vector<string> samplesToKeep;
+     for (int i = 2; i < argc; ++i) {
+-        samplesToKeep.push_back(argv[i]);
++        string list = argv[i];
++        replace(list.begin(), list.end(), ',', ' ');
++        stringstream names(list);
++        string name;
++        while (names >> name) samplesToKeep.push_back(name);
+     }
+ 
+     VariantCallFile variantFile;
+@@ -42,6 +48,16 @@ int main(int argc, char** argv) {
+         return 1;
+     }
+ 
++    for (const string& name : samplesToKeep) {
++        if (find(variantFile.sampleNames.begin(), variantFile.sampleNames.end(), name) == variantFile.sampleNames.end()) {
++            cerr << "error: sample " << name << " is not in the VCF" << endl;
++            return 1;
++        }
++    }
++    if (samplesToKeep.empty()) {
++        cerr << "error: no sample to keep" << endl;
++        return 1;
++    }
+     Variant var(variantFile);
+ 
+     // update sample list in header
+diff --git a/src/vcfremovesamples.cpp b/src/vcfremovesamples.cpp
+index 0fca76b..d0a836e 100644
+--- a/src/vcfremovesamples.cpp
++++ b/src/vcfremovesamples.cpp
+@@ -8,6 +8,8 @@
+ */
+ 
+ #include "Variant.h"
++#include <algorithm>
++#include <sstream>
+ 
+ #include <string>
+ #include <iostream>
+@@ -50,7 +52,11 @@ int main(int argc, char** argv) {
+ 
+     vector<string> samplesToRemove;
+     for (int i = 2; i < argc; ++i) {
+-        samplesToRemove.push_back(argv[i]);
++        string list = argv[i];
++        replace(list.begin(), list.end(), ',', ' ');
++        stringstream names(list);
++        string name;
++        while (names >> name) samplesToRemove.push_back(name);
+     }
+ 
+     VariantCallFile variantFile;
+@@ -64,6 +70,12 @@ int main(int argc, char** argv) {
+         return 1;
+     }
+ 
++    for (const string& name : samplesToRemove) {
++        if (find(variantFile.sampleNames.begin(), variantFile.sampleNames.end(), name) == variantFile.sampleNames.end()) {
++            cerr << "error: sample " << name << " is not in the VCF" << endl;
++            return 1;
++        }
++    }
+     Variant var(variantFile);
+ 
+     vector<string> samplesToKeep = removeElems(samplesToRemove, variantFile.sampleNames);
