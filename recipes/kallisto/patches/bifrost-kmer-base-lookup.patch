@@ -1,0 +1,35 @@
+Bifrost wrote a k-mer's bases as 0x1 << ((v - 1) << 1), which for A shifts
+-1 and then by a negative amount, undefined, and gives A only because both
+runtimes mask the shift. It now looks the base up.
+
+diff --git a/ext/bifrost/src/Kmer.cpp b/ext/bifrost/src/Kmer.cpp
+index e2e192c..016b130 100755
+--- a/ext/bifrost/src/Kmer.cpp
++++ b/ext/bifrost/src/Kmer.cpp
+@@ -262,7 +262,7 @@ void Kmer::toString(char *s) const {
+         for (; i < end; ++i, ++s, tmp <<= 2){
+ 
+             const char v = tmp >> 62;
+-            *s = 0x40 | (v + 1) | (0x1 << ((v - 1) << 1));
++            *s = "ACGT"[v & 0x3];
+         }
+     }
+ 
+@@ -275,7 +275,7 @@ char Kmer::getChar(const size_t offset) const {
+ 
+     const char v = (longs[offset >> 5] >> (62 - ((offset & 0x1F) << 1))) & 0x3;
+ 
+-    return (0x40 | (v + 1) | (0x1 << ((v - 1) << 1)));
++    return "ACGT"[v & 0x3];
+ }
+ 
+ bool Kmer::setChar(const size_t offset, const char b)  {
+@@ -539,7 +539,7 @@ void Minimizer::toString(char *s) const {
+ 
+             const char v = tmp >> 62;
+ 
+-            *s = 0x40 | (v + 1) | (0x1 << ((v - 1) << 1));
++            *s = "ACGT"[v & 0x3];
+         }
+     }
+ 

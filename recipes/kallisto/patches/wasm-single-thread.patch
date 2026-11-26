@@ -1,0 +1,709 @@
+wasm has no threads here, and kallisto and Bifrost start workers even for
+one thread. A thread now runs its function when it is made: they only
+start workers and wait for them, so the workers run one after the other.
+
+diff --git a/biochef_thread.h b/biochef_thread.h
+new file mode 100644
+index 0000000..9ecd09a
+--- /dev/null
++++ b/biochef_thread.h
+@@ -0,0 +1,27 @@
++// wasm has no threads here: a thread runs its function when it is made,
++// and joining it does nothing. kallisto and Bifrost only start workers and
++// wait for them, so the workers run one after the other.
++#ifndef BIOCHEF_THREAD_H
++#define BIOCHEF_THREAD_H
++#ifdef __cplusplus
++#include <functional>
++#include <type_traits>
++#include <utility>
++namespace biochef {
++class thread {
++public:
++	thread() noexcept {}
++	template <class F, class... A, class = typename std::enable_if<!std::is_same<typename std::decay<F>::type, thread>::value>::type>
++	explicit thread(F &&f, A &&...a) { std::bind(std::forward<F>(f), std::forward<A>(a)...)(); }
++	thread(thread &&) noexcept {}
++	thread &operator=(thread &&) noexcept { return *this; }
++	thread(const thread &) = delete;
++	thread &operator=(const thread &) = delete;
++	void join() {}
++	void detach() {}
++	bool joinable() const noexcept { return false; }
++	static unsigned int hardware_concurrency() noexcept { return 1; }
++};
++}
++#endif
++#endif
+diff --git a/ext/bifrost/src/Bifrost.cpp b/ext/bifrost/src/Bifrost.cpp
+index 9b703ad..22b1eee 100755
+--- a/ext/bifrost/src/Bifrost.cpp
++++ b/ext/bifrost/src/Bifrost.cpp
+@@ -245,7 +245,7 @@ bool check_ProgramOptions(CCDBG_Build_opt& opt) {
+ 
+     bool ret = true;
+ 
+-    size_t max_threads = std::thread::hardware_concurrency();
++    size_t max_threads = biochef::thread::hardware_concurrency();
+ 
+     auto check_files = [&](vector<string>& v_files) {
+ 
+diff --git a/ext/bifrost/src/BooPHF.h b/ext/bifrost/src/BooPHF.h
+index b5baa73..735f089 100644
+--- a/ext/bifrost/src/BooPHF.h
++++ b/ext/bifrost/src/BooPHF.h
+@@ -1138,17 +1138,17 @@ we need this 2-functors scheme because HashFunctors won't work with unordered_ma
+                     so, casting to (void*) because of that; and we remember the type in the template */
+ 
+                 for(int ii=0;ii<_num_thread;ii++)
+-                    pthread_create (&tab_threads[ii], NULL,  thread_processLevel<elem_t, Hasher_t, Range, fastmode_it_type>, &t_arg); //&t_arg[ii]
++                    thread_processLevel<elem_t, Hasher_t, Range, fastmode_it_type>(&t_arg); //&t_arg[ii]
+             }
+             else
+             {
+                 for(int ii=0;ii<_num_thread;ii++)
+-                    pthread_create (&tab_threads[ii], NULL,  thread_processLevel<elem_t, Hasher_t, Range, decltype(input_range.begin())>, &t_arg); //&t_arg[ii]
++                    thread_processLevel<elem_t, Hasher_t, Range, decltype(input_range.begin())>(&t_arg); //&t_arg[ii]
+             }
+             //joining
+             for(int ii=0;ii<_num_thread;ii++)
+             {
+-                pthread_join(tab_threads[ii], NULL);
++                ;
+ 
+             }
+             //printf("\ngoing to level %i  : %llu elems  %.2f %%  expected : %.2f %% \n",i,_cptLevel,100.0* _cptLevel/(float)_nelem,100.0* pow(_proba_collision,i) );
+diff --git a/ext/bifrost/src/ColoredCDBG.tcc b/ext/bifrost/src/ColoredCDBG.tcc
+index db811c8..cc75928 100755
+--- a/ext/bifrost/src/ColoredCDBG.tcc
++++ b/ext/bifrost/src/ColoredCDBG.tcc
+@@ -512,7 +512,7 @@ bool ColoredCDBG<U>::loadColors(const std::string& input_graph_fn, const std::st
+     {
+         const size_t chunk = 10000;
+ 
+-        std::vector<std::thread> workers; // need to keep track of threads so we can join them
++        std::vector<biochef::thread> workers; // need to keep track of threads so we can join them
+ 
+         std::mutex mutex_file;
+ 
+@@ -729,7 +729,7 @@ void ColoredCDBG<U>::initUnitigColors(const CCDBG_Build_opt& opt, const size_t m
+ 
+     const size_t chunk = 1000;
+ 
+-    std::vector<std::thread> workers; // need to keep track of threads so we can join them
++    std::vector<biochef::thread> workers; // need to keep track of threads so we can join them
+ 
+     typename ColoredCDBG<U>::iterator g_a = this->begin();
+     typename ColoredCDBG<U>::iterator g_b = this->end();
+@@ -782,7 +782,7 @@ void ColoredCDBG<U>::resizeDataUC(const size_t sz, const size_t nb_threads, cons
+ 
+     const size_t chunk = 100;
+ 
+-    std::vector<std::thread> workers; // need to keep track of threads so we can join them
++    std::vector<biochef::thread> workers; // need to keep track of threads so we can join them
+ 
+     typename ColoredCDBG<U>::iterator g_a = this->begin();
+     typename ColoredCDBG<U>::iterator g_b = this->end();
+@@ -848,7 +848,7 @@ inline void ColoredCDBG<void>::resizeDataUC(const size_t sz, const size_t nb_thr
+ 
+     const size_t chunk = 100;
+ 
+-    std::vector<std::thread> workers; // need to keep track of threads so we can join them
++    std::vector<biochef::thread> workers; // need to keep track of threads so we can join them
+ 
+     typename ColoredCDBG<void>::iterator g_a = this->begin();
+     typename ColoredCDBG<void>::iterator g_b = this->end();
+@@ -1055,7 +1055,7 @@ void ColoredCDBG<U>::buildUnitigColors(const size_t nb_threads){
+     {
+         bool stop = false;
+ 
+-        std::vector<std::thread> workers; // need to keep track of threads so we can join them
++        std::vector<biochef::thread> workers; // need to keep track of threads so we can join them
+ 
+         std::mutex mutex_file;
+ 
+@@ -1168,7 +1168,7 @@ void ColoredCDBG<U>::buildUnitigColors(const size_t nb_threads){
+ 
+     std::mutex mutex_u_map;
+ 
+-    std::vector<std::thread> workers;
++    std::vector<biochef::thread> workers;
+ 
+     auto add_hash_function = [&](typename ColoredCDBG<U>::iterator it_a, typename ColoredCDBG<U>::iterator it_b) {
+ 
+@@ -1389,9 +1389,9 @@ bool ColoredCDBG<U>::search(const std::vector<std::string>& query_filenames, con
+         return false;
+     }
+ 
+-    if (nb_threads > std::thread::hardware_concurrency()){
++    if (nb_threads > biochef::thread::hardware_concurrency()){
+ 
+-        std::cerr << "ColoredCDBG::search(): Number of threads cannot be greater than or equal to " << std::thread::hardware_concurrency() << "." << std::endl;
++        std::cerr << "ColoredCDBG::search(): Number of threads cannot be greater than or equal to " << biochef::thread::hardware_concurrency() << "." << std::endl;
+         return false;
+     }
+ 
+@@ -1711,7 +1711,7 @@ bool ColoredCDBG<U>::search(const std::vector<std::string>& query_filenames, con
+ 
+         bool stop = false;
+ 
+-        std::vector<std::thread> workers; // need to keep track of threads so we can join them
++        std::vector<biochef::thread> workers; // need to keep track of threads so we can join them
+ 
+         std::atomic<size_t> nb_queries_found;
+ 
+diff --git a/ext/bifrost/src/CompactedDBG.tcc b/ext/bifrost/src/CompactedDBG.tcc
+index 90f9442..91469cd 100755
+--- a/ext/bifrost/src/CompactedDBG.tcc
++++ b/ext/bifrost/src/CompactedDBG.tcc
+@@ -112,7 +112,7 @@ CompactedDBG<U, G>& CompactedDBG<U, G>::toDataGraph(CompactedDBG<void, void>&& o
+     if ((nb_threads == 1) || (v_unitigs.size() < 1024)) moveUnitigs(0, v_unitigs.size());
+     else {
+ 
+-        std::vector<std::thread> workers;
++        std::vector<biochef::thread> workers;
+ 
+         const size_t slice = (v_unitigs.size() / nb_threads) + 1;
+ 
+@@ -242,7 +242,7 @@ void CompactedDBG<U, G>::clear(){
+ /*template<typename U, typename G>
+ bool CompactedDBG<U, G>::build(CDBG_Build_opt& opt){
+ 
+-    size_t max_threads = std::thread::hardware_concurrency();
++    size_t max_threads = biochef::thread::hardware_concurrency();
+ 
+     bool construct_finished = true;
+ 
+@@ -484,7 +484,7 @@ bool CompactedDBG<U, G>::build(CDBG_Build_opt& opt){
+ template<typename U, typename G>
+ bool CompactedDBG<U, G>::build(CDBG_Build_opt& opt){
+ 
+-    size_t max_threads = std::thread::hardware_concurrency();
++    size_t max_threads = biochef::thread::hardware_concurrency();
+ 
+     bool construct_finished = true;
+ 
+@@ -2252,7 +2252,7 @@ bool CompactedDBG<U, G>::annotateSplitUnitigs(const CompactedDBG<U, G>& o, const
+             const size_t chunk = 100;
+             const size_t nb_locks = nb_threads * 1024;
+ 
+-            std::vector<std::thread> workers; // need to keep track of threads so we can join them
++            std::vector<biochef::thread> workers; // need to keep track of threads so we can join them
+ 
+             typename CompactedDBG<U, G>::const_iterator g_a(o.begin());
+             typename CompactedDBG<U, G>::const_iterator g_b(o.end());
+@@ -2356,7 +2356,7 @@ bool CompactedDBG<U, G>::mergeData(const CompactedDBG<U, G>& o, const size_t nb_
+ 
+         const size_t chunk = 100;
+ 
+-        std::vector<std::thread> workers; // need to keep track of threads so we can join them
++        std::vector<biochef::thread> workers; // need to keep track of threads so we can join them
+ 
+         typename CompactedDBG<U, G>::const_iterator g_a = o.begin();
+         typename CompactedDBG<U, G>::const_iterator g_b = o.end();
+@@ -2458,7 +2458,7 @@ bool CompactedDBG<U, G>::mergeData(CompactedDBG<U, G>&& o, const size_t nb_threa
+ 
+         const size_t chunk = 100;
+ 
+-        std::vector<std::thread> workers; // need to keep track of threads so we can join them
++        std::vector<biochef::thread> workers; // need to keep track of threads so we can join them
+ 
+         typename CompactedDBG<U, G>::iterator g_a = o.begin();
+         typename CompactedDBG<U, G>::iterator g_b = o.end();
+@@ -2718,7 +2718,7 @@ template<typename U, typename G>
+     {
+         bool stop = false;
+ 
+-        std::vector<std::thread> workers; // need to keep track of threads so we can join them
++        std::vector<biochef::thread> workers; // need to keep track of threads so we can join them
+ 
+         std::mutex mutex_file;
+         std::mutex mutex_bitmap;
+@@ -2926,7 +2926,7 @@ vector< std::pair<size_t, bool>> CompactedDBG<U, G>::getPath(const CDBG_Build_op
+ 
+         size_t ticket_id = 0;
+ 
+-        std::vector<std::thread> workers; // need to keep track of threads so we can join them
++        std::vector<biochef::thread> workers; // need to keep track of threads so we can join them
+         std::vector< std::pair<size_t, std::vector< std::pair<size_t, bool>>>> v_path;
+ 
+         std::mutex mutex_file;
+@@ -3233,7 +3233,7 @@ bool CompactedDBG<U, G>::construct(const CDBG_Build_opt& opt, BlockedBloomFilter
+     {
+         bool stop = false;
+ 
+-        std::vector<std::thread> workers; // need to keep track of threads so we can join them
++        std::vector<biochef::thread> workers; // need to keep track of threads so we can join them
+ 
+         std::mutex mutex_file;
+ 
+@@ -3692,7 +3692,7 @@ bool CompactedDBG<U, G>::construct(const CDBG_Build_opt& opt, BlockedBloomFilter
+ 
+         FileParser fp(filename_in);
+ 
+-        std::vector<std::thread> workers; // need to keep track of threads so we can join them
++        std::vector<biochef::thread> workers; // need to keep track of threads so we can join them
+ 
+         std::mutex mutex_file;
+ 
+@@ -3746,7 +3746,7 @@ bool CompactedDBG<U, G>::construct(const CDBG_Build_opt& opt, BlockedBloomFilter
+ 
+         FileParser fp(filename_in);
+ 
+-        std::vector<std::thread> workers; // need to keep track of threads so we can join them
++        std::vector<biochef::thread> workers; // need to keep track of threads so we can join them
+ 
+         std::mutex mutex_file;
+ 
+@@ -6825,7 +6825,7 @@ void CompactedDBG<U, G>::createJoinHT(std::vector<Kmer>* v_joins, KmerHashTable<
+             {
+                 typename h_kmers_ccov_t::const_iterator it = h_kmers_ccov.begin(), it_end = h_kmers_ccov.end();
+ 
+-                std::vector<std::thread> workers; // need to keep track of threads so we can join them
++                std::vector<biochef::thread> workers; // need to keep track of threads so we can join them
+ 
+                 std::mutex mutex_it;
+ 
+@@ -6865,7 +6865,7 @@ void CompactedDBG<U, G>::createJoinHT(std::vector<Kmer>* v_joins, KmerHashTable<
+ 
+                 size_t it_km = 0, it_km_end = km_unitigs.size();
+ 
+-                std::vector<std::thread> workers; // need to keep track of threads so we can join them
++                std::vector<biochef::thread> workers; // need to keep track of threads so we can join them
+ 
+                 std::mutex mutex_it_km;
+ 
+@@ -6902,7 +6902,7 @@ void CompactedDBG<U, G>::createJoinHT(std::vector<Kmer>* v_joins, KmerHashTable<
+                 auto it_unitig = v_unitigs.begin();
+                 auto it_unitig_end = v_unitigs.end();
+ 
+-                std::vector<std::thread> workers; // need to keep track of threads so we can join them
++                std::vector<biochef::thread> workers; // need to keep track of threads so we can join them
+ 
+                 std::mutex mutex_it_unitig;
+ 
+@@ -7145,7 +7145,7 @@ void CompactedDBG<U, G>::createJoinHT(std::vector<Kmer>* v_joins, KmerHashTable<
+             {
+                 typename h_kmers_ccov_t::const_iterator it = h_kmers_ccov.begin(), it_end = h_kmers_ccov.end();
+ 
+-                std::vector<std::thread> workers; // need to keep track of threads so we can join them
++                std::vector<biochef::thread> workers; // need to keep track of threads so we can join them
+ 
+                 std::mutex mutex_it;
+ 
+@@ -7185,7 +7185,7 @@ void CompactedDBG<U, G>::createJoinHT(std::vector<Kmer>* v_joins, KmerHashTable<
+ 
+                 size_t it_km = 0, it_km_end = km_unitigs.size();
+ 
+-                std::vector<std::thread> workers; // need to keep track of threads so we can join them
++                std::vector<biochef::thread> workers; // need to keep track of threads so we can join them
+ 
+                 std::mutex mutex_it_km;
+ 
+@@ -7222,7 +7222,7 @@ void CompactedDBG<U, G>::createJoinHT(std::vector<Kmer>* v_joins, KmerHashTable<
+                 auto it_unitig = v_unitigs.begin();
+                 auto it_unitig_end = v_unitigs.end();
+ 
+-                std::vector<std::thread> workers; // need to keep track of threads so we can join them
++                std::vector<biochef::thread> workers; // need to keep track of threads so we can join them
+ 
+                 std::mutex mutex_it_unitig;
+ 
+diff --git a/ext/bifrost/src/DataStorage.tcc b/ext/bifrost/src/DataStorage.tcc
+index 0b9bd87..3a20a6a 100755
+--- a/ext/bifrost/src/DataStorage.tcc
++++ b/ext/bifrost/src/DataStorage.tcc
+@@ -961,7 +961,7 @@ bool DataStorage<U>::read(const std::string& color_fn, const size_t nb_threads,
+ 
+             std::mutex m_colors_in_pos;
+ 
+-            std::vector<std::thread> workers; // need to keep track of threads so we can join them
++            std::vector<biochef::thread> workers; // need to keep track of threads so we can join them
+ 
+             std::atomic<size_t> i;
+ 
+@@ -1253,7 +1253,7 @@ inline bool DataStorage<void>::read(const std::string& color_fn, const size_t nb
+ 
+             std::mutex m_colors_in_pos;
+ 
+-            std::vector<std::thread> workers; // need to keep track of threads so we can join them
++            std::vector<biochef::thread> workers; // need to keep track of threads so we can join them
+ 
+             std::atomic<size_t> i;
+ 
+@@ -1646,7 +1646,7 @@ size_t DataStorage<U>::getUnitigColorsSize(const size_t nb_threads) const {
+             sz_in_bytes += cpt;
+         };
+ 
+-        std::vector<std::thread> workers;
++        std::vector<biochef::thread> workers;
+ 
+         const size_t load_per_thread = nb_cs / nb_threads;
+ 
+diff --git a/ext/bifrost/src/IO.tcc b/ext/bifrost/src/IO.tcc
+index 6dcf977..155251e 100755
+--- a/ext/bifrost/src/IO.tcc
++++ b/ext/bifrost/src/IO.tcc
+@@ -16,9 +16,9 @@ bool CompactedDBG<U, G>::write(const std::string& output_fn, const size_t nb_thr
+         return false;
+     }
+ 
+-    if (nb_threads > std::thread::hardware_concurrency()){
++    if (nb_threads > biochef::thread::hardware_concurrency()){
+ 
+-        std::cerr << "CompactedDBG::write(): Number of threads cannot exceed " << std::thread::hardware_concurrency() << "threads" << std::endl;
++        std::cerr << "CompactedDBG::write(): Number of threads cannot exceed " << biochef::thread::hardware_concurrency() << "threads" << std::endl;
+         return false;
+     }
+ 
+@@ -698,7 +698,7 @@ bool CompactedDBG<U, G>::writeGFA(const std::string& fn, const size_t nb_threads
+             std::atomic<size_t> label(1);
+ 
+             std::vector<std::vector<std::pair<std::pair<size_t, bool>, std::pair<size_t, bool>>>> v_out(nb_threads);
+-            std::vector<std::thread> workers; // need to keep track of threads so we can join them
++            std::vector<biochef::thread> workers; // need to keep track of threads so we can join them
+ 
+             std::mutex mutex_file;
+ 
+@@ -746,7 +746,7 @@ bool CompactedDBG<U, G>::writeGFA(const std::string& fn, const size_t nb_threads
+             std::atomic<size_t> label(v_unitigs_sz + 1);
+ 
+             std::vector<std::vector<std::pair<std::pair<size_t, bool>, std::pair<size_t, bool>>>> v_out(nb_threads);
+-            std::vector<std::thread> workers; // need to keep track of threads so we can join them
++            std::vector<biochef::thread> workers; // need to keep track of threads so we can join them
+ 
+             std::mutex mutex_file;
+ 
+@@ -792,7 +792,7 @@ bool CompactedDBG<U, G>::writeGFA(const std::string& fn, const size_t nb_threads
+             KmerHashTable<size_t>::iterator it = idmap.begin(), it_end = idmap.end();
+ 
+             std::vector<std::vector<std::pair<std::pair<size_t, bool>, std::pair<size_t, bool>>>> v_out(nb_threads);
+-            std::vector<std::thread> workers; // need to keep track of threads so we can join them
++            std::vector<biochef::thread> workers; // need to keep track of threads so we can join them
+ 
+             std::mutex mutex_file, mutex_it;
+ 
+@@ -1455,7 +1455,7 @@ bool CompactedDBG<U, G>::readBinaryIndex(std::istream& in, const uint64_t checks
+ 
+                 const auto bmp_unitigs_size = v_bmp_unitigs[i].size();
+                 unitig_pos_ids.reserve(n_elems_buffer > bmp_unitigs_size ? bmp_unitigs_size : n_elems_buffer);
+-                std::vector<std::thread> workers;
++                std::vector<biochef::thread> workers;
+                 size_t n = 0;
+                 for (const auto pos_bmp : v_bmp_unitigs[i]) {
+ 
+@@ -2024,7 +2024,7 @@ bool CompactedDBG<U, G>::writeBinaryIndex(std::ostream& out, const uint64_t chec
+             }
+             else {
+ 
+-                std::vector<std::thread> workers; // need to keep track of threads so we can join them
++                std::vector<biochef::thread> workers; // need to keep track of threads so we can join them
+ 
+                 std::mutex mutex_minz_idx;
+ 
+@@ -2264,7 +2264,7 @@ void CompactedDBG<U, G>::makeGraphFromGFA(const std::string& fn, const size_t nb
+ 
+         SpinLock lck_unitig, lck_kmer;
+ 
+-        std::vector<std::thread> workers; // need to keep track of threads so we can join them
++        std::vector<biochef::thread> workers; // need to keep track of threads so we can join them
+ 
+         std::mutex mutex_file;
+ 
+@@ -2338,7 +2338,7 @@ void CompactedDBG<U, G>::makeGraphFromFASTA(const std::string& fn, const size_t
+ 
+         SpinLock lck_unitig, lck_kmer;
+ 
+-        std::vector<std::thread> workers; // need to keep track of threads so we can join them
++        std::vector<biochef::thread> workers; // need to keep track of threads so we can join them
+ 
+         std::mutex mutex_file;
+ 
+diff --git a/ext/bifrost/src/KmerCovIndex.tcc b/ext/bifrost/src/KmerCovIndex.tcc
+index e643269..ccbf095 100755
+--- a/ext/bifrost/src/KmerCovIndex.tcc
++++ b/ext/bifrost/src/KmerCovIndex.tcc
+@@ -95,7 +95,7 @@ KmerCovIndex<T>& KmerCovIndex<T>::toData(KmerCovIndex<void>&& o, const size_t nb
+     if ((nb_threads == 1) || (v_blocks.size() < nb_threads)) copyBlock(0, v_blocks.size());
+     else {
+ 
+-        std::vector<std::thread> workers;
++        std::vector<biochef::thread> workers;
+ 
+         const size_t slice = (v_blocks.size() / nb_threads) + 1;
+ 
+diff --git a/ext/bifrost/src/KmerStream.hpp b/ext/bifrost/src/KmerStream.hpp
+index f46b483..df35070 100755
+--- a/ext/bifrost/src/KmerStream.hpp
++++ b/ext/bifrost/src/KmerStream.hpp
+@@ -1580,7 +1580,7 @@ class KmerStream {
+         KmerStream(const KmerStream_Build_opt& opt) :   k(opt.k), g(opt.g), q(opt.q), q_base(opt.q_base), e(opt.e),
+                                                         nb_threads(opt.threads), chunksize(opt.chunksize), invalid(false), verbose(opt.verbose) {
+ 
+-            const size_t max_threads = std::thread::hardware_concurrency();
++            const size_t max_threads = biochef::thread::hardware_concurrency();
+ 
+             if (nb_threads <= 0){
+ 
+@@ -1783,7 +1783,7 @@ class KmerStream {
+             };
+ 
+             {
+-                std::vector<std::thread> workers; // need to keep track of threads so we can join them
++                std::vector<biochef::thread> workers; // need to keep track of threads so we can join them
+ 
+                 bool stop = false;
+ 
+@@ -1925,7 +1925,7 @@ class KmerStream {
+             };
+ 
+             {
+-                std::vector<std::thread> workers; // need to keep track of threads so we can join them
++                std::vector<biochef::thread> workers; // need to keep track of threads so we can join them
+ 
+                 std::mutex mutex_file;
+ 
+diff --git a/ext/bifrost/src/Search.tcc b/ext/bifrost/src/Search.tcc
+index 10e3799..6254ad3 100755
+--- a/ext/bifrost/src/Search.tcc
++++ b/ext/bifrost/src/Search.tcc
+@@ -1054,9 +1054,9 @@ bool CompactedDBG<U, G>::search(const std::vector<std::string>& query_filenames,
+         return false;
+     }
+ 
+-    if (nb_threads > std::thread::hardware_concurrency()){
++    if (nb_threads > biochef::thread::hardware_concurrency()){
+ 
+-        std::cerr << "CompactedDBG::search(): Number of threads cannot be greater than or equal to " << std::thread::hardware_concurrency() << "." << std::endl;
++        std::cerr << "CompactedDBG::search(): Number of threads cannot be greater than or equal to " << biochef::thread::hardware_concurrency() << "." << std::endl;
+         return false;
+     }
+ 
+@@ -1174,7 +1174,7 @@ bool CompactedDBG<U, G>::search(const std::vector<std::string>& query_filenames,
+         {
+             bool stop = false;
+ 
+-            std::vector<std::thread> workers; // need to keep track of threads so we can join them
++            std::vector<biochef::thread> workers; // need to keep track of threads so we can join them
+ 
+             std::mutex mutex_files_in, mutex_file_out;
+ 
+diff --git a/ext/bifrost/src/rw_spin_lock.h b/ext/bifrost/src/rw_spin_lock.h
+index ef390f8..854172c 100755
+--- a/ext/bifrost/src/rw_spin_lock.h
++++ b/ext/bifrost/src/rw_spin_lock.h
+@@ -221,7 +221,7 @@ class SpinLockRW_MCS {
+                                                     load_lock_pool(0), mask_it(rndup(nb_readers + 1) - 1),
+                                                     padding1{0}, padding2{0}, padding3{0}, padding4{0} {
+ 
+-            if (nb_readers <= std::thread::hardware_concurrency()){
++            if (nb_readers <= biochef::thread::hardware_concurrency()){
+ 
+                 lock_pool = new Lock[mask_it + 1];
+                 lock_pool[0].is_locked = false;
+@@ -345,11 +345,11 @@ class Hybrid_SpinLockRW_MCS {
+ 
+             static_assert(N <= 62, "Hybrid_SpinLockRW_MCS(): Number of reader/writer per block cannot be more than 62");
+ 
+-            if (nb_threads <= std::thread::hardware_concurrency()) lcks[mask_id].bits = mask_full;
++            if (nb_threads <= biochef::thread::hardware_concurrency()) lcks[mask_id].bits = mask_full;
+             else {
+ 
+                 std::cerr << "Hybrid_SpinLockRW_MCS(): Number of threads required is greater than number of threads possible on this machine (" <<
+-                std::thread::hardware_concurrency() << ")" << std::endl;
++                biochef::thread::hardware_concurrency() << ")" << std::endl;
+             }
+         }
+ 
+diff --git a/src/Bootstrap.cpp b/src/Bootstrap.cpp
+index fd1fdf8..269a0b4 100644
+--- a/src/Bootstrap.cpp
++++ b/src/Bootstrap.cpp
+@@ -35,7 +35,7 @@ BootstrapThreadPool::BootstrapThreadPool(
+   mean_fls_(mean_fls)
+ {
+   for (size_t i = 0; i < n_threads_; ++i) {
+-    threads_.push_back( std::thread(BootstrapWorker(*this, i)) );
++    threads_.push_back( biochef::thread(BootstrapWorker(*this, i)) );
+   }
+ }
+ 
+diff --git a/src/Bootstrap.h b/src/Bootstrap.h
+index 300dc2d..10319a1 100644
+--- a/src/Bootstrap.h
++++ b/src/Bootstrap.h
+@@ -86,7 +86,7 @@ class BootstrapThreadPool {
+     std::vector<size_t> seeds_;
+     size_t n_threads_;
+ 
+-    std::vector<std::thread> threads_;
++    std::vector<biochef::thread> threads_;
+     std::mutex seeds_mutex_;
+     std::mutex write_lock_;
+ 
+diff --git a/src/KmerIndex.cpp b/src/KmerIndex.cpp
+index 13c9892..c782911 100644
+--- a/src/KmerIndex.cpp
++++ b/src/KmerIndex.cpp
+@@ -901,7 +901,7 @@ void KmerIndex::DListFlankingKmers(const ProgramOptions& opt, const std::string&
+ 
+   for (auto& fasta : dlist_fasta_files) {
+     std::vector<std::string> seqs_v(max_threads_read, "");
+-    std::vector<std::thread> workers;
++    std::vector<biochef::thread> workers;
+     std::mutex mutex_file;
+     std::mutex mutex_kmers;
+     fp = gzopen(fasta.c_str(), "r");
+@@ -1470,7 +1470,7 @@ void KmerIndex::load(ProgramOptions& opt, bool loadKmerTable, bool loadDlist) {
+   const size_t max_num_nodes_buffer = 524288;
+   std::vector<std::pair<char*, std::pair<Kmer, uint32_t>>> in_buf_v;
+   in_buf_v.reserve(max_num_nodes_buffer);
+-  std::vector<std::thread> workers;
++  std::vector<biochef::thread> workers;
+   workers.reserve(opt.threads);
+   for (size_t i = 0; i < tmp_size; ++i) {
+     // 3.1 read head kmer
+@@ -1532,7 +1532,7 @@ void KmerIndex::load(ProgramOptions& opt, bool loadKmerTable, bool loadDlist) {
+   buffer = nullptr;
+   std::vector<std::pair<char*, std::pair<Kmer, uint32_t>>>().swap(
+       in_buf_v);  // potentially free up memory
+-  std::vector<std::thread>().swap(workers);
++  std::vector<biochef::thread>().swap(workers);
+ 
+   // 4. read number of targets
+   in.read((char*)&num_trans, sizeof(num_trans));
+diff --git a/src/ProcessReads.cpp b/src/ProcessReads.cpp
+index 861186b..14ba338 100644
+--- a/src/ProcessReads.cpp
++++ b/src/ProcessReads.cpp
+@@ -315,9 +315,9 @@ int64_t ProcessBUSReads(MasterProcessor &MP, const ProgramOptions &opt) {
+ void MasterProcessor::processReads() {
+   // start worker threads
+   if (!opt.batch_mode && !opt.bus_mode) {
+-    std::vector<std::thread> workers;
++    std::vector<biochef::thread> workers;
+     for (int i = 0; i < opt.threads; i++) {
+-      workers.emplace_back(std::thread(ReadProcessor(index, opt, tc, *this, -1, i)));
++      workers.emplace_back(biochef::thread(ReadProcessor(index, opt, tc, *this, -1, i)));
+     }
+ 
+     // let the workers do their thing
+@@ -338,7 +338,7 @@ void MasterProcessor::processReads() {
+       }
+     }
+   } else if (opt.bus_mode) {
+-    std::vector<std::thread> workers;
++    std::vector<biochef::thread> workers;
+     parallel_bus_read = opt.threads > 4 && opt.files.size() > opt.busOptions.nfiles && !opt.num &&
+                         !opt.pseudobam && opt.input_interleaved_nfiles == 0;
+     if (parallel_bus_read) {
+@@ -358,7 +358,7 @@ void MasterProcessor::processReads() {
+     }
+ 
+     for (int i = 0; i < opt.threads; i++) {
+-      workers.emplace_back(std::thread(BUSProcessor(index, opt, tc, *this, -1, i)));
++      workers.emplace_back(biochef::thread(BUSProcessor(index, opt, tc, *this, -1, i)));
+     }
+ 
+     // let the workers do their thing
+@@ -375,7 +375,7 @@ void MasterProcessor::processReads() {
+     tc.counts.resize(index.ecmapinv.size(), 0);
+ 
+   } else if (opt.batch_mode) {
+-    std::vector<std::thread> workers;
++    std::vector<biochef::thread> workers;
+     int num_ids = opt.batch_ids.size();
+     int id = 0;
+     while (id < num_ids) {
+@@ -399,10 +399,10 @@ void MasterProcessor::processReads() {
+       }
+ 
+       for (int i = 0; i < nt; i++, id++, local_id++) {
+-        workers.emplace_back(std::thread(BUSProcessor(index, opt, tc, *this, id, local_id)));
++        workers.emplace_back(biochef::thread(BUSProcessor(index, opt, tc, *this, id, local_id)));
+       }
+       for (int i = 0; i < num_threads - nt; i++, local_id++) {  // Use up remaining threads
+-        workers.emplace_back(std::thread(
++        workers.emplace_back(biochef::thread(
+             BUSProcessor(index, opt, tc, *this, start_id + (i % nt), local_id)));  // id will cycle
+       }
+       // let the workers do their thing
+@@ -748,9 +748,9 @@ void MasterProcessor::processAln(const EMAlgorithm &em, bool useEM = true) {
+   pseudobatchf_in.open(opt.output + "/pseudoaln.bin", std::ios::in | std::ios::binary);
+   SR->reset();
+ 
+-  std::vector<std::thread> workers;
++  std::vector<biochef::thread> workers;
+   for (int i = 0; i < opt.threads; i++) {
+-    workers.emplace_back(std::thread(AlnProcessor(index, opt, *this, em, model, useEM)));
++    workers.emplace_back(biochef::thread(AlnProcessor(index, opt, *this, em, model, useEM)));
+   }
+ 
+   // let the workers do their thing
+diff --git a/src/main.cpp b/src/main.cpp
+index 0a54130..7605040 100644
+--- a/src/main.cpp
++++ b/src/main.cpp
+@@ -1054,7 +1054,7 @@ bool CheckOptionsBus(ProgramOptions &opt) {
+     std::cerr << "Error: invalid number of threads " << opt.threads << std::endl;
+     ret = false;
+   } else {
+-    unsigned int n = std::thread::hardware_concurrency();
++    unsigned int n = biochef::thread::hardware_concurrency();
+     if (n != 0 && n < opt.threads) {
+       std::cerr << "Warning: you asked for " << opt.threads << ", but only " << n
+            << " cores on the machine" << std::endl;
+@@ -1610,7 +1610,7 @@ bool CheckOptionsIndex(ProgramOptions &opt) {
+     std::cerr << "Error: invalid number of threads " << opt.threads << std::endl;
+     ret = false;
+   } else {
+-    unsigned int n = std::thread::hardware_concurrency();
++    unsigned int n = biochef::thread::hardware_concurrency();
+     if (n != 0 && n < opt.threads) {
+       std::cerr << "Warning: you asked for " << opt.threads << ", but only " << n
+            << " cores on the machine" << std::endl;
+@@ -1857,7 +1857,7 @@ bool CheckOptionsEM(ProgramOptions &opt, bool emonly = false) {
+     std::cerr << "Error: invalid number of threads " << opt.threads << std::endl;
+     ret = false;
+   } else {
+-    unsigned int n = std::thread::hardware_concurrency();
++    unsigned int n = biochef::thread::hardware_concurrency();
+     if (n != 0 && n < opt.threads) {
+       std::cerr << "Warning: you asked for " << opt.threads << ", but only " << n
+            << " cores on the machine" << std::endl;
+@@ -2038,7 +2038,7 @@ bool CheckOptionsTCCQuant(ProgramOptions &opt) {
+     std::cerr << ERROR_STR << " invalid number of threads " << opt.threads << std::endl;
+     ret = false;
+   } else {
+-    unsigned int n = std::thread::hardware_concurrency();
++    unsigned int n = biochef::thread::hardware_concurrency();
+     if (n != 0 && n < opt.threads) {
+       std::cerr << "Warning: you asked for " << opt.threads << ", but only " << n
+            << " cores on the machine" << std::endl;
+@@ -2060,7 +2060,7 @@ bool CheckOptionsInspect(ProgramOptions &opt) {
+     std::cerr << "Error: invalid number of threads " << opt.threads << std::endl;
+     ret = false;
+   } else {
+-    unsigned int n = std::thread::hardware_concurrency();
++    unsigned int n = biochef::thread::hardware_concurrency();
+     if (n != 0 && n < opt.threads) {
+       std::cerr << "Warning: you asked for " << opt.threads << ", but only " << n
+            << " cores on the machine" << std::endl;
+@@ -3388,7 +3388,7 @@ int main(int argc, char *argv[]) {
+           }
+         };  // end of EM_lambda
+ 
+-        std::vector<std::thread> workers;
++        std::vector<biochef::thread> workers;
+         int num_ids = nrow;
+         int id = 0;
+         while (id < num_ids) {
+@@ -3396,7 +3396,7 @@ int main(int argc, char *argv[]) {
+           int nt = std::min(opt.threads, (num_ids - id));
+           int first_id = id;
+           for (int i = 0; i < nt; i++, id++) {
+-            workers.emplace_back(std::thread(EM_lambda, id));
++            workers.emplace_back(biochef::thread(EM_lambda, id));
+           }
+           for (int i = 0; i < nt; i++) {
+             workers[i].join();
