@@ -1,0 +1,20 @@
+The Makefile compiles in the build host's name and the time of the build, so
+no two builds of the same commit give the same binary. The host becomes a
+fixed name and the time comes from SOURCE_DATE_EPOCH, which the hub sets to
+the source commit's time.
+
+diff --git a/Makefile b/Makefile
+index 10e42f5..14299be 100644
+--- a/Makefile
++++ b/Makefile
+@@ -248,8 +248,8 @@ both-debug: centrifuge-class-debug centrifuge-build-bin-debug
+ 
+ DEFS=-fno-strict-aliasing \
+      -DCENTRIFUGE_VERSION="\"$(GIT_VERSION)\"" \
+-     -DBUILD_HOST="\"`hostname`\"" \
+-     -DBUILD_TIME="\"`date`\"" \
++     -DBUILD_HOST="\"biochef\"" \
++     -DBUILD_TIME="\"`date -u -d @$${SOURCE_DATE_EPOCH:-0}`\"" \
+      -DCOMPILER_VERSION="\"`$(CXX) -v 2>&1 | tail -1`\"" \
+      $(FILE_FLAGS) \
+ 	 $(CFLAGS) \
