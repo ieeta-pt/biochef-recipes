@@ -1,0 +1,18 @@
+Offsets are TRefOff, a signed 64-bit number, but refExtent() is a size_t: 1
+- refExtent() is the negative number meant only where size_t has 64 bits. In
+wasm32 it is near 2^32, which made the fragment length of every pair (TLEN)
+that of one mate.
+
+diff --git a/aligner_result.h b/aligner_result.h
+index 42e87f8..185667c 100644
+--- a/aligner_result.h
++++ b/aligner_result.h
+@@ -1142,7 +1142,7 @@ public:
+         en.adjustOff(refExtent() - 1);
+         Coord right = refcoord_right();
+         st2.init(right);
+-        st2.adjustOff(1 - refExtent());
++        st2.adjustOff(1 - (TRefOff)refExtent());
+ 		en2.init(right);
+ 	}
+ 
