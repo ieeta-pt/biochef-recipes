@@ -1,0 +1,16 @@
+Reverse-complementing a sequence of one base counted the end index down past
+0, where it wrapped around, and read far past the sequence.
+
+diff --git a/src/tn93_shared.cc b/src/tn93_shared.cc
+index 7d023c6..85fa720 100644
+--- a/src/tn93_shared.cc
++++ b/src/tn93_shared.cc
+@@ -666,7 +666,7 @@ int readFASTA (FILE* F, char& automatonState,  StringBuffer &names,
+  */
+ int reverseComplement (StringBuffer& sequence, unsigned long from, unsigned long to) {
+     
+-    for (unsigned long i = from, j = to; i <= j; i++, j--) {
++    for (unsigned long i = from, j = to; i <= j && j != (unsigned long)-1; i++, j--) {
+         char leading_char  = reverseComplementCharacters[sequence.getChar(i)],
+              trailing_char = reverseComplementCharacters[sequence.getChar(j)];
+     
