@@ -1,0 +1,29 @@
+diff --git a/kthread.cpp b/kthread.cpp
+index d79d72c..a50e8b3 100644
+--- a/kthread.cpp
++++ b/kthread.cpp
+@@ -128,6 +128,19 @@ static void *ktp_worker(void *data)
+ 	pthread_exit(0);
+ }
+ 
++#ifdef __EMSCRIPTEN__
++void kt_pipeline(int n_threads, void *(*func)(void*, int, void*), void *shared_data, int n_steps)
++{
++	(void)n_threads;
++	for (;;) {
++		void *data = func(shared_data, 0, 0);
++		if (data == 0) return;
++		int step;
++		for (step = 1; step < n_steps; ++step)
++			data = func(shared_data, step, data);
++	}
++}
++#else
+ void kt_pipeline(int n_threads, void *(*func)(void*, int, void*), void *shared_data, int n_steps)
+ {
+ 	ktp_t aux;
+@@ -158,3 +171,4 @@ void kt_pipeline(int n_threads, void *(*func)(void*, int, void*), void *shared_d
+ 	pthread_mutex_destroy(&aux.mutex);
+ 	pthread_cond_destroy(&aux.cv);
+ }
++#endif
