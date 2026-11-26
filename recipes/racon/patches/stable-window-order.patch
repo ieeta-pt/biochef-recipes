@@ -1,0 +1,18 @@
+Each window's sequences went into the partial order graph in an order
+std::sort gave them by start, which leaves ties in another order in
+libstdc++, natively, than in libc++, in wasm, and the consensus changed with
+it. Ties now keep the order the sequences came in.
+
+diff --git a/src/window.cpp b/src/window.cpp
+index a9591d4..e17646f 100644
+--- a/src/window.cpp
++++ b/src/window.cpp
+@@ -81,7 +81,7 @@ bool Window::generate_consensus(std::shared_ptr<spoa::AlignmentEngine> alignment
+         rank.emplace_back(i);
+     }
+ 
+-    std::sort(rank.begin() + 1, rank.end(), [&](uint32_t lhs, uint32_t rhs) {
++    std::stable_sort(rank.begin() + 1, rank.end(), [&](uint32_t lhs, uint32_t rhs) {
+         return positions_[lhs].first < positions_[rhs].first; });
+ 
+     uint32_t offset = 0.01 * sequences_.front().second;
