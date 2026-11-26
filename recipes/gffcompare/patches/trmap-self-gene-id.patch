@@ -1,0 +1,18 @@
+trmap -J --self added each transcript's own gene name without checking it
+has one, and compared it as a string, so a GTF with gene_id but no gene_name
+crashed it. It now falls back to the gene ID, as for the reference
+transcripts.
+
+diff --git a/trmap.cpp b/trmap.cpp
+index 8c696cc..9f712eb 100644
+--- a/trmap.cpp
++++ b/trmap.cpp
+@@ -263,7 +263,7 @@ void printNJTab(FILE* f, QJData& d) {
+ 	}
+ 	GVec<char*> genes; //gene IDs
+ 	// for self mapping, add own gene name
+-	if (selfMap) geneAdd(genes, d.t->getGeneName());
++	if (selfMap && (d.t->getGeneName() || d.t->getGeneID())) geneAdd(genes, d.t->getGeneName() ? d.t->getGeneName() : d.t->getGeneID());
+ 	for (int i=0;i<d.refovls.Count();++i) {
+ 		char* g=d.refovls[i]->ref->getGeneName();
+ 		if (g==NULL) g=d.refovls[i]->ref->getGeneID();
