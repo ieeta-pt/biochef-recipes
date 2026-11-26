@@ -1,0 +1,17 @@
+name: Monitor Registry
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+jobs:
+  monitor:
+    permissions:
+      contents: read
+      issues: write
+    uses: ieeta-pt/biochef-hub/.github/workflows/monitor-registry.yml@master
+    with:
+      registry_url: ${{ vars.REGISTRY_URL }}
+      package_prefix: biochef-plugins-
+      signing_policy: signing/biochef-signing-policy.json
+      catalog_public_jwk: signing/biochef-catalog-public-key.jwk.json

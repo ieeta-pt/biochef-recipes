@@ -26,9 +26,13 @@ build:
       outputDir: out
       emscriptenVersion: 4.0.18
       buildScript: build-wasm.sh
+  native:
+    outputDir: out
+    buildScript: build-native.sh
+    buildTools: [make, gcc]
 
 runtime:
-  modes: [wasm, remote]
+  modes: [wasm, native, remote]
 
 operations:
   - id: fermilite.assemble

@@ -4,7 +4,7 @@ id: app.biochef.abpoa
 name: abPOA
 description: abPOA — adaptive banded Partial Order Alignment. SIMD-accelerated partial-order multiple sequence alignment with banded dynamic programming. Used for long-read consensus polishing (e.g. as the POA backend in racon / medaka-like pipelines). Faster than SPOA on long inputs because of the adaptive banding.
 
-version: 1.5.6-bc.1
+version: 1.5.6-bc.2
 homepage: https://github.com/yangao07/abPOA
 license:
   spdx: MIT
@@ -26,9 +26,14 @@ build:
       outputDir: out
       emscriptenVersion: 4.0.18
       buildScript: build-wasm.sh
+    patches: [patches/emscripten-build.patch]
+  native:
+    outputDir: out
+    buildScript: build-native.sh
+    buildTools: [make, gcc]
 
 runtime:
-  modes: [wasm]
+  modes: [wasm, native]
 
 operations:
   - id: abpoa.align
@@ -53,8 +58,3 @@ operations:
       - { name: zdrop, type: integer, flag: -z }
       - { name: end_bonus, type: integer, flag: -e }
       - { name: result, type: integer, flag: -r }
-      - { name: out_msa, type: flag, flag: --out-msa }
-      - { name: out_cons, type: flag, flag: --out-cons }
-      - { name: out_pog, type: string, flag: -g }
-      - { name: incremental, type: flag, flag: -i }
-      - { name: scoring_matrix, type: string, flag: -t }

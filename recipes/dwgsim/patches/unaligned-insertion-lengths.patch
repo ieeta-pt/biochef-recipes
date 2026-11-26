@@ -1,0 +1,37 @@
+The lengths of long insertions are stored at odd addresses through
+uint16_t and uint32_t pointers; they are copied byte by byte instead.
+
+diff --git a/src/mut.c b/src/mut.c
+index 9cdaed6..c14ecb0 100644
+--- a/src/mut.c
++++ b/src/mut.c
+@@ -206,12 +206,12 @@ mut_get_ins_long_n(uint8_t *ins, uint32_t *n)
+       return ins + 2;
+       break;
+     case sizeof(uint16_t):
+-      (*n) = (uint32_t)(((uint16_t*)(ins+1))[0]);
++      { uint16_t v; memcpy(&v, ins+1, sizeof v); (*n) = v; }
+       return ins + 3;
+       break;
+     case sizeof(uint32_t):
+     default:
+-      (*n) = (uint32_t)(((uint32_t*)(ins+1))[0]);
++      memcpy(n, ins+1, sizeof *n);
+       return ins + 5;
+       break;
+   }
+@@ -233,12 +233,12 @@ mut_set_ins_long_n(uint8_t *ins, uint32_t n)
+       return ins + 2;
+       break;
+     case sizeof(uint16_t):
+-      (*((uint16_t*)(ins+1))) = (uint16_t)n;
++      { uint16_t v = (uint16_t)n; memcpy(ins+1, &v, sizeof v); }
+       return ins + 3;
+       break;
+     case sizeof(uint32_t):
+     default:
+-      (*((uint32_t*)(ins+1))) = n;
++      memcpy(ins+1, &n, sizeof n);
+       return ins + 5;
+       break;
+   }

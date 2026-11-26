@@ -1,0 +1,19 @@
+dwgsim grows the buffer of a sequence 16 M bases at a time, and allocates
+the mutations of each sequence as long as that buffer, zeroed: 256 MB per
+sequence. Natively the pages stay untouched; in wasm calloc writes them
+all, so each sequence takes about 40 ms and the heap at least 256 MB. It
+grows the buffer 64 K bases at a time instead, which changes nothing else.
+
+diff --git a/src/dwgsim.c b/src/dwgsim.c
+index b007631..1f4f91e 100644
+--- a/src/dwgsim.c
++++ b/src/dwgsim.c
+@@ -440,7 +440,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
+   e[0] = &opt->e[0]; e[1] = &opt->e[1];
+ 
+   INIT_SEQ(seq);
+-  seq_set_block_size(0x1000000);
++  seq_set_block_size(0x10000);
+   l = opt->length[0] > opt->length[1]? opt->length[0] : opt->length[1];
+   qstr_l = l;
+   qstr = (char*)calloc(qstr_l+1, 1);

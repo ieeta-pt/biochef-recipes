@@ -1,0 +1,31 @@
+diff --git a/src/lib/bbiRead.c b/src/lib/bbiRead.c
+index f1ae7992..affe4f90 100644
+--- a/src/lib/bbiRead.c
++++ b/src/lib/bbiRead.c
+@@ -191,7 +191,7 @@ struct bbiChromIdSize *idSize;
+ AllocVar(idSize);
+ 
+ // first look for the given chrom name
+-if (!bptFileFind(bbi->chromBpt, chrom, strlen(chrom), idSize, sizeof(idSize)))
++if (!bptFileFind(bbi->chromBpt, chrom, strlen(chrom), idSize, sizeof(*idSize)))
+     {
+     if (bbi->aliasFunc)
+         {
+@@ -201,7 +201,7 @@ if (!bptFileFind(bbi->chromBpt, chrom, strlen(chrom), idSize, sizeof(idSize)))
+ 	for(; aliases; aliases = aliases->next)
+             {
+             char *alias = aliases->name;
+-            if (bptFileFind(bbi->chromBpt, alias, strlen(alias), idSize, sizeof(idSize)))
++            if (bptFileFind(bbi->chromBpt, alias, strlen(alias), idSize, sizeof(*idSize)))
+                 break;
+             }
+         if (aliases == NULL)   // did we run out of aliases to try?
+@@ -210,7 +210,7 @@ if (!bptFileFind(bbi->chromBpt, chrom, strlen(chrom), idSize, sizeof(idSize)))
+     else
+         {
+         // if chrom is not found and the chrom starts with "chr", try without "chr"
+-        if (!startsWith("chr", chrom) || !bptFileFind(bbi->chromBpt, &chrom[3], strlen(chrom) - 3, idSize, sizeof(idSize)))
++        if (!startsWith("chr", chrom) || !bptFileFind(bbi->chromBpt, &chrom[3], strlen(chrom) - 3, idSize, sizeof(*idSize)))
+             return NULL;
+         }
+     }

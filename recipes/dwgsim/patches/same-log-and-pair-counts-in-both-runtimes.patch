@@ -1,0 +1,50 @@
+log is the entry point's, and the numbers of pairs are counted in double,
+not long double, which is 80 bits natively and 128 in wasm: so a seed
+gives the same reads natively and in wasm.
+
+diff --git a/src/dwgsim.c b/src/dwgsim.c
+index e433af3..f32c197 100644
+--- a/src/dwgsim.c
++++ b/src/dwgsim.c
+@@ -164,7 +164,7 @@ double ran_normal()
+           v2 = 2.0 * drand48() - 1.0; 
+           rsq = v1 * v1 + v2 * v2;
+       } while (rsq >= 1.0 || rsq == 0.0);
+-      fac = sqrt(-2.0 * log(rsq) / rsq); 
++      fac = sqrt(-2.0 * biochef_log(rsq) / rsq); 
+       gset = v1 * fac; 
+       iset = 1;
+       return v2 * fac;
+@@ -581,12 +581,12 @@ void dwgsim_core(dwgsim_opt_t * opt)
+               }
+               if(0 < opt->N) {
+                   // based on -N
+-                  n_pairs = (uint64_t)((long double)l / tot_len * opt->N + 0.5);
++                  n_pairs = (uint64_t)((double)l / tot_len * opt->N + 0.5);
+                   if(opt->N - n_sim < n_pairs) n_pairs = opt->N - n_sim; // make sure we don't simulate too many reads
+               }
+               else {
+                   // based on coverage, with added random reads
+-                  n_pairs = (uint64_t)(l * opt->C / ((long double)(size[0] + size[1])) / (1.0 - opt->rand_read) + 0.5);
++                  n_pairs = (uint64_t)(l * opt->C / ((double)(size[0] + size[1])) / (1.0 - opt->rand_read) + 0.5);
+               }
+           }
+ 
+@@ -904,7 +904,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
+                       else {
+                           for (i = 0; i < s[j]; ++i) {
+                               if (e[j]->start+e[j]->by*i>0) {
+-                                  qstr[i] = (int)(-10.0 * log(e[j]->start + e[j]->by*i) / log(10.0) + 0.499) + '!';
++                                  qstr[i] = (int)(-10.0 * biochef_log(e[j]->start + e[j]->by*i) / biochef_log(10.0) + 0.499) + '!';
+                               } else {
+                                   qstr[i] = QUAL_MAX + '!';
+                               }
+@@ -1007,7 +1007,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
+                       else {
+                           for (i = 0; i < s[j]; ++i) {
+                               if (e[j]->start+e[j]->by*i>0) {
+-                                  qstr[i] = (int)(-10.0 * log(e[j]->start + e[j]->by*i) / log(10.0) + 0.499) + '!';
++                                  qstr[i] = (int)(-10.0 * biochef_log(e[j]->start + e[j]->by*i) / biochef_log(10.0) + 0.499) + '!';
+                               } else {
+                                   qstr[i] = QUAL_MAX + '!';
+                               }

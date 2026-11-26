@@ -27,9 +27,13 @@ build:
       emscriptenVersion: 4.0.18
       outputDir: out
       buildScript: build-wasm.sh
+  native:
+    outputDir: out
+    buildScript: build-native.sh
+    buildTools: [gcc]
 
 runtime:
-  modes: [wasm]
+  modes: [wasm, native]
 
 operations:
   - id: aster.astral
@@ -43,9 +47,9 @@ operations:
       outputs:
         - { name: out, types: [NEWICK], mode: file, flag: -o }
     parameters:
-      - { name: seed, type: integer, flag: -s }
+      - { name: seed, type: integer, flag: --seed }
       - { name: rounds, type: integer, flag: -r }
-      - { name: subsample, type: integer, flag: -u }
+      - { name: subsample, type: integer, flag: -s }
       - { name: threads, type: integer, flag: -t, default: 1 }
 
   - id: aster.astral.pro
@@ -60,7 +64,7 @@ operations:
       outputs:
         - { name: out, types: [NEWICK], mode: file, flag: -o }
     parameters:
-      - { name: seed, type: integer, flag: -s }
+      - { name: seed, type: integer, flag: --seed }
       - { name: rounds, type: integer, flag: -r }
       - { name: threads, type: integer, flag: -t, default: 1 }
 
@@ -75,9 +79,9 @@ operations:
       outputs:
         - { name: out, types: [NEWICK], mode: file, flag: -o }
     parameters:
-      - { name: seed, type: integer, flag: -s }
+      - { name: seed, type: integer, flag: --seed }
       - { name: rounds, type: integer, flag: -r }
-      - { name: weight_mode, type: string, flag: -w }
+      - { name: weight_mode, type: integer, flag: --mode }
       - { name: threads, type: integer, flag: -t, default: 1 }
 
   - id: aster.caster.site
@@ -91,6 +95,6 @@ operations:
       outputs:
         - { name: out, types: [NEWICK], mode: file, flag: -o }
     parameters:
-      - { name: seed, type: integer, flag: -s }
+      - { name: seed, type: integer, flag: --seed }
       - { name: rounds, type: integer, flag: -r }
       - { name: threads, type: integer, flag: -t, default: 1 }

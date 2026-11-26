@@ -1,0 +1,13 @@
+diff --git a/samblaster.cpp b/samblaster.cpp
+index 211663b..e417e51 100644
+--- a/samblaster.cpp
++++ b/samblaster.cpp
+@@ -21,6 +21,8 @@
+     You may obtain a copy of the License at http://opensource.org/licenses/MIT
+ 
+ */
++#include <sys/time.h>
++#include <sys/resource.h>
+ 
+ // This define is needed for portable definition of PRIu64
+ #define __STDC_FORMAT_MACROS

@@ -26,9 +26,13 @@ build:
       outputDir: test
       emscriptenVersion: 4.0.18
       buildScript: build-wasm.sh
+  native:
+    outputDir: test
+    buildScript: build-native.sh
+    buildTools: [gcc]
 
 runtime:
-  modes: [wasm]
+  modes: [wasm, native]
 
 operations:
   - id: cgranges.bedcov
